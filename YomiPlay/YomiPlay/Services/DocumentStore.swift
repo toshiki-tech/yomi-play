@@ -1,0 +1,104 @@
+//
+//  DocumentStore.swift
+//  YomiPlay
+//
+//  字幕ドキュメントの永続化サービス
+//  JSON ファイルとして Documents ディレクトリに保存・読み込み・削除する
+//
+
+import Foundation
+
+/// 字幕ドキュメントの保存・読み込み・削除を行うストア
+final class DocumentStore: @unchecked Sendable {
+    
+    static let shared = DocumentStore()
+    
+    /// 保存先ディレクトリ
+    private var storeDirectory: URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let dir = docs.appendingPathComponent("SavedDocuments", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: dir.path) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        return dir
+    }
+    
+    private init() {}
+    
+    // MARK: - 保存
+    
+    /// ドキュメントを保存する
+    func save(_ document: TranscriptDocument) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .prettyPrinted
+        let data = try encoder.encode(document)
+        let fileURL = storeDirectory.appendingPathComponent("\(document.id.uuidString).json")
+        try data.write(to: fileURL)
+        print("DocumentStore: 保存完了 id=\(document.id), title=\(document.source.title)")
+    }
+    
+    // MARK: - 読み込み
+    
+    /// 保存済みドキュメント一覧を取得する（日付降順）
+    func loadAll() -> [TranscriptDocument] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
+        var documents: [TranscriptDocument] = []
+        
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: storeDirectory,
+            includingPropertiesForKeys: nil,
+            options: .skipsHiddenFiles
+        ) else {
+            return []
+        }
+        
+        for file in files where file.pathExtension == "json" {
+            if let data = try? Data(contentsOf: file),
+               let doc = try? decoder.decode(TranscriptDocument.self, from: data) {
+                documents.append(doc)
+            }
+        }
+        
+        // 日付降順
+        documents.sort { $0.createdAt > $1.createdAt }
+        return documents
+    }
+    
+    /// 特定のドキュメントを読み込む
+    func load(id: UUID) -> TranscriptDocument? {
+        let fileURL = storeDirectory.appendingPathComponent("\(id.uuidString).json")
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
+        guard let data = try? Data(contentsOf: fileURL),
+              let doc = try? decoder.decode(TranscriptDocument.self, from: data) else {
+            return nil
+        }
+        return doc
+    }
+    
+    // MARK: - 削除
+    
+    /// ドキュメントを削除する
+    func delete(id: UUID) throws {
+        let fileURL = storeDirectory.appendingPathComponent("\(id.uuidString).json")
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            try FileManager.default.removeItem(at: fileURL)
+            print("DocumentStore: 削除完了 id=\(id)")
+        }
+    }
+    
+    /// 全ドキュメントを削除する
+    func deleteAll() throws {
+        let files = try FileManager.default.contentsOfDirectory(
+            at: storeDirectory,
+            includingPropertiesForKeys: nil
+        )
+        for file in files {
+            try FileManager.default.removeItem(at: file)
+        }
+    }
+}
