@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct TranscriptView: View {
     let segments: [TranscriptSegment]
@@ -25,27 +26,20 @@ struct TranscriptView: View {
             ScrollView {
                 LazyVStack(spacing: 4) {
                     ForEach(segments) { segment in
-                        if editingSegmentID == segment.id {
-                            EditingRowView(
-                                segment: segment,
-                                editingText: $editingText,
-                                fontSize: fontSize,
-                                onConfirm: onEditConfirmed,
-                                onCancel: onEditCancelled
-                            )
-                            .id(segment.id)
-                        } else {
-                            TranscriptRowView(
-                                segment: segment,
-                                isActive: segment.id == currentSegmentID,
-                                showFurigana: showFurigana,
-                                showRomaji: showRomaji,
-                                fontSize: fontSize,
-                                onTapped: { onSegmentTapped(segment) },
-                                onEditTapped: { onEditTapped(segment) }
-                            )
-                            .id(segment.id)
-                        }
+                        SegmentRowView(
+                            segment: segment,
+                            isActive: segment.id == currentSegmentID,
+                            isEditing: editingSegmentID == segment.id,
+                            showFurigana: showFurigana,
+                            showRomaji: showRomaji,
+                            fontSize: fontSize,
+                            editingText: $editingText,
+                            onTapped: { onSegmentTapped(segment) },
+                            onEditTapped: { onEditTapped(segment) },
+                            onEditConfirmed: onEditConfirmed,
+                            onEditCancelled: onEditCancelled
+                        )
+                        .id(segment.id)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -60,8 +54,10 @@ struct TranscriptView: View {
             }
             .onChange(of: editingSegmentID) { _, newID in
                 if let id = newID {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        proxy.scrollTo(id, anchor: .center)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(id, anchor: .center)
+                        }
                     }
                 }
             }
@@ -69,16 +65,37 @@ struct TranscriptView: View {
     }
 }
 
-struct TranscriptRowView: View {
+// MARK: - 各行のビュー（表示モードと編集モードを同一ビュー内で切り替え）
+
+struct SegmentRowView: View {
     let segment: TranscriptSegment
     let isActive: Bool
+    let isEditing: Bool
     let showFurigana: Bool
     let showRomaji: Bool
     let fontSize: CGFloat
+    @Binding var editingText: String
     let onTapped: () -> Void
     let onEditTapped: () -> Void
+    let onEditConfirmed: () -> Void
+    let onEditCancelled: () -> Void
+    
+    @FocusState private var isFocused: Bool
+    @State private var isLongPressing = false
     
     var body: some View {
+        Group {
+            if isEditing {
+                editingBody
+            } else {
+                displayBody
+            }
+        }
+    }
+    
+    // MARK: - 表示モード
+    
+    private var displayBody: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !segment.tokens.isEmpty {
                 FuriganaTextView(
@@ -100,40 +117,30 @@ struct TranscriptRowView: View {
         .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(isActive ? Color.green.opacity(0.3) : Color(.secondarySystemBackground))
+                .fill(isLongPressing
+                      ? Color.green.opacity(0.2)
+                      : (isActive ? Color.green.opacity(0.3) : Color(.secondarySystemBackground)))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(isActive ? Color.green.opacity(0.5) : Color.clear, lineWidth: 1)
         )
-        .onTapGesture { onTapped() }
-        .highPriorityGesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .onEnded { _ in onEditTapped() }
-        )
-        .contextMenu {
-            Button {
-                // 等 context menu 关闭后再切到编辑状态，避免焦点/层级冲突
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                    onEditTapped()
-                }
-            } label: {
-                Label("編集", systemImage: "pencil")
-            }
+        .scaleEffect(isLongPressing ? 0.97 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isLongPressing)
+        .onTapGesture {
+            onTapped()
         }
+        .onLongPressGesture(minimumDuration: 0.4, pressing: { pressing in
+            isLongPressing = pressing
+        }, perform: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onEditTapped()
+        })
     }
-}
-
-struct EditingRowView: View {
-    let segment: TranscriptSegment
-    @Binding var editingText: String
-    let fontSize: CGFloat
-    let onConfirm: () -> Void
-    let onCancel: () -> Void
     
-    @FocusState private var isFocused: Bool
+    // MARK: - 編集モード
     
-    var body: some View {
+    private var editingBody: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(formatTimeRange(start: segment.startTime, end: segment.endTime))
                 .font(.caption2)
@@ -148,7 +155,7 @@ struct EditingRowView: View {
             
             HStack(spacing: 12) {
                 Spacer()
-                Button(action: onCancel) {
+                Button(action: onEditCancelled) {
                     Text("キャンセル")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -156,7 +163,7 @@ struct EditingRowView: View {
                         .padding(.vertical, 6)
                         .background(Capsule().fill(Color(.systemGray5)))
                 }
-                Button(action: onConfirm) {
+                Button(action: onEditConfirmed) {
                     Text("確定")
                         .font(.caption)
                         .fontWeight(.semibold)
@@ -171,9 +178,7 @@ struct EditingRowView: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green, lineWidth: 2))
         .onAppear {
-            // 从 context menu 进入时，等菜单完全消失后再唤起键盘，否则焦点会失效
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 400_000_000)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 isFocused = true
             }
         }
