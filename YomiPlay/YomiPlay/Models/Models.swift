@@ -97,6 +97,8 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     var originalText: String      // 元のテキスト（ユーザーが編集可能）
     var tokens: [FuriganaToken]   // 振り仮名トークンの配列
     var confidence: Float?        // 認識信頼度（オプション）
+    /// true の場合、振り仮名・ローマ字を表示しない（中国語など日本語以外のセグメント用）
+    var skipFurigana: Bool
     
     init(
         id: UUID = UUID(),
@@ -104,7 +106,8 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         endTime: TimeInterval,
         originalText: String,
         tokens: [FuriganaToken] = [],
-        confidence: Float? = nil
+        confidence: Float? = nil,
+        skipFurigana: Bool = false
     ) {
         self.id = id
         self.startTime = startTime
@@ -112,6 +115,7 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         self.originalText = originalText
         self.tokens = tokens
         self.confidence = confidence
+        self.skipFurigana = skipFurigana
     }
     
     /// 指定時刻がこのセグメントの範囲内かどうか

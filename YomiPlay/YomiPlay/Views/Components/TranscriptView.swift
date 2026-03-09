@@ -16,6 +16,7 @@ struct TranscriptView: View {
     let fontSize: CGFloat
     let editingSegmentID: UUID?
     @Binding var editingText: String
+    @Binding var editingSkipFurigana: Bool
     let onSegmentTapped: (TranscriptSegment) -> Void
     let onEditTapped: (TranscriptSegment) -> Void
     let onEditConfirmed: () -> Void
@@ -34,6 +35,7 @@ struct TranscriptView: View {
                             showRomaji: showRomaji,
                             fontSize: fontSize,
                             editingText: $editingText,
+                            editingSkipFurigana: $editingSkipFurigana,
                             onTapped: { onSegmentTapped(segment) },
                             onEditTapped: { onEditTapped(segment) },
                             onEditConfirmed: onEditConfirmed,
@@ -75,6 +77,7 @@ struct SegmentRowView: View {
     let showRomaji: Bool
     let fontSize: CGFloat
     @Binding var editingText: String
+    @Binding var editingSkipFurigana: Bool
     let onTapped: () -> Void
     let onEditTapped: () -> Void
     let onEditConfirmed: () -> Void
@@ -97,7 +100,11 @@ struct SegmentRowView: View {
     
     private var displayBody: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if !segment.tokens.isEmpty {
+            if segment.skipFurigana {
+                Text(segment.originalText)
+                    .font(.system(size: fontSize, weight: .medium))
+                    .foregroundStyle(isActive ? .white : .primary)
+            } else if !segment.tokens.isEmpty {
                 FuriganaTextView(
                     tokens: segment.tokens,
                     showFurigana: showFurigana,
@@ -152,6 +159,19 @@ struct SegmentRowView: View {
                 .textFieldStyle(.plain)
                 .focused($isFocused)
                 .lineLimit(1...5)
+            
+            Toggle(isOn: $editingSkipFurigana) {
+                HStack(spacing: 6) {
+                    Image(systemName: editingSkipFurigana ? "textformat.alt" : "character.textbox")
+                        .font(.caption)
+                        .foregroundStyle(editingSkipFurigana ? .orange : .secondary)
+                    Text("非日本語（注音なし）")
+                        .font(.caption)
+                        .foregroundStyle(editingSkipFurigana ? .orange : .secondary)
+                }
+            }
+            .toggleStyle(.switch)
+            .tint(.orange)
             
             HStack(spacing: 12) {
                 Spacer()

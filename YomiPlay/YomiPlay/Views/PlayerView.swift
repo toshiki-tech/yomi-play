@@ -88,6 +88,7 @@ struct PlayerView: View {
             fontSize: viewModel.fontSize,
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
+            editingSkipFurigana: $viewModel.editingSkipFurigana,
             onSegmentTapped: { segment in
                 viewModel.onSegmentTapped(segment)
             },

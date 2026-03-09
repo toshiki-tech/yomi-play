@@ -32,6 +32,7 @@ final class PlayerViewModel {
     // 字幕編集
     var editingSegmentID: UUID? = nil
     var editingText: String = ""
+    var editingSkipFurigana: Bool = false
     
     private let furiganaService = CFStringTokenizerFuriganaService()
     
@@ -110,12 +111,14 @@ final class PlayerViewModel {
     func startEditing(segment: TranscriptSegment) {
         editingSegmentID = segment.id
         editingText = segment.originalText
+        editingSkipFurigana = segment.skipFurigana
     }
     
     /// 編集をキャンセルする
     func cancelEditing() {
         editingSegmentID = nil
         editingText = ""
+        editingSkipFurigana = false
     }
     
     /// 編集を確定し、振り仮名を再生成する
@@ -132,23 +135,25 @@ final class PlayerViewModel {
             return
         }
         
-        // 振り仮名を再生成（バックグラウンド）
+        let shouldSkip = editingSkipFurigana
         let segmentIndex = index
+        
         Task {
-            let tokens = await furiganaService.generateFurigana(for: newText)
+            let tokens: [FuriganaToken] = shouldSkip
+                ? []
+                : await furiganaService.generateFurigana(for: newText)
             
             await MainActor.run {
                 document.segments[segmentIndex].originalText = newText
                 document.segments[segmentIndex].tokens = tokens
+                document.segments[segmentIndex].skipFurigana = shouldSkip
                 
-                // セグメント情報を再設定
                 playerService.setSegments(document.segments)
-                
-                // 保存
                 saveDocument()
                 
                 editingSegmentID = nil
                 editingText = ""
+                editingSkipFurigana = false
             }
         }
     }
