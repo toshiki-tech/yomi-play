@@ -175,12 +175,12 @@ enum ProcessingState: Equatable {
     
     var displayText: String {
         switch self {
-        case .idle:                return "準備中..."
-        case .loadingAudio:        return "音声を読み込み中..."
-        case .recognizing:         return "音声を認識中..."
-        case .generatingFurigana:  return "振り仮名を生成中..."
-        case .completed:           return "完了！"
-        case .error(let message):  return "エラー: \(message)"
+        case .idle:                return String(localized: "准备中...")
+        case .loadingAudio:        return String(localized: "正在加载音频...")
+        case .recognizing:         return String(localized: "正在识别语音...")
+        case .generatingFurigana:  return String(localized: "正在生成假名注音...")
+        case .completed:           return String(localized: "完成！")
+        case .error(let message):  return String(localized: "错误") + ": " + message
         }
     }
     

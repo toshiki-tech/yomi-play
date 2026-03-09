@@ -57,13 +57,13 @@ final class ProcessingViewModel {
             
             let authorized = await speechService.requestAuthorization()
             guard authorized else {
-                state = .error("音声認識の権限がありません。設定アプリから音声認識を許可してください。")
+                state = .error(String(localized: "没有语音识别权限。请在设置中允许语音识别。"))
                 return
             }
             
             // ステップ1: 音声URLを取得
             guard let url = source.playbackURL else {
-                state = .error("音声URLが見つかりません")
+                state = .error(String(localized: "未找到音频URL"))
                 return
             }
             
@@ -76,7 +76,7 @@ final class ProcessingViewModel {
             print("ProcessingViewModel: 認識完了 セグメント数=\(recognitionSegments.count)")
             
             guard !recognitionSegments.isEmpty else {
-                state = .error("音声を認識できませんでした。音声ファイルに日本語の音声が含まれているか確認してください。")
+                state = .error(String(localized: "无法识别语音。请确认音频文件中包含日语语音。"))
                 return
             }
             

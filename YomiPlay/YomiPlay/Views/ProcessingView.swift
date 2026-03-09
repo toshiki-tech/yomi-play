@@ -29,7 +29,7 @@ struct ProcessingView: View {
             Spacer()
         }
         .padding(24)
-        .navigationTitle("処理中")
+        .navigationTitle("处理中")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(viewModel.state.isProcessing)
         .onAppear {
@@ -99,14 +99,14 @@ struct ProcessingView: View {
             // エラー時の説明とボタン
             if case .error = viewModel.state {
                 VStack(spacing: 12) {
-                    Text("戻って別のファイルを試してください")
+                    Text("请返回尝试其他文件")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     
                     Button {
                         navigationPath.removeLast()
                     } label: {
-                        Label("ホームに戻る", systemImage: "house")
+                        Label("返回首页", systemImage: "house")
                             .font(.headline)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 24)
@@ -126,17 +126,17 @@ struct ProcessingView: View {
     private var stepsIndicator: some View {
         VStack(alignment: .leading, spacing: 12) {
             StepRow(
-                title: "音声の読み込み",
+                title: String(localized: "加载音频"),
                 icon: "waveform",
                 state: stepState(for: .loadingAudio)
             )
             StepRow(
-                title: "音声認識",
+                title: String(localized: "语音识别"),
                 icon: "mic.fill",
                 state: stepState(for: .recognizing)
             )
             StepRow(
-                title: "振り仮名生成",
+                title: String(localized: "生成假名注音"),
                 icon: "character.textbox",
                 state: stepState(for: .generatingFurigana)
             )

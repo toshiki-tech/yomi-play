@@ -114,7 +114,7 @@ struct PlaybackControlsView: View {
             // ループ
             controlButton(
                 icon: isLooping ? "repeat.1" : "repeat",
-                label: "重复",
+                label: String(localized: "重复"),
                 isActive: isLooping,
                 action: onToggleLoop
             )

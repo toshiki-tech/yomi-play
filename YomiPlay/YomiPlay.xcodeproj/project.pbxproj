@@ -193,11 +193,14 @@
 				};
 			};
 			buildConfigurationList = 00E708552F5C63AF000FB47F /* Build configuration list for PBXProject "YomiPlay" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
+				"zh-Hant",
+				ja,
 			);
 			mainGroup = 00E708512F5C63AF000FB47F;
 			minimizedProjectReferenceProxies = 1;

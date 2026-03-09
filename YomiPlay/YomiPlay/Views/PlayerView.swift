@@ -35,7 +35,7 @@ struct PlayerView: View {
             // 再生コントロール
             controlsSection
         }
-        .navigationTitle(document.source.title.isEmpty ? "再生中" : document.source.title)
+        .navigationTitle(document.source.title.isEmpty ? String(localized: "播放中") : document.source.title)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -46,7 +46,7 @@ struct PlayerView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text("ホーム")
+                        Text("首页")
                     }
                 }
             }
@@ -148,7 +148,7 @@ struct SettingsSheetView: View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedTab) {
                 Text("通用").tag(0)
-                Text("学習特性").tag(1)
+                Text("学习特性").tag(1)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 20)
@@ -212,13 +212,13 @@ struct SettingsSheetView: View {
         .sheet(item: $srtExportItem) { item in
             NavigationStack {
                 VStack(spacing: 20) {
-                    ShareLink(item: item.url, preview: SharePreview("字幕.srt", image: Image(systemName: "doc.text")))
+                    ShareLink(item: item.url, preview: SharePreview(Text("字幕.srt"), image: Image(systemName: "doc.text")))
                         .font(.headline)
-                    Button("閉じる") { srtExportItem = nil }
+                    Button("关闭") { srtExportItem = nil }
                         .foregroundStyle(.secondary)
                 }
                 .padding()
-                .navigationTitle("字幕を共有")
+                .navigationTitle("分享字幕")
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
@@ -267,8 +267,7 @@ struct SettingsSheetView: View {
                         Menu {
                             Button("中文（简体）") { viewModel.targetLanguageCode = "zh-Hans" }
                             Button("中文（繁体）") { viewModel.targetLanguageCode = "zh-Hant" }
-                            Button("English") { viewModel.targetLanguageCode = "en" }
-                            Button("한국어") { viewModel.targetLanguageCode = "ko" }
+                            Button("英语") { viewModel.targetLanguageCode = "en" }
                         } label: {
                             HStack(spacing: 4) {
                                 Text(labelForLanguage(code: viewModel.targetLanguageCode))
@@ -312,7 +311,7 @@ struct SettingsSheetView: View {
     }
     
     private func settingsRow<Content: View>(
-        icon: String, title: String, color: Color,
+        icon: String, title: LocalizedStringKey, color: Color,
         @ViewBuilder trailing: () -> Content
     ) -> some View {
         HStack(spacing: 12) {
@@ -325,7 +324,7 @@ struct SettingsSheetView: View {
     }
     
     private func settingsToggleRow(
-        icon: String, title: String, subtitle: String, color: Color,
+        icon: String, title: LocalizedStringKey, subtitle: LocalizedStringKey, color: Color,
         isOn: Binding<Bool>
     ) -> some View {
         HStack(spacing: 12) {
@@ -342,10 +341,9 @@ struct SettingsSheetView: View {
 
     private func labelForLanguage(code: String) -> String {
         switch code {
-        case "zh-Hans": return "中文（简体）"
-        case "zh-Hant": return "中文（繁体）"
-        case "en": return "English"
-        case "ko": return "한국어"
+        case "zh-Hans": return String(localized: "中文（简体）")
+        case "zh-Hant": return String(localized: "中文（繁体）")
+        case "en": return String(localized: "英语")
         default: return code
         }
     }

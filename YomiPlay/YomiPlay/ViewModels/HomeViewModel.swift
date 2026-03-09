@@ -12,11 +12,21 @@ import AVFoundation
 
 /// 保存済み記録一覧の並び順
 enum DocumentSortOrder: String, CaseIterable, Hashable {
-    case dateNewestFirst = "日付（新しい順）"
-    case dateOldestFirst = "日付（古い順）"
-    case titleAscending = "名前（あいうえお順）"
-    case titleDescending = "名前（逆順）"
-    case segmentCountDescending = "セグメント数（多い順）"
+    case dateNewestFirst
+    case dateOldestFirst
+    case titleAscending
+    case titleDescending
+    case segmentCountDescending
+    
+    var displayName: String {
+        switch self {
+        case .dateNewestFirst: return String(localized: "日期（从新到旧）")
+        case .dateOldestFirst: return String(localized: "日期（从旧到新）")
+        case .titleAscending: return String(localized: "名称（升序）")
+        case .titleDescending: return String(localized: "名称（降序）")
+        case .segmentCountDescending: return String(localized: "片段数（从多到少）")
+        }
+    }
     
     var predicate: (TranscriptDocument, TranscriptDocument) -> Bool {
         switch self {
@@ -111,7 +121,7 @@ final class HomeViewModel {
             try DocumentStore.shared.save(doc)
             loadSavedDocuments() // 再読み込み
         } catch {
-            showErrorMessage("リネームに失敗しました: \(error.localizedDescription)")
+            showErrorMessage(String(localized: "重命名失败") + ": " + error.localizedDescription)
         }
         
         documentToRename = nil
@@ -124,7 +134,7 @@ final class HomeViewModel {
         switch result {
         case .success(let url):
             guard url.startAccessingSecurityScopedResource() else {
-                showErrorMessage("ファイルへのアクセス権がありません")
+                showErrorMessage(String(localized: "没有文件访问权限"))
                 return
             }
             let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -148,7 +158,7 @@ final class HomeViewModel {
                 }
             } catch {
                 url.stopAccessingSecurityScopedResource()
-                showErrorMessage("ファイルのコピーに失敗しました")
+                showErrorMessage(String(localized: "文件复制失败"))
             }
         case .failure(let error):
             showErrorMessage(error.localizedDescription)
@@ -160,18 +170,19 @@ final class HomeViewModel {
         Task {
             do {
                 guard let videoData = try await item.loadTransferable(type: VideoTransferable.self) else {
-                    await MainActor.run { isLoadingVideo = false; showErrorMessage("読み込み失敗") }
+                    await MainActor.run { isLoadingVideo = false; showErrorMessage(String(localized: "加载失败")) }
                     return
                 }
+                let videoTitle = String(localized: "相册视频")
                 await MainActor.run {
                     if isVideoFile(url: videoData.url) {
-                        extractAudioFromVideo(sourceURL: videoData.url, title: "カメラロール動画")
+                        extractAudioFromVideo(sourceURL: videoData.url, title: videoTitle)
                     } else {
                         selectedAudioSource = AudioSource(
                             type: .local,
                             localURL: videoData.url,
                             relativeFilePath: videoData.url.lastPathComponent,
-                            title: "カメラロール動画"
+                            title: videoTitle
                         )
                         isLoadingVideo = false
                         navigateToProcessing = true

@@ -58,25 +58,25 @@ struct HomeView: View {
                 navigationPath.append(AppDestination.processing(source))
             }
         }
-        .alert("エラー", isPresented: $viewModel.showError) { Button("OK") {} } message: { Text(viewModel.errorMessage ?? "不明なエラー") }
-        .alert("名前を変更", isPresented: $viewModel.showRenameAlert) {
-            TextField("新しい名前を入力", text: $viewModel.newTitle)
-            Button("キャンセル", role: .cancel) { viewModel.documentToRename = nil }
+        .alert("错误", isPresented: $viewModel.showError) { Button("好的") {} } message: { Text(viewModel.errorMessage ?? String(localized: "未知错误")) }
+        .alert("重命名", isPresented: $viewModel.showRenameAlert) {
+            TextField("输入新名称", text: $viewModel.newTitle)
+            Button("取消", role: .cancel) { viewModel.documentToRename = nil }
             Button("保存") { viewModel.confirmRename() }
         }
-        .confirmationDialog("記録を削除しますか？", isPresented: Binding(
+        .confirmationDialog("确定删除记录吗？", isPresented: Binding(
             get: { documentToDelete != nil },
             set: { if !$0 { documentToDelete = nil } }
         )) {
-            Button("削除", role: .destructive) {
+            Button("删除", role: .destructive) {
                 if let doc = documentToDelete {
                     viewModel.deleteDocument(doc)
                     documentToDelete = nil
                 }
             }
-            Button("キャンセル", role: .cancel) { documentToDelete = nil }
+            Button("取消", role: .cancel) { documentToDelete = nil }
         } message: {
-            Text("この操作は取り消せません。")
+            Text("此操作无法撤销。")
         }
         .overlay { if viewModel.isLoadingVideo { loadingOverlay } }
     }
@@ -86,7 +86,7 @@ struct HomeView: View {
             Color.black.opacity(0.5).ignoresSafeArea()
             VStack(spacing: 16) {
                 ProgressView().scaleEffect(1.5).tint(.green)
-                Text("動画を読み込み中...").font(.headline).foregroundStyle(.white)
+                Text("正在加载视频...").font(.headline).foregroundStyle(.white)
             }
             .padding(32).background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
         }
@@ -109,8 +109,8 @@ struct HomeView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "folder.fill").font(.title2)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("ファイルから選択").font(.headline)
-                        Text("mp3 / m4a / wav / mp4 / mov").font(.caption).opacity(0.7)
+                        Text("从文件选择").font(.headline)
+                        Text(verbatim: "mp3 / m4a / wav / mp4 / mov").font(.caption).opacity(0.7)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").opacity(0.5)
@@ -121,8 +121,8 @@ struct HomeView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "photo.on.rectangle.angled").font(.title2)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("写真ライブラリから選択").font(.headline)
-                        Text("カメラロールの動画ファイル").font(.caption).opacity(0.7)
+                        Text("从相册选择").font(.headline)
+                        Text("相册中的视频文件").font(.caption).opacity(0.7)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").opacity(0.5)
@@ -134,9 +134,9 @@ struct HomeView: View {
     
     private var urlInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("URLから読み込み", systemImage: "link").font(.headline)
+            Label("从URL加载", systemImage: "link").font(.headline)
             HStack(spacing: 12) {
-                TextField("音声/動画のURLを入力", text: $viewModel.urlText).textFieldStyle(.roundedBorder).keyboardType(.URL)
+                TextField("输入音频/视频URL", text: $viewModel.urlText).textFieldStyle(.roundedBorder).keyboardType(.URL)
                 Button { viewModel.loadFromURL() } label: {
                     Image(systemName: "arrow.down.circle.fill").font(.title2).foregroundStyle(.green)
                 }
@@ -149,11 +149,11 @@ struct HomeView: View {
     private var savedRecordsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("保存済み記録", systemImage: "clock.arrow.circlepath").font(.headline)
+                Label("已保存的记录", systemImage: "clock.arrow.circlepath").font(.headline)
                 Spacer()
                 Menu {
                     ForEach(DocumentSortOrder.allCases, id: \.self) { order in
-                        Button(viewModel.sortOrder == order ? "✓ \(order.rawValue)" : order.rawValue) {
+                        Button(viewModel.sortOrder == order ? "✓ \(order.displayName)" : order.displayName) {
                             viewModel.sortOrder = order
                         }
                     }
@@ -167,7 +167,7 @@ struct HomeView: View {
             // 検索バー
             HStack {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("記録を検索...", text: $viewModel.searchText)
+                TextField("搜索记录...", text: $viewModel.searchText)
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
             }
@@ -177,7 +177,7 @@ struct HomeView: View {
             if viewModel.hasNoSavedDocuments {
                 emptyStateGuide
             } else if viewModel.filteredDocuments.isEmpty {
-                Text("一致する記録がありません")
+                Text("没有匹配的记录")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
@@ -194,10 +194,10 @@ struct HomeView: View {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary.opacity(0.8))
-            Text("まだ記録がありません")
+            Text("还没有记录")
                 .font(.headline)
                 .foregroundStyle(.secondary)
-            Text("ファイル・写真ライブラリ・URL から\n音声・動画を読み込んで字幕を作成しましょう")
+            Text("从文件、相册或URL\n导入音频/视频来创建字幕")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -215,16 +215,16 @@ struct HomeView: View {
                 Image(systemName: "doc.text.fill").font(.title2).foregroundStyle(.green).frame(width: 36)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(doc.source.title).font(.subheadline).fontWeight(.medium).foregroundStyle(.primary).lineLimit(1)
-                    Text("\(doc.segments.count) セグメント • \(formatDate(doc.createdAt))").font(.caption).foregroundStyle(.secondary)
+                    Text(verbatim: "\(doc.segments.count) " + String(localized: "个片段") + " • " + formatDate(doc.createdAt)).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 
                 Menu {
                     Button { viewModel.startRenaming(doc) } label: {
-                        Label("名前を変更", systemImage: "pencil")
+                        Label("重命名", systemImage: "pencil")
                     }
                     Button(role: .destructive) { documentToDelete = doc } label: {
-                        Label("削除", systemImage: "trash")
+                        Label("删除", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(.secondary).padding(4)

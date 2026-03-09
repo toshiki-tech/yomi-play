@@ -172,7 +172,7 @@ struct SegmentRowView: View {
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             
-            TextField("字幕テキストを入力", text: $editingText, axis: .vertical)
+            TextField("输入字幕文本", text: $editingText, axis: .vertical)
                 .font(.system(size: fontSize, weight: .medium))
                 .textFieldStyle(.plain)
                 .focused($isFocused)
@@ -183,7 +183,7 @@ struct SegmentRowView: View {
                     Image(systemName: editingSkipFurigana ? "textformat.alt" : "character.textbox")
                         .font(.caption)
                         .foregroundStyle(editingSkipFurigana ? .orange : .secondary)
-                    Text("非日本語（注音なし）")
+                    Text("非日语（无注音）")
                         .font(.caption)
                         .foregroundStyle(editingSkipFurigana ? .orange : .secondary)
                 }
@@ -194,7 +194,7 @@ struct SegmentRowView: View {
             HStack(spacing: 12) {
                 Spacer()
                 Button(action: onEditCancelled) {
-                    Text("キャンセル")
+                    Text("取消")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
@@ -202,7 +202,7 @@ struct SegmentRowView: View {
                         .background(Capsule().fill(Color(.systemGray5)))
                 }
                 Button(action: onEditConfirmed) {
-                    Text("確定")
+                    Text("确认")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)

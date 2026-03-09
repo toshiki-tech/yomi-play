@@ -102,7 +102,6 @@ final class PlayerViewModel {
         let preferred = Locale.preferredLanguages.first ?? "en"
         if preferred.hasPrefix("zh-Hans") || preferred.hasPrefix("zh-CN") { return "zh-Hans" }
         if preferred.hasPrefix("zh-Hant") || preferred.hasPrefix("zh-TW") || preferred.hasPrefix("zh-HK") { return "zh-Hant" }
-        if preferred.hasPrefix("ko") { return "ko" }
         if preferred.hasPrefix("en") { return "en" }
         return "zh-Hans"
     }
