@@ -71,19 +71,27 @@ struct FuriganaToken: Identifiable, Codable, Equatable, Hashable {
     let reading: String   // 読み（例：「かんじ」）
     let romaji: String    // ローマ字（例：「kanji」）
     let isKanji: Bool     // 漢字を含むかどうか
+    /// カタカナのみで構成されるトークンかどうか（外来語判定用）
+    let isKatakana: Bool
+    /// 外来語の英語原綴り（例：「コンピューター」→「computer」）。該当しない場合は nil
+    let englishMeaning: String?
     
     init(
         id: UUID = UUID(),
         surface: String,
         reading: String = "",
         romaji: String = "",
-        isKanji: Bool = false
+        isKanji: Bool = false,
+        isKatakana: Bool = false,
+        englishMeaning: String? = nil
     ) {
         self.id = id
         self.surface = surface
         self.reading = reading
         self.romaji = romaji
         self.isKanji = isKanji
+        self.isKatakana = isKatakana
+        self.englishMeaning = englishMeaning
     }
 }
 
@@ -99,6 +107,8 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     var confidence: Float?        // 認識信頼度（オプション）
     /// true の場合、振り仮名・ローマ字を表示しない（中国語など日本語以外のセグメント用）
     var skipFurigana: Bool
+    /// 翻訳済みテキスト（ユーザーが翻訳機能を実行したときに設定される）
+    var translatedText: String?
     
     init(
         id: UUID = UUID(),
@@ -107,7 +117,8 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         originalText: String,
         tokens: [FuriganaToken] = [],
         confidence: Float? = nil,
-        skipFurigana: Bool = false
+        skipFurigana: Bool = false,
+        translatedText: String? = nil
     ) {
         self.id = id
         self.startTime = startTime
@@ -116,6 +127,7 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         self.tokens = tokens
         self.confidence = confidence
         self.skipFurigana = skipFurigana
+        self.translatedText = translatedText
     }
     
     /// 指定時刻がこのセグメントの範囲内かどうか

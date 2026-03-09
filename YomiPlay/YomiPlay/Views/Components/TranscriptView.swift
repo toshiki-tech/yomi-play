@@ -13,6 +13,8 @@ struct TranscriptView: View {
     let currentSegmentID: UUID?
     let showFurigana: Bool
     let showRomaji: Bool
+    let showEnglish: Bool
+    let showTranslation: Bool
     let fontSize: CGFloat
     let editingSegmentID: UUID?
     @Binding var editingText: String
@@ -33,6 +35,8 @@ struct TranscriptView: View {
                             isEditing: editingSegmentID == segment.id,
                             showFurigana: showFurigana,
                             showRomaji: showRomaji,
+                            showEnglish: showEnglish,
+                            showTranslation: showTranslation,
                             fontSize: fontSize,
                             editingText: $editingText,
                             editingSkipFurigana: $editingSkipFurigana,
@@ -75,6 +79,8 @@ struct SegmentRowView: View {
     let isEditing: Bool
     let showFurigana: Bool
     let showRomaji: Bool
+    let showEnglish: Bool
+    let showTranslation: Bool
     let fontSize: CGFloat
     @Binding var editingText: String
     @Binding var editingSkipFurigana: Bool
@@ -100,6 +106,7 @@ struct SegmentRowView: View {
     
     private var displayBody: some View {
         VStack(alignment: .leading, spacing: 6) {
+            // 上段：原文（日语）＋振假名/罗马字/英语外来词
             if segment.skipFurigana {
                 Text(segment.originalText)
                     .font(.system(size: fontSize, weight: .medium))
@@ -109,6 +116,7 @@ struct SegmentRowView: View {
                     tokens: segment.tokens,
                     showFurigana: showFurigana,
                     showRomaji: showRomaji,
+                    showEnglish: showEnglish,
                     fontSize: fontSize
                 )
                 .foregroundStyle(isActive ? .white : .primary)
@@ -116,6 +124,16 @@ struct SegmentRowView: View {
                 Text(segment.originalText)
                     .font(.system(size: fontSize, weight: .medium))
                     .foregroundStyle(isActive ? .white : .primary)
+            }
+            
+            // 下段：翻译文本
+            if showTranslation,
+               let translated = segment.translatedText,
+               !translated.isEmpty {
+                Text(translated)
+                    .font(.system(size: fontSize * 0.85))
+                    .foregroundStyle(isActive ? Color.white.opacity(0.9) : .secondary)
+                    .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

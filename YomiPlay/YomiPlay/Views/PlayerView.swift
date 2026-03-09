@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import Translation
 
 // MARK: - プレーヤー画面
 
@@ -75,6 +76,9 @@ struct PlayerView: View {
                 viewModel.seek(to: pos)
             }
         }
+        .translationTask(viewModel.translationConfiguration) { session in
+            await viewModel.performTranslation(using: session)
+        }
     }
     
     // MARK: - 字幕セクション
@@ -85,6 +89,8 @@ struct PlayerView: View {
             currentSegmentID: viewModel.playerService.currentSegmentID,
             showFurigana: viewModel.showFurigana,
             showRomaji: viewModel.showRomaji,
+            showEnglish: viewModel.showEnglish,
+            showTranslation: viewModel.showTranslation,
             fontSize: viewModel.fontSize,
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
@@ -238,6 +244,64 @@ struct SettingsSheetView: View {
                         subtitle: "在底部显示罗马字", color: .green,
                         isOn: $viewModel.showRomaji
                     )
+                    Divider().padding(.leading, 52)
+                    settingsToggleRow(
+                        icon: "book.closed", title: "外来词英文",
+                        subtitle: "在片假名上方显示英文原词", color: .green,
+                        isOn: $viewModel.showEnglish
+                    )
+                }
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(12)
+                .padding(.horizontal, 16)
+            }
+            
+            VStack(spacing: 0) {
+                Text("翻译")
+                    .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+                
+                VStack(spacing: 0) {
+                    settingsRow(icon: "globe", title: "目标语言", color: .green) {
+                        Menu {
+                            Button("中文（简体）") { viewModel.targetLanguageCode = "zh-Hans" }
+                            Button("中文（繁体）") { viewModel.targetLanguageCode = "zh-Hant" }
+                            Button("English") { viewModel.targetLanguageCode = "en" }
+                            Button("한국어") { viewModel.targetLanguageCode = "ko" }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(labelForLanguage(code: viewModel.targetLanguageCode))
+                                    .font(.subheadline)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Divider().padding(.leading, 52)
+                    
+                    settingsRow(icon: "text.bubble", title: "翻译全部字幕", color: .green) {
+                        if viewModel.isTranslating {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Button("开始翻译") {
+                                viewModel.requestTranslation()
+                            }
+                            .font(.subheadline)
+                            .foregroundStyle(.green)
+                        }
+                    }
+                    
+                    Divider().padding(.leading, 52)
+                    
+                    settingsToggleRow(
+                        icon: "text.bubble.fill", title: "显示翻译",
+                        subtitle: "在每行日语下面显示翻译", color: .green,
+                        isOn: $viewModel.showTranslation
+                    )
                 }
                 .background(Color(.secondarySystemGroupedBackground))
                 .cornerRadius(12)
@@ -274,5 +338,15 @@ struct SettingsSheetView: View {
             Toggle("", isOn: isOn).labelsHidden().tint(.green)
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
+    }
+
+    private func labelForLanguage(code: String) -> String {
+        switch code {
+        case "zh-Hans": return "中文（简体）"
+        case "zh-Hant": return "中文（繁体）"
+        case "en": return "English"
+        case "ko": return "한국어"
+        default: return code
+        }
     }
 }

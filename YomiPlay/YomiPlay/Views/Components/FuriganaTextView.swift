@@ -15,17 +15,20 @@ struct FuriganaTextView: View {
     let tokens: [FuriganaToken]
     let showFurigana: Bool
     let showRomaji: Bool
+    let showEnglish: Bool
     let fontSize: CGFloat
     
     init(
         tokens: [FuriganaToken],
         showFurigana: Bool = true,
         showRomaji: Bool = true,
+        showEnglish: Bool = false,
         fontSize: CGFloat = 18
     ) {
         self.tokens = tokens
         self.showFurigana = showFurigana
         self.showRomaji = showRomaji
+        self.showEnglish = showEnglish
         self.fontSize = fontSize
     }
     
@@ -37,6 +40,7 @@ struct FuriganaTextView: View {
                     token: token,
                     showFurigana: showFurigana,
                     showRomaji: showRomaji,
+                    showEnglish: showEnglish,
                     fontSize: fontSize
                 )
             }
@@ -103,6 +107,7 @@ struct TokenView: View {
     let token: FuriganaToken
     let showFurigana: Bool
     let showRomaji: Bool
+    let showEnglish: Bool
     let fontSize: CGFloat
     
     private var readingFontSize: CGFloat { fontSize * 0.45 }
@@ -110,9 +115,18 @@ struct TokenView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 上段：振り仮名
-            if showFurigana {
-                if token.isKanji {
+            // 上段：振り仮名 or 英語原綴り
+            if showFurigana || showEnglish {
+                if showEnglish,
+                   token.isKatakana,
+                   let meaning = token.englishMeaning,
+                   !meaning.isEmpty {
+                    Text(meaning)
+                        .font(.system(size: readingFontSize))
+                        .foregroundStyle(Color.blue.opacity(0.85))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                } else if showFurigana && token.isKanji {
                     Text(token.reading)
                         .font(.system(size: readingFontSize))
                         .foregroundStyle(Color.green.opacity(0.8))

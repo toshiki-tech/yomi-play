@@ -8,6 +8,7 @@
 
 import Foundation
 import AVFoundation
+import Translation
 
 // MARK: - プレーヤー画面ViewModel
 
@@ -19,15 +20,22 @@ final class PlayerViewModel {
     var document: TranscriptDocument
     var playerService: AudioPlayerService
     
-    // 表示設定
-    var showFurigana: Bool = true
-    var showRomaji: Bool = true
-    var fontSize: CGFloat = 18
+    // 表示設定（UserDefaults で永続化）
+    var showFurigana: Bool = true { didSet { Self.defaults.set(showFurigana, forKey: "showFurigana") } }
+    var showRomaji: Bool = true { didSet { Self.defaults.set(showRomaji, forKey: "showRomaji") } }
+    var showEnglish: Bool = true { didSet { Self.defaults.set(showEnglish, forKey: "showEnglish") } }
+    var fontSize: CGFloat = 18 { didSet { Self.defaults.set(fontSize, forKey: "fontSize") } }
     var isLooping: Bool = false
     
-    // 再生速度
-    var playbackRate: Float = 1.0
+    // 翻訳設定（UserDefaults で永続化）
+    var targetLanguageCode: String = "zh-Hans" { didSet { Self.defaults.set(targetLanguageCode, forKey: "targetLanguageCode") } }
+    var showTranslation: Bool = false { didSet { Self.defaults.set(showTranslation, forKey: "showTranslation") } }
+    
+    // 再生速度（UserDefaults で永続化）
+    var playbackRate: Float = 1.0 { didSet { Self.defaults.set(playbackRate, forKey: "playbackRate") } }
     static let availableRates: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+    
+    private static let defaults = UserDefaults.standard
     
     // 字幕編集
     var editingSegmentID: UUID? = nil
@@ -35,6 +43,10 @@ final class PlayerViewModel {
     var editingSkipFurigana: Bool = false
     
     private let furiganaService = CFStringTokenizerFuriganaService()
+    private let translationService = TranslationService.shared
+    
+    /// 翻訳中かどうか
+    var isTranslating: Bool = false
     
     // MARK: - 初期化
     
@@ -42,10 +54,84 @@ final class PlayerViewModel {
         self.document = document
         self.playerService = AudioPlayerService()
         
+        restoreSettings()
+        
         if let url = document.source.playbackURL {
             playerService.loadAudio(from: url)
         }
         playerService.setSegments(document.segments)
+        playerService.setPlaybackRate(playbackRate)
+        
+        regenerateFuriganaIfNeeded()
+    }
+    
+    /// UserDefaults から保存済みの設定を復元する
+    private func restoreSettings() {
+        let d = Self.defaults
+        
+        if d.object(forKey: "showFurigana") != nil {
+            showFurigana = d.bool(forKey: "showFurigana")
+        }
+        if d.object(forKey: "showRomaji") != nil {
+            showRomaji = d.bool(forKey: "showRomaji")
+        }
+        if d.object(forKey: "showEnglish") != nil {
+            showEnglish = d.bool(forKey: "showEnglish")
+        }
+        if d.object(forKey: "showTranslation") != nil {
+            showTranslation = d.bool(forKey: "showTranslation")
+        }
+        if d.object(forKey: "fontSize") != nil {
+            let stored = d.double(forKey: "fontSize")
+            if stored >= 12 && stored <= 32 { fontSize = stored }
+        }
+        if d.object(forKey: "playbackRate") != nil {
+            let stored = d.float(forKey: "playbackRate")
+            if Self.availableRates.contains(stored) { playbackRate = stored }
+        }
+        
+        if let stored = d.string(forKey: "targetLanguageCode"), !stored.isEmpty {
+            targetLanguageCode = stored
+        } else {
+            targetLanguageCode = Self.detectDefaultLanguageCode()
+        }
+    }
+    
+    /// システム言語から翻訳先のデフォルト言語コードを推定する
+    private static func detectDefaultLanguageCode() -> String {
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        if preferred.hasPrefix("zh-Hans") || preferred.hasPrefix("zh-CN") { return "zh-Hans" }
+        if preferred.hasPrefix("zh-Hant") || preferred.hasPrefix("zh-TW") || preferred.hasPrefix("zh-HK") { return "zh-Hant" }
+        if preferred.hasPrefix("ko") { return "ko" }
+        if preferred.hasPrefix("en") { return "en" }
+        return "zh-Hans"
+    }
+    
+    /// 保存済みドキュメントの tokens に isKatakana / englishMeaning が入っていない場合、
+    /// 全セグメントの振り仮名を再生成して最新の辞書データを反映する
+    private func regenerateFuriganaIfNeeded() {
+        let needsRegeneration = document.segments.contains { segment in
+            !segment.skipFurigana &&
+            !segment.originalText.isEmpty &&
+            segment.tokens.contains { token in
+                CFStringTokenizerFuriganaService.isKatakanaWord(token.surface) && token.englishMeaning == nil
+            }
+        }
+        guard needsRegeneration else { return }
+        
+        Task {
+            var updated = document.segments
+            for i in updated.indices where !updated[i].skipFurigana {
+                let newTokens = await furiganaService.generateFurigana(for: updated[i].originalText)
+                updated[i].tokens = newTokens
+            }
+            await MainActor.run {
+                document.segments = updated
+                playerService.setSegments(document.segments)
+                saveDocument()
+                print("PlayerViewModel: 振り仮名を再生成しました（外来語辞書反映）")
+            }
+        }
     }
     
     // MARK: - 再生コントロール
@@ -147,6 +233,8 @@ final class PlayerViewModel {
                 document.segments[segmentIndex].originalText = newText
                 document.segments[segmentIndex].tokens = tokens
                 document.segments[segmentIndex].skipFurigana = shouldSkip
+                // テキストが変わったので翻訳は一旦破棄する
+                document.segments[segmentIndex].translatedText = nil
                 
                 playerService.setSegments(document.segments)
                 saveDocument()
@@ -156,6 +244,56 @@ final class PlayerViewModel {
                 editingSkipFurigana = false
             }
         }
+    }
+    
+    // MARK: - 字幕翻訳
+    
+    /// 翻訳を開始するためのトリガー（SwiftUI .translationTask で監視）
+    var translationConfiguration: TranslationSession.Configuration?
+    
+    /// 翻訳ボタンを押したとき：Configuration を設定して .translationTask を発火させる
+    func requestTranslation() {
+        translationConfiguration = nil
+        isTranslating = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
+            translationConfiguration = translationService.makeConfiguration(
+                sourceLanguageCode: "ja",
+                targetLanguageCode: targetLanguageCode
+            )
+        }
+    }
+    
+    /// .translationTask のコールバックで呼ばれる
+    @MainActor
+    func performTranslation(using session: TranslationSession) async {
+        let segments = document.segments
+        guard !segments.isEmpty else {
+            isTranslating = false
+            return
+        }
+        
+        let requests = segments.enumerated().map { index, seg in
+            TranslationSession.Request(
+                sourceText: seg.originalText,
+                clientIdentifier: "\(index)"
+            )
+        }
+        
+        do {
+            let responses = try await session.translations(from: requests)
+            for response in responses {
+                if let idStr = response.clientIdentifier,
+                   let idx = Int(idStr),
+                   idx < document.segments.count {
+                    document.segments[idx].translatedText = response.targetText
+                }
+            }
+            saveDocument()
+            showTranslation = true
+        } catch {
+            print("PlayerViewModel: 翻訳失敗 - \(error)")
+        }
+        isTranslating = false
     }
     
     /// ドキュメントを保存する

@@ -60,11 +60,15 @@ final class CFStringTokenizerFuriganaService: FuriganaServiceProtocol {
             if lastIndex < startIdx {
                 let skippedText = String(text[lastIndex..<startIdx])
                 let skippedRomaji = Self.hiraganaToRomaji(skippedText)
+                let isKatakana = Self.isKatakanaWord(skippedText)
+                let english = isKatakana ? KatakanaDictionaryService.shared.lookup(skippedText) : nil
                 tokens.append(FuriganaToken(
                     surface: skippedText,
                     reading: skippedText,
                     romaji: skippedRomaji,
-                    isKanji: false
+                    isKanji: false,
+                    isKatakana: isKatakana,
+                    englishMeaning: english
                 ))
             }
             
@@ -86,12 +90,16 @@ final class CFStringTokenizerFuriganaService: FuriganaServiceProtocol {
                     (0x4E00...0x9FFF).contains(scalar.value) ||
                     (0x3400...0x4DBF).contains(scalar.value)
                 }
+                let isKatakana = Self.isKatakanaWord(surface)
+                let english = isKatakana ? KatakanaDictionaryService.shared.lookup(surface) : nil
                 
                 tokens.append(FuriganaToken(
                     surface: surface,
                     reading: reading,
                     romaji: romajiString,
-                    isKanji: hasKanji
+                    isKanji: hasKanji,
+                    isKatakana: isKatakana,
+                    englishMeaning: english
                 ))
             } else {
                 let romaji = Self.hiraganaToRomaji(surface)
@@ -99,7 +107,9 @@ final class CFStringTokenizerFuriganaService: FuriganaServiceProtocol {
                     surface: surface,
                     reading: surface,
                     romaji: romaji,
-                    isKanji: false
+                    isKanji: false,
+                    isKatakana: Self.isKatakanaWord(surface),
+                    englishMeaning: KatakanaDictionaryService.shared.lookup(surface)
                 ))
             }
             
@@ -110,15 +120,42 @@ final class CFStringTokenizerFuriganaService: FuriganaServiceProtocol {
         if lastIndex < text.endIndex {
             let remaining = String(text[lastIndex..<text.endIndex])
             let romaji = Self.hiraganaToRomaji(remaining)
+            let isKatakana = Self.isKatakanaWord(remaining)
+            let english = isKatakana ? KatakanaDictionaryService.shared.lookup(remaining) : nil
             tokens.append(FuriganaToken(
                 surface: remaining,
                 reading: remaining,
                 romaji: romaji,
-                isKanji: false
+                isKanji: false,
+                isKatakana: isKatakana,
+                englishMeaning: english
             ))
         }
         
         return tokens
+    }
+    
+    // MARK: - ひらがな / カタカナ判定・変換
+    
+    /// 文字列が片仮名のみ（長音符「ー」や中点「・」を含む）の場合に true を返す
+    static func isKatakanaWord(_ text: String) -> Bool {
+        guard !text.isEmpty else { return false }
+        var hasKatakana = false
+        for scalar in text.unicodeScalars {
+            let v = scalar.value
+            // カタカナブロック
+            if (0x30A0...0x30FF).contains(v) {
+                hasKatakana = true
+                continue
+            }
+            // 長音符・中点などを許可
+            if v == 0x30FC || v == 0x30FB {
+                continue
+            }
+            // 上記以外が含まれていれば片仮名語とはみなさない
+            return false
+        }
+        return hasKatakana
     }
     
     // MARK: - ひらがな → ローマ字変換
