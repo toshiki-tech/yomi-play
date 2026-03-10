@@ -29,7 +29,7 @@ struct ProcessingView: View {
             Spacer()
         }
         .padding(24)
-        .navigationTitle("处理中")
+        .navigationTitle("processing")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(viewModel.state.isProcessing)
         .onAppear {
@@ -99,14 +99,14 @@ struct ProcessingView: View {
             // エラー時の説明とボタン
             if case .error = viewModel.state {
                 VStack(spacing: 12) {
-                    Text("请返回尝试其他文件")
+                    Text("please_go_back_and_try_another_file")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     
                     Button {
                         navigationPath.removeLast()
                     } label: {
-                        Label("返回首页", systemImage: "house")
+                        Label("back_to_home", systemImage: "house")
                             .font(.headline)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 24)
@@ -125,21 +125,34 @@ struct ProcessingView: View {
     
     private var stepsIndicator: some View {
         VStack(alignment: .leading, spacing: 12) {
-            StepRow(
-                title: String(localized: "加载音频"),
-                icon: "waveform",
-                state: stepState(for: .loadingAudio)
-            )
-            StepRow(
-                title: String(localized: "语音识别"),
-                icon: "mic.fill",
-                state: stepState(for: .recognizing)
-            )
-            StepRow(
-                title: String(localized: "生成假名注音"),
-                icon: "character.textbox",
-                state: stepState(for: .generatingFurigana)
-            )
+            if viewModel.hasSRT {
+                StepRow(
+                    title: String(localized: "parsing_subtitles_2"),
+                    icon: "doc.text",
+                    state: srtStepState(for: .parsingSRT)
+                )
+                StepRow(
+                    title: String(localized: "generating_furigana_2"),
+                    icon: "character.textbox",
+                    state: srtStepState(for: .generatingFurigana)
+                )
+            } else {
+                StepRow(
+                    title: String(localized: "loading_audio"),
+                    icon: "waveform",
+                    state: stepState(for: .loadingAudio)
+                )
+                StepRow(
+                    title: String(localized: "speech_recognition"),
+                    icon: "mic.fill",
+                    state: stepState(for: .recognizing)
+                )
+                StepRow(
+                    title: String(localized: "generating_furigana_2"),
+                    icon: "character.textbox",
+                    state: stepState(for: .generatingFurigana)
+                )
+            }
         }
         .padding(20)
         .background(
@@ -148,9 +161,24 @@ struct ProcessingView: View {
         )
     }
     
-    /// 各ステップの状態を計算する
+    /// 通常フロー：各ステップの状態を計算する
     private func stepState(for step: ProcessingState) -> StepState {
         let order: [ProcessingState] = [.loadingAudio, .recognizing, .generatingFurigana, .completed]
+        let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
+        let stepIndex = order.firstIndex(of: step) ?? 0
+        
+        if currentIndex > stepIndex {
+            return .completed
+        } else if currentIndex == stepIndex {
+            return .active
+        } else {
+            return .pending
+        }
+    }
+    
+    /// SRT フロー：各ステップの状態を計算する
+    private func srtStepState(for step: ProcessingState) -> StepState {
+        let order: [ProcessingState] = [.parsingSRT, .generatingFurigana, .completed]
         let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
         let stepIndex = order.firstIndex(of: step) ?? 0
         

@@ -39,11 +39,24 @@ struct HomeView: View {
         .onAppear { viewModel.loadSavedDocuments() }
         .fileImporter(
             isPresented: $viewModel.isFileImporterPresented,
-            allowedContentTypes: [.mp3, .mpeg4Audio, .wav, .aiff, .audio, .mpeg4Movie, .quickTimeMovie, .movie, .video],
+            allowedContentTypes: {
+                switch viewModel.fileImportMode {
+                case .audioVideo: return [.mp3, .mpeg4Audio, .wav, .aiff, .audio, .mpeg4Movie, .quickTimeMovie, .movie, .video]
+                case .srt: return [.plainText]
+                case .yomi: return [.yomiDocument, .json]
+                }
+            }(),
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
-                viewModel.handleFileSelected(result: .success(url))
+                switch viewModel.fileImportMode {
+                case .audioVideo:
+                    viewModel.handleFileSelected(result: .success(url))
+                case .srt:
+                    viewModel.attachSRT(url: url)
+                case .yomi:
+                    viewModel.attachYomi(url: url)
+                }
             }
         }
         .onChange(of: selectedVideoItem) { _, newValue in
@@ -58,25 +71,46 @@ struct HomeView: View {
                 navigationPath.append(AppDestination.processing(source))
             }
         }
-        .alert("错误", isPresented: $viewModel.showError) { Button("好的") {} } message: { Text(viewModel.errorMessage ?? String(localized: "未知错误")) }
-        .alert("重命名", isPresented: $viewModel.showRenameAlert) {
-            TextField("输入新名称", text: $viewModel.newTitle)
-            Button("取消", role: .cancel) { viewModel.documentToRename = nil }
-            Button("保存") { viewModel.confirmRename() }
+        .onChange(of: viewModel.navigateToPlayer) { _, shouldNavigate in
+            if shouldNavigate, let doc = viewModel.navigateToPlayerDocument {
+                viewModel.navigateToPlayer = false
+                viewModel.navigateToPlayerDocument = nil
+                navigationPath.append(AppDestination.player(doc))
+            }
         }
-        .confirmationDialog("确定删除记录吗？", isPresented: Binding(
+        .alert("error", isPresented: $viewModel.showError) { Button("ok") {} } message: { Text(viewModel.errorMessage ?? String(localized: "unknown_error")) }
+        .alert("rename", isPresented: $viewModel.showRenameAlert) {
+            TextField("enter_new_name", text: $viewModel.newTitle)
+            Button("cancel", role: .cancel) { viewModel.documentToRename = nil }
+            Button("save") { viewModel.confirmRename() }
+        }
+        .confirmationDialog("delete_this_record", isPresented: Binding(
             get: { documentToDelete != nil },
             set: { if !$0 { documentToDelete = nil } }
         )) {
-            Button("删除", role: .destructive) {
+            Button("delete", role: .destructive) {
                 if let doc = documentToDelete {
                     viewModel.deleteDocument(doc)
                     documentToDelete = nil
                 }
             }
-            Button("取消", role: .cancel) { documentToDelete = nil }
+            Button("cancel", role: .cancel) { documentToDelete = nil }
         } message: {
-            Text("此操作无法撤销。")
+            Text("this_action_cannot_be_undone")
+        }
+        .confirmationDialog(String(localized: "home_subtitle_choice_title"), isPresented: $viewModel.showSRTOption) {
+            Button(String(localized: "home_subtitle_choice_srt_button")) {
+                viewModel.fileImportMode = .srt
+                viewModel.isFileImporterPresented = true
+            }
+            Button(String(localized: "home_subtitle_choice_yomi_button")) {
+                viewModel.fileImportMode = .yomi
+                viewModel.isFileImporterPresented = true
+            }
+            Button(String(localized: "home_subtitle_choice_skip_button")) { viewModel.skipSRT() }
+            Button("cancel", role: .cancel) { viewModel.pendingAudioSource = nil }
+        } message: {
+            Text("home_subtitle_choice_message")
         }
         .overlay { if viewModel.isLoadingVideo { loadingOverlay } }
     }
@@ -86,7 +120,7 @@ struct HomeView: View {
             Color.black.opacity(0.5).ignoresSafeArea()
             VStack(spacing: 16) {
                 ProgressView().scaleEffect(1.5).tint(.green)
-                Text("正在加载视频...").font(.headline).foregroundStyle(.white)
+                Text("loading_video").font(.headline).foregroundStyle(.white)
             }
             .padding(32).background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
         }
@@ -105,11 +139,11 @@ struct HomeView: View {
     
     private var actionSection: some View {
         VStack(spacing: 12) {
-            Button { viewModel.isFileImporterPresented = true } label: {
+            Button { viewModel.fileImportMode = .audioVideo; viewModel.isFileImporterPresented = true } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "folder.fill").font(.title2)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("从文件选择").font(.headline)
+                        Text("select_from_files").font(.headline)
                         Text(verbatim: "mp3 / m4a / wav / mp4 / mov").font(.caption).opacity(0.7)
                     }
                     Spacer()
@@ -121,8 +155,8 @@ struct HomeView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "photo.on.rectangle.angled").font(.title2)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("从相册选择").font(.headline)
-                        Text("相册中的视频文件").font(.caption).opacity(0.7)
+                        Text("select_from_photo_library").font(.headline)
+                        Text("video_files_from_camera_roll").font(.caption).opacity(0.7)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").opacity(0.5)
@@ -134,9 +168,9 @@ struct HomeView: View {
     
     private var urlInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("从URL加载", systemImage: "link").font(.headline)
+            Label("load_from_url", systemImage: "link").font(.headline)
             HStack(spacing: 12) {
-                TextField("输入音频/视频URL", text: $viewModel.urlText).textFieldStyle(.roundedBorder).keyboardType(.URL)
+                TextField("enter_audio_video_url", text: $viewModel.urlText).textFieldStyle(.roundedBorder).keyboardType(.URL)
                 Button { viewModel.loadFromURL() } label: {
                     Image(systemName: "arrow.down.circle.fill").font(.title2).foregroundStyle(.green)
                 }
@@ -149,7 +183,7 @@ struct HomeView: View {
     private var savedRecordsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("已保存的记录", systemImage: "clock.arrow.circlepath").font(.headline)
+                Label("saved_records", systemImage: "clock.arrow.circlepath").font(.headline)
                 Spacer()
                 Menu {
                     ForEach(DocumentSortOrder.allCases, id: \.self) { order in
@@ -167,7 +201,7 @@ struct HomeView: View {
             // 検索バー
             HStack {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("搜索记录...", text: $viewModel.searchText)
+                TextField("search_records", text: $viewModel.searchText)
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
             }
@@ -177,7 +211,7 @@ struct HomeView: View {
             if viewModel.hasNoSavedDocuments {
                 emptyStateGuide
             } else if viewModel.filteredDocuments.isEmpty {
-                Text("没有匹配的记录")
+                Text("no_matching_records")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
@@ -194,7 +228,7 @@ struct HomeView: View {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary.opacity(0.8))
-            Text("还没有记录")
+            Text("no_records_yet")
                 .font(.headline)
                 .foregroundStyle(.secondary)
             Text("从文件、相册或URL\n导入音频/视频来创建字幕")
@@ -215,16 +249,16 @@ struct HomeView: View {
                 Image(systemName: "doc.text.fill").font(.title2).foregroundStyle(.green).frame(width: 36)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(doc.source.title).font(.subheadline).fontWeight(.medium).foregroundStyle(.primary).lineLimit(1)
-                    Text(verbatim: "\(doc.segments.count) " + String(localized: "个片段") + " • " + formatDate(doc.createdAt)).font(.caption).foregroundStyle(.secondary)
+                    Text(verbatim: "\(doc.segments.count) " + String(localized: "segments") + " • " + formatDate(doc.createdAt)).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 
                 Menu {
                     Button { viewModel.startRenaming(doc) } label: {
-                        Label("重命名", systemImage: "pencil")
+                        Label("rename", systemImage: "pencil")
                     }
                     Button(role: .destructive) { documentToDelete = doc } label: {
-                        Label("删除", systemImage: "trash")
+                        Label("delete", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(.secondary).padding(4)

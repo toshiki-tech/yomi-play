@@ -20,11 +20,11 @@ enum DocumentSortOrder: String, CaseIterable, Hashable {
     
     var displayName: String {
         switch self {
-        case .dateNewestFirst: return String(localized: "日期（从新到旧）")
-        case .dateOldestFirst: return String(localized: "日期（从旧到新）")
-        case .titleAscending: return String(localized: "名称（升序）")
-        case .titleDescending: return String(localized: "名称（降序）")
-        case .segmentCountDescending: return String(localized: "片段数（从多到少）")
+        case .dateNewestFirst: return String(localized: "date_newest_first")
+        case .dateOldestFirst: return String(localized: "date_oldest_first")
+        case .titleAscending: return String(localized: "name_a_z")
+        case .titleDescending: return String(localized: "name_z_a")
+        case .segmentCountDescending: return String(localized: "segments_most_first")
         }
     }
     
@@ -54,6 +54,14 @@ final class HomeViewModel {
     var showError: Bool = false
     var isLoadingVideo: Bool = false
     
+    /// fileImporter の用途を区別するフラグ
+    enum FileImportMode {
+        case audioVideo
+        case srt
+        case yomi
+    }
+    var fileImportMode: FileImportMode = .audioVideo
+    
     // 検索・フィルタリング
     var searchText: String = ""
     /// 一覧の並び順
@@ -63,6 +71,12 @@ final class HomeViewModel {
     // ナビゲーション
     var selectedAudioSource: AudioSource?
     var navigateToProcessing: Bool = false
+    var navigateToPlayerDocument: TranscriptDocument?
+    var navigateToPlayer: Bool = false
+    
+    // SRT 附带选择
+    var pendingAudioSource: AudioSource?
+    var showSRTOption: Bool = false
     
     // 重命名
     var documentToRename: TranscriptDocument?
@@ -121,7 +135,7 @@ final class HomeViewModel {
             try DocumentStore.shared.save(doc)
             loadSavedDocuments() // 再読み込み
         } catch {
-            showErrorMessage(String(localized: "重命名失败") + ": " + error.localizedDescription)
+            showErrorMessage(String(localized: "rename_failed") + ": " + error.localizedDescription)
         }
         
         documentToRename = nil
@@ -134,7 +148,7 @@ final class HomeViewModel {
         switch result {
         case .success(let url):
             guard url.startAccessingSecurityScopedResource() else {
-                showErrorMessage(String(localized: "没有文件访问权限"))
+                showErrorMessage(String(localized: "no_permission_to_access_the_file"))
                 return
             }
             let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -148,17 +162,16 @@ final class HomeViewModel {
                 if isVideoFile(url: destinationURL) {
                     extractAudioFromVideo(sourceURL: destinationURL, title: url.deletingPathExtension().lastPathComponent)
                 } else {
-                    selectedAudioSource = AudioSource(
+                    promptSRTOption(for: AudioSource(
                         type: .local,
                         localURL: destinationURL,
                         relativeFilePath: destinationURL.lastPathComponent,
                         title: url.deletingPathExtension().lastPathComponent
-                    )
-                    navigateToProcessing = true
+                    ))
                 }
             } catch {
                 url.stopAccessingSecurityScopedResource()
-                showErrorMessage(String(localized: "文件复制失败"))
+                showErrorMessage(String(localized: "failed_to_copy_the_file"))
             }
         case .failure(let error):
             showErrorMessage(error.localizedDescription)
@@ -170,22 +183,21 @@ final class HomeViewModel {
         Task {
             do {
                 guard let videoData = try await item.loadTransferable(type: VideoTransferable.self) else {
-                    await MainActor.run { isLoadingVideo = false; showErrorMessage(String(localized: "加载失败")) }
+                    await MainActor.run { isLoadingVideo = false; showErrorMessage(String(localized: "failed_to_load")) }
                     return
                 }
-                let videoTitle = String(localized: "相册视频")
+                let videoTitle = String(localized: "camera_roll_video")
                 await MainActor.run {
                     if isVideoFile(url: videoData.url) {
                         extractAudioFromVideo(sourceURL: videoData.url, title: videoTitle)
                     } else {
-                        selectedAudioSource = AudioSource(
+                        isLoadingVideo = false
+                        promptSRTOption(for: AudioSource(
                             type: .local,
                             localURL: videoData.url,
                             relativeFilePath: videoData.url.lastPathComponent,
                             title: videoTitle
-                        )
-                        isLoadingVideo = false
-                        navigateToProcessing = true
+                        ))
                     }
                 }
             } catch {
@@ -197,8 +209,72 @@ final class HomeViewModel {
     func loadFromURL() {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let url = URL(string: trimmed), url.scheme != nil else { return }
-        selectedAudioSource = AudioSource(type: .remote, remoteURL: url, title: url.deletingPathExtension().lastPathComponent)
+        promptSRTOption(for: AudioSource(type: .remote, remoteURL: url, title: url.deletingPathExtension().lastPathComponent))
+    }
+    
+    // MARK: - SRT 附带导入
+    
+    /// 音视频选择完成后，弹出是否附带 SRT 的选项
+    func promptSRTOption(for source: AudioSource) {
+        pendingAudioSource = source
+        showSRTOption = true
+    }
+    
+    /// 用户选择跳过 SRT，直接进入处理流程
+    func skipSRT() {
+        guard let source = pendingAudioSource else { return }
+        selectedAudioSource = source
+        pendingAudioSource = nil
+        showSRTOption = false
         navigateToProcessing = true
+    }
+    
+    /// 用户选择了 SRT 文件，将其复制到 Documents 并附加到 AudioSource
+    func attachSRT(url: URL) {
+        guard var source = pendingAudioSource else { return }
+        
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
+        
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let srtFileName = "srt_\(UUID().uuidString).srt"
+        let destinationURL = documentsURL.appendingPathComponent(srtFileName)
+        
+        do {
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                try FileManager.default.removeItem(at: destinationURL)
+            }
+            try FileManager.default.copyItem(at: url, to: destinationURL)
+            source.srtRelativeFilePath = srtFileName
+            selectedAudioSource = source
+            pendingAudioSource = nil
+            showSRTOption = false
+            navigateToProcessing = true
+        } catch {
+            showErrorMessage(String(localized: "failed_to_import_srt_file"))
+        }
+    }
+    
+    // MARK: - .yomi 附带导入
+    
+    /// .yomi ファイルをインポートし、pendingAudioSource と組み合わせてプレーヤーに遷移する
+    func attachYomi(url: URL) {
+        guard let source = pendingAudioSource else { return }
+        do {
+            let importedDoc = try SubtitleExportService.readYomiFile(from: url)
+            let doc = TranscriptDocument(
+                source: source,
+                segments: importedDoc.segments
+            )
+            try DocumentStore.shared.save(doc)
+            loadSavedDocuments()
+            pendingAudioSource = nil
+            showSRTOption = false
+            navigateToPlayerDocument = doc
+            navigateToPlayer = true
+        } catch {
+            showErrorMessage(String(localized: "yomi_import_error"))
+        }
     }
     
     private func isVideoFile(url: URL) -> Bool {
@@ -211,20 +287,18 @@ final class HomeViewModel {
             do {
                 let outputURL = try await performAudioExtraction(from: sourceURL)
                 await MainActor.run {
-                    selectedAudioSource = AudioSource(
+                    isLoadingVideo = false
+                    promptSRTOption(for: AudioSource(
                         type: .local,
                         localURL: outputURL,
                         relativeFilePath: outputURL.lastPathComponent,
                         title: title
-                    )
-                    isLoadingVideo = false
-                    navigateToProcessing = true
+                    ))
                 }
             } catch {
                 await MainActor.run {
-                    selectedAudioSource = AudioSource(type: .local, localURL: sourceURL, title: title)
                     isLoadingVideo = false
-                    navigateToProcessing = true
+                    promptSRTOption(for: AudioSource(type: .local, localURL: sourceURL, title: title))
                 }
             }
         }

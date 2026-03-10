@@ -6,6 +6,13 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
+
+extension UTType {
+    static var yomiDocument: UTType {
+        UTType(exportedAs: "com.yomiplay.yomi", conformingTo: .json)
+    }
+}
 
 enum SubtitleExportService {
     
@@ -44,5 +51,44 @@ enum SubtitleExportService {
         } catch {
             return nil
         }
+    }
+    
+    // MARK: - .yomi 形式（完全なメタデータ付き JSON）
+    
+    /// TranscriptDocument を .yomi ファイルとして一時ディレクトリに書き出す
+    static func writeYomiToTempFile(document: TranscriptDocument, fileName: String = "subtitles") -> URL? {
+        var exportDoc = document
+        exportDoc.source.localURL = nil
+        exportDoc.source.remoteURL = nil
+        exportDoc.source.relativeFilePath = nil
+        exportDoc.source.srtRelativeFilePath = nil
+        
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        
+        guard let data = try? encoder.encode(exportDoc) else { return nil }
+        
+        let safeName = fileName.isEmpty ? "subtitles" : fileName
+            .components(separatedBy: .illegalCharacters).joined()
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(safeName).yomi")
+        do {
+            try data.write(to: url)
+            return url
+        } catch {
+            return nil
+        }
+    }
+    
+    /// .yomi ファイルを読み込み TranscriptDocument として返す
+    static func readYomiFile(from url: URL) throws -> TranscriptDocument {
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
+        
+        let data = try Data(contentsOf: url)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(TranscriptDocument.self, from: data)
     }
 }

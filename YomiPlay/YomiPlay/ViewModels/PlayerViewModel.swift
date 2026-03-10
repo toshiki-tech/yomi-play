@@ -295,6 +295,78 @@ final class PlayerViewModel {
         isTranslating = false
     }
     
+    // MARK: - SRT インポート
+    
+    var isImportingSRT: Bool = false
+    var showSRTImportSuccess: Bool = false
+    
+    /// SRT ファイルをインポートして現在の字幕を置き換える
+    func importSRT(from url: URL) {
+        isImportingSRT = true
+        Task {
+            do {
+                let srtSegments = try SubtitleImportService.parseSRT(from: url)
+                guard !srtSegments.isEmpty else {
+                    await MainActor.run { isImportingSRT = false }
+                    return
+                }
+                
+                var transcriptSegments: [TranscriptSegment] = []
+                for seg in srtSegments {
+                    let tokens = await furiganaService.generateFurigana(for: seg.text)
+                    transcriptSegments.append(TranscriptSegment(
+                        startTime: seg.startTime,
+                        endTime: seg.endTime,
+                        originalText: seg.text,
+                        tokens: tokens
+                    ))
+                }
+                
+                await MainActor.run {
+                    document.segments = transcriptSegments
+                    playerService.setSegments(document.segments)
+                    saveDocument()
+                    isImportingSRT = false
+                    showSRTImportSuccess = true
+                    print("PlayerViewModel: SRT インポート完了 \(transcriptSegments.count) セグメント")
+                }
+            } catch {
+                await MainActor.run {
+                    isImportingSRT = false
+                    print("PlayerViewModel: SRT インポート失敗: \(error)")
+                }
+            }
+        }
+    }
+    
+    // MARK: - .yomi インポート
+    
+    var isImportingYomi: Bool = false
+    var showYomiImportSuccess: Bool = false
+    
+    /// .yomi ファイルをインポートして現在の字幕を置き換える
+    func importYomi(from url: URL) {
+        isImportingYomi = true
+        Task {
+            do {
+                let importedDoc = try SubtitleExportService.readYomiFile(from: url)
+                await MainActor.run {
+                    document.segments = importedDoc.segments
+                    playerService.setSegments(document.segments)
+                    saveDocument()
+                    isImportingYomi = false
+                    showYomiImportSuccess = true
+                    print("PlayerViewModel: .yomi インポート完了 \(importedDoc.segments.count) セグメント")
+                }
+            } catch {
+                await MainActor.run {
+                    isImportingYomi = false
+                    print("PlayerViewModel: .yomi インポート失敗: \(error)")
+                }
+            }
+        }
+    }
+    
     /// ドキュメントを保存する
     func saveDocument() {
         do {

@@ -24,6 +24,8 @@ struct TranscriptView: View {
     let onEditConfirmed: () -> Void
     let onEditCancelled: () -> Void
     
+    @FocusState private var focusedSegmentID: UUID?
+    
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -40,6 +42,7 @@ struct TranscriptView: View {
                             fontSize: fontSize,
                             editingText: $editingText,
                             editingSkipFurigana: $editingSkipFurigana,
+                            focusedSegmentID: $focusedSegmentID,
                             onTapped: { onSegmentTapped(segment) },
                             onEditTapped: { onEditTapped(segment) },
                             onEditConfirmed: onEditConfirmed,
@@ -51,6 +54,7 @@ struct TranscriptView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             }
+            .scrollDismissesKeyboard(.never)
             .onChange(of: currentSegmentID) { _, newID in
                 if let id = newID, editingSegmentID == nil {
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -65,6 +69,11 @@ struct TranscriptView: View {
                             proxy.scrollTo(id, anchor: .center)
                         }
                     }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        focusedSegmentID = id
+                    }
+                } else {
+                    focusedSegmentID = nil
                 }
             }
         }
@@ -84,12 +93,12 @@ struct SegmentRowView: View {
     let fontSize: CGFloat
     @Binding var editingText: String
     @Binding var editingSkipFurigana: Bool
+    var focusedSegmentID: FocusState<UUID?>.Binding
     let onTapped: () -> Void
     let onEditTapped: () -> Void
     let onEditConfirmed: () -> Void
     let onEditCancelled: () -> Void
     
-    @FocusState private var isFocused: Bool
     @State private var isLongPressing = false
     
     var body: some View {
@@ -172,10 +181,10 @@ struct SegmentRowView: View {
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
             
-            TextField("输入字幕文本", text: $editingText, axis: .vertical)
+            TextField("enter_subtitle_text", text: $editingText, axis: .vertical)
                 .font(.system(size: fontSize, weight: .medium))
                 .textFieldStyle(.plain)
-                .focused($isFocused)
+                .focused(focusedSegmentID, equals: segment.id)
                 .lineLimit(1...5)
             
             Toggle(isOn: $editingSkipFurigana) {
@@ -183,7 +192,7 @@ struct SegmentRowView: View {
                     Image(systemName: editingSkipFurigana ? "textformat.alt" : "character.textbox")
                         .font(.caption)
                         .foregroundStyle(editingSkipFurigana ? .orange : .secondary)
-                    Text("非日语（无注音）")
+                    Text("non_japanese_no_furigana")
                         .font(.caption)
                         .foregroundStyle(editingSkipFurigana ? .orange : .secondary)
                 }
@@ -194,7 +203,7 @@ struct SegmentRowView: View {
             HStack(spacing: 12) {
                 Spacer()
                 Button(action: onEditCancelled) {
-                    Text("取消")
+                    Text("cancel")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
@@ -202,7 +211,7 @@ struct SegmentRowView: View {
                         .background(Capsule().fill(Color(.systemGray5)))
                 }
                 Button(action: onEditConfirmed) {
-                    Text("确认")
+                    Text("confirm")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(.white)
@@ -215,11 +224,6 @@ struct SegmentRowView: View {
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green, lineWidth: 2))
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                isFocused = true
-            }
-        }
     }
     
     private func formatTimeRange(start: TimeInterval, end: TimeInterval) -> String {

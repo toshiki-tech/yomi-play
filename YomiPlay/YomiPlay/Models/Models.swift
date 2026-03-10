@@ -25,6 +25,8 @@ struct AudioSource: Identifiable, Codable, Hashable {
     var relativeFilePath: String?
     var title: String
     var duration: TimeInterval?
+    /// SRT ファイルの Documents からの相対パス（インポート時に設定）
+    var srtRelativeFilePath: String?
     
     init(
         id: UUID = UUID(),
@@ -33,7 +35,8 @@ struct AudioSource: Identifiable, Codable, Hashable {
         remoteURL: URL? = nil,
         relativeFilePath: String? = nil,
         title: String = "",
-        duration: TimeInterval? = nil
+        duration: TimeInterval? = nil,
+        srtRelativeFilePath: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -42,6 +45,7 @@ struct AudioSource: Identifiable, Codable, Hashable {
         self.relativeFilePath = relativeFilePath
         self.title = title
         self.duration = duration
+        self.srtRelativeFilePath = srtRelativeFilePath
     }
     
     /// 再生用URLを返す（ローカルは相対パスから再構築を優先）
@@ -59,6 +63,15 @@ struct AudioSource: Identifiable, Codable, Hashable {
         case .remote:
             return remoteURL
         }
+    }
+    
+    /// SRT ファイルの URL を返す（Documents 内の相対パスから解決）
+    var srtURL: URL? {
+        guard let rel = srtRelativeFilePath, !rel.isEmpty,
+              let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        else { return nil }
+        let resolved = docs.appendingPathComponent(rel)
+        return FileManager.default.fileExists(atPath: resolved.path) ? resolved : nil
     }
 }
 
@@ -169,24 +182,26 @@ enum ProcessingState: Equatable {
     case idle                    // 未開始
     case loadingAudio            // 音声読み込み中
     case recognizing             // 音声認識中
+    case parsingSRT              // SRT 解析中
     case generatingFurigana      // 振り仮名生成中
     case completed               // 完了
     case error(String)           // エラー
     
     var displayText: String {
         switch self {
-        case .idle:                return String(localized: "准备中...")
-        case .loadingAudio:        return String(localized: "正在加载音频...")
-        case .recognizing:         return String(localized: "正在识别语音...")
-        case .generatingFurigana:  return String(localized: "正在生成假名注音...")
-        case .completed:           return String(localized: "完成！")
-        case .error(let message):  return String(localized: "错误") + ": " + message
+        case .idle:                return String(localized: "preparing")
+        case .loadingAudio:        return String(localized: "loading_audio_2")
+        case .recognizing:         return String(localized: "recognizing_speech")
+        case .parsingSRT:          return String(localized: "parsing_subtitles")
+        case .generatingFurigana:  return String(localized: "generating_furigana")
+        case .completed:           return String(localized: "done")
+        case .error(let message):  return String(localized: "error") + ": " + message
         }
     }
     
     var isProcessing: Bool {
         switch self {
-        case .loadingAudio, .recognizing, .generatingFurigana:
+        case .loadingAudio, .recognizing, .parsingSRT, .generatingFurigana:
             return true
         default:
             return false

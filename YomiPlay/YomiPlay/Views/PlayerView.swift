@@ -8,6 +8,7 @@
 
 import SwiftUI
 import Translation
+import UniformTypeIdentifiers
 
 // MARK: - プレーヤー画面
 
@@ -35,7 +36,7 @@ struct PlayerView: View {
             // 再生コントロール
             controlsSection
         }
-        .navigationTitle(document.source.title.isEmpty ? String(localized: "播放中") : document.source.title)
+        .navigationTitle(document.source.title.isEmpty ? String(localized: "now_playing") : document.source.title)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -46,7 +47,7 @@ struct PlayerView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                        Text("首页")
+                        Text("home")
                     }
                 }
             }
@@ -143,12 +144,18 @@ struct SettingsSheetView: View {
     @Bindable var viewModel: PlayerViewModel
     @State private var selectedTab = 0
     @State private var srtExportItem: IdentifiableURL?
+    @State private var yomiExportItem: IdentifiableURL?
+    @State private var audioExportItem: IdentifiableURL?
+    @State private var isFileImporterPresented: Bool = false
+    
+    enum ImportMode { case srt, yomi }
+    @State private var importMode: ImportMode = .srt
     
     var body: some View {
         VStack(spacing: 0) {
             Picker("", selection: $selectedTab) {
-                Text("通用").tag(0)
-                Text("学习特性").tag(1)
+                Text("general").tag(0)
+                Text("learning").tag(1)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 20)
@@ -168,7 +175,7 @@ struct SettingsSheetView: View {
     
     private var generalSettings: some View {
         VStack(spacing: 0) {
-            settingsRow(icon: "textformat.size", title: "字体大小", color: .green) {
+            settingsRow(icon: "textformat.size", title: "font_size", color: .green) {
                 HStack(spacing: 12) {
                     Button { viewModel.adjustFontSize(by: -2) } label: {
                         Image(systemName: "minus.circle.fill")
@@ -187,15 +194,29 @@ struct SettingsSheetView: View {
             
             Divider().padding(.leading, 52)
             
-            settingsRow(icon: "gauge.with.dots.needle.33percent", title: "播放速度", color: .green) {
+            settingsRow(icon: "gauge.with.dots.needle.33percent", title: "playback_speed", color: .green) {
                 Text(viewModel.playbackRateText)
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             
             Divider().padding(.leading, 52)
             
-            settingsRow(icon: "square.and.arrow.up", title: "导出字幕 SRT", color: .green) {
-                Button("导出") {
+            settingsRow(icon: "waveform", title: "导出音频", color: .green) {
+                if let url = viewModel.document.source.playbackURL {
+                    Button("export") {
+                        audioExportItem = IdentifiableURL(url: url)
+                    }
+                    .font(.subheadline).foregroundStyle(.green)
+                } else {
+                    Text("无音频文件")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            
+            Divider().padding(.leading, 52)
+            
+            settingsRow(icon: "square.and.arrow.up", title: "export_subtitles_srt", color: .green) {
+                Button("export") {
                     if let url = SubtitleExportService.writeSRTToTempFile(
                         segments: viewModel.document.segments,
                         fileName: viewModel.document.source.title
@@ -205,20 +226,112 @@ struct SettingsSheetView: View {
                 }
                 .font(.subheadline).foregroundStyle(.green)
             }
+            
+            Divider().padding(.leading, 52)
+            
+            settingsRow(icon: "square.and.arrow.down", title: "import_subtitles_srt", color: .green) {
+                if viewModel.isImportingSRT {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button("select_file") {
+                        importMode = .srt
+                        isFileImporterPresented = true
+                    }
+                    .font(.subheadline).foregroundStyle(.green)
+                }
+            }
+            
+            Divider().padding(.leading, 52)
+            
+            settingsRow(icon: "square.and.arrow.up.fill", title: "player_export_yomi_title", color: .green) {
+                Button("export") {
+                    if let url = SubtitleExportService.writeYomiToTempFile(
+                        document: viewModel.document,
+                        fileName: viewModel.document.source.title
+                    ) {
+                        yomiExportItem = IdentifiableURL(url: url)
+                    }
+                }
+                .font(.subheadline).foregroundStyle(.green)
+            }
+            
+            Divider().padding(.leading, 52)
+            
+            settingsRow(icon: "square.and.arrow.down.fill", title: "player_import_yomi_title", color: .green) {
+                if viewModel.isImportingYomi {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button("select_file") {
+                        importMode = .yomi
+                        isFileImporterPresented = true
+                    }
+                    .font(.subheadline).foregroundStyle(.green)
+                }
+            }
         }
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
         .padding(.horizontal, 16)
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: importMode == .srt ? [.plainText] : [.yomiDocument, .json],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                switch importMode {
+                case .srt: viewModel.importSRT(from: url)
+                case .yomi: viewModel.importYomi(from: url)
+                }
+            }
+        }
+        .alert("subtitles_imported", isPresented: $viewModel.showSRTImportSuccess) {
+            Button("ok") {}
+        } message: {
+            Text(verbatim: "\(viewModel.document.segments.count) " + String(localized: "segments_updated"))
+        }
+        .alert("subtitles_imported", isPresented: $viewModel.showYomiImportSuccess) {
+            Button("ok") {}
+        } message: {
+            Text(verbatim: "\(viewModel.document.segments.count) " + String(localized: "segments_updated"))
+        }
         .sheet(item: $srtExportItem) { item in
             NavigationStack {
                 VStack(spacing: 20) {
-                    ShareLink(item: item.url, preview: SharePreview(Text("字幕.srt"), image: Image(systemName: "doc.text")))
+                    ShareLink(item: item.url, preview: SharePreview(Text("srt"), image: Image(systemName: "doc.text")))
                         .font(.headline)
-                    Button("关闭") { srtExportItem = nil }
+                    Button("close") { srtExportItem = nil }
                         .foregroundStyle(.secondary)
                 }
                 .padding()
-                .navigationTitle("分享字幕")
+                .navigationTitle("share_subtitles")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+        .sheet(item: $yomiExportItem) { item in
+            NavigationStack {
+                VStack(spacing: 20) {
+                    ShareLink(item: item.url, preview: SharePreview("YomiPlay", image: Image(systemName: "doc.text.fill")))
+                        .font(.headline)
+                    Text("full_subtitle_file_with_furigana_translations_etc")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button("close") { yomiExportItem = nil }
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .navigationTitle(String(localized: "player_share_yomi_title"))
+                .navigationBarTitleDisplayMode(.inline)
+            }
+        }
+        .sheet(item: $audioExportItem) { item in
+            NavigationStack {
+                VStack(spacing: 20) {
+                    ShareLink(item: item.url, preview: SharePreview(viewModel.document.source.title, image: Image(systemName: "waveform")))
+                        .font(.headline)
+                    Button("close") { audioExportItem = nil }
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+                .navigationTitle("分享音频")
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
@@ -227,27 +340,27 @@ struct SettingsSheetView: View {
     private var learningSettings: some View {
         VStack(spacing: 16) {
             VStack(spacing: 0) {
-                Text("日语字幕")
+                Text("japanese_subtitles")
                     .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16).padding(.bottom, 8)
                 
                 VStack(spacing: 0) {
                     settingsToggleRow(
-                        icon: "character.textbox", title: "振假名",
-                        subtitle: "在顶部显示振假名", color: .green,
+                        icon: "character.textbox", title: "furigana",
+                        subtitle: "show_furigana_above_text", color: .green,
                         isOn: $viewModel.showFurigana
                     )
                     Divider().padding(.leading, 52)
                     settingsToggleRow(
-                        icon: "a.circle", title: "罗马字",
-                        subtitle: "在底部显示罗马字", color: .green,
+                        icon: "a.circle", title: "romaji",
+                        subtitle: "show_romaji_below_text", color: .green,
                         isOn: $viewModel.showRomaji
                     )
                     Divider().padding(.leading, 52)
                     settingsToggleRow(
-                        icon: "book.closed", title: "外来词英文",
-                        subtitle: "在片假名上方显示英文原词", color: .green,
+                        icon: "book.closed", title: "loanword_english",
+                        subtitle: "show_english_above_katakana", color: .green,
                         isOn: $viewModel.showEnglish
                     )
                 }
@@ -257,17 +370,17 @@ struct SettingsSheetView: View {
             }
             
             VStack(spacing: 0) {
-                Text("翻译")
+                Text("translation")
                     .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16).padding(.bottom, 8)
                 
                 VStack(spacing: 0) {
-                    settingsRow(icon: "globe", title: "目标语言", color: .green) {
+                    settingsRow(icon: "globe", title: "target_language", color: .green) {
                         Menu {
-                            Button("中文（简体）") { viewModel.targetLanguageCode = "zh-Hans" }
-                            Button("中文（繁体）") { viewModel.targetLanguageCode = "zh-Hant" }
-                            Button("英语") { viewModel.targetLanguageCode = "en" }
+                            Button("chinese_simplified") { viewModel.targetLanguageCode = "zh-Hans" }
+                            Button("chinese_traditional") { viewModel.targetLanguageCode = "zh-Hant" }
+                            Button("english") { viewModel.targetLanguageCode = "en" }
                         } label: {
                             HStack(spacing: 4) {
                                 Text(labelForLanguage(code: viewModel.targetLanguageCode))
@@ -281,12 +394,12 @@ struct SettingsSheetView: View {
                     
                     Divider().padding(.leading, 52)
                     
-                    settingsRow(icon: "text.bubble", title: "翻译全部字幕", color: .green) {
+                    settingsRow(icon: "text.bubble", title: "translate_all_subtitles", color: .green) {
                         if viewModel.isTranslating {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
-                            Button("开始翻译") {
+                            Button("start_translation") {
                                 viewModel.requestTranslation()
                             }
                             .font(.subheadline)
@@ -297,8 +410,8 @@ struct SettingsSheetView: View {
                     Divider().padding(.leading, 52)
                     
                     settingsToggleRow(
-                        icon: "text.bubble.fill", title: "显示翻译",
-                        subtitle: "在每行日语下面显示翻译", color: .green,
+                        icon: "text.bubble.fill", title: "show_translation",
+                        subtitle: "show_translation_below_each_line", color: .green,
                         isOn: $viewModel.showTranslation
                     )
                 }
@@ -341,9 +454,9 @@ struct SettingsSheetView: View {
 
     private func labelForLanguage(code: String) -> String {
         switch code {
-        case "zh-Hans": return String(localized: "中文（简体）")
-        case "zh-Hant": return String(localized: "中文（繁体）")
-        case "en": return String(localized: "英语")
+        case "zh-Hans": return String(localized: "chinese_simplified")
+        case "zh-Hant": return String(localized: "chinese_traditional")
+        case "en": return String(localized: "english")
         default: return code
         }
     }
