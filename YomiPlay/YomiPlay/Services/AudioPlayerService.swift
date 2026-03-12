@@ -284,9 +284,14 @@ final class AudioPlayerService {
     
     /// 指定時間にシークする
     func seek(to time: TimeInterval) {
-        let cmTime = CMTime(seconds: time, preferredTimescale: 600)
+        // 再生位置を範囲内にクランプしてからシークする
+        let clampedTime = max(0, min(duration, time))
+        let cmTime = CMTime(seconds: clampedTime, preferredTimescale: 600)
         player?.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
-        currentTime = time
+        currentTime = clampedTime
+        // シーク直後に現在セグメントも更新しておくことで、
+        // 進捗バーをドラッグした際に字幕リストも即座に追従する
+        updateCurrentSegment()
     }
     
     /// 指定秒数をスキップする（正の値で前進、負の値で後退）
