@@ -39,6 +39,9 @@ final class AudioPlayerService {
     /// 音声が読み込み完了したか
     var isAudioReady: Bool = false
     
+    /// 再生が最後まで到達したときに呼ばれるコールバック（プレイリスト制御用）
+    var onPlaybackEnded: (() -> Void)?
+    
     // MARK: - 内部プロパティ
     
     private var player: AVPlayer?
@@ -196,6 +199,7 @@ final class AudioPlayerService {
             guard let self = self else { return }
             self.isPlaying = false
             self.seek(to: 0)
+            self.onPlaybackEnded?()
         }
         
         // 非同期でdurationも取得を試みる（バックアップ）

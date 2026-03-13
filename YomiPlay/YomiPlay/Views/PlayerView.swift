@@ -13,16 +13,22 @@ import UniformTypeIdentifiers
 // MARK: - プレーヤー画面
 
 struct PlayerView: View {
-    let document: TranscriptDocument
     @Binding var navigationPath: NavigationPath
     @State private var viewModel: PlayerViewModel
+    @State private var playlist: [TranscriptDocument]
+    @State private var currentIndex: Int
     @State private var showSettings: Bool = false
     @State private var hasRestoredPosition: Bool = false
+    @State private var shouldAutoPlayOnReady: Bool = false
+    @Environment(\.dismiss) private var dismiss
     
-    init(document: TranscriptDocument, navigationPath: Binding<NavigationPath>) {
-        self.document = document
+    init(documents: [TranscriptDocument], currentIndex: Int, navigationPath: Binding<NavigationPath>) {
+        let safeIndex = max(0, min(documents.count - 1, currentIndex))
+        let initialDocument = documents.isEmpty ? TranscriptDocument(source: AudioSource(type: .local, title: "")) : documents[safeIndex]
         self._navigationPath = navigationPath
-        self._viewModel = State(initialValue: PlayerViewModel(document: document))
+        self._viewModel = State(initialValue: PlayerViewModel(document: initialDocument))
+        self._playlist = State(initialValue: documents.isEmpty ? [initialDocument] : documents)
+        self._currentIndex = State(initialValue: safeIndex)
     }
     
     var body: some View {
@@ -36,14 +42,15 @@ struct PlayerView: View {
             // 再生コントロール
             controlsSection
         }
-        .navigationTitle(document.source.title.isEmpty ? String(localized: "now_playing") : document.source.title)
+        .navigationTitle(viewModel.document.source.title.isEmpty ? String(localized: "now_playing") : viewModel.document.source.title)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     viewModel.playerService.pause()
-                    navigationPath.removeLast()
+                    // 使用系统的 dismiss 回到上一层，避免直接操作 NavigationPath 导致状态异常
+                    dismiss()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
@@ -76,6 +83,16 @@ struct PlayerView: View {
             if let pos = viewModel.document.lastPlaybackPosition, pos > 0 {
                 viewModel.seek(to: pos)
             }
+            if shouldAutoPlayOnReady {
+                viewModel.togglePlayPause()
+                shouldAutoPlayOnReady = false
+            }
+        }
+        .onAppear {
+            // 再生完了時に次の記録へ進む
+            viewModel.playerService.onPlaybackEnded = {
+                playNextIfAvailable()
+            }
         }
         .translationTask(viewModel.translationConfiguration) { session in
             await viewModel.performTranslation(using: session)
@@ -96,6 +113,8 @@ struct PlayerView: View {
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
             editingSkipFurigana: $viewModel.editingSkipFurigana,
+            editingStartTime: $viewModel.editingStartTime,
+            editingEndTime: $viewModel.editingEndTime,
             onSegmentTapped: { segment in
                 viewModel.onSegmentTapped(segment)
             },
@@ -108,6 +127,15 @@ struct PlayerView: View {
             },
             onEditCancelled: {
                 viewModel.cancelEditing()
+            },
+            onDeleteSegment: {
+                viewModel.deleteCurrentSegment()
+            },
+            onSplitSegment: {
+                viewModel.splitCurrentSegmentAtCurrentTime()
+            },
+            onMergeWithPrevious: {
+                viewModel.mergeCurrentWithPrevious()
             }
         )
     }
@@ -115,10 +143,11 @@ struct PlayerView: View {
     // MARK: - 再生コントロール
     
     private var controlsSection: some View {
-        PlaybackControlsView(
-            isPlaying: viewModel.isPlaying,
-            currentTime: viewModel.playerService.currentTime,
-            duration: viewModel.playerService.duration,
+        let service = viewModel.playerService
+        return PlaybackControlsView(
+            isPlaying: service.isPlaying,
+            currentTime: service.currentTime,
+            duration: service.duration,
             playbackRateText: viewModel.playbackRateText,
             isLooping: viewModel.isLooping,
             onTogglePlayPause: { viewModel.togglePlayPause() },
@@ -128,6 +157,22 @@ struct PlayerView: View {
             onCycleRate: { viewModel.cyclePlaybackRate() },
             onToggleLoop: { viewModel.toggleCurrentLoop() }
         )
+    }
+    
+    // MARK: - プレイリスト制御
+    
+    private func playNextIfAvailable() {
+        let nextIndex = currentIndex + 1
+        guard nextIndex < playlist.count else { return }
+        let nextDocument = playlist[nextIndex]
+        currentIndex = nextIndex
+        viewModel = PlayerViewModel(document: nextDocument)
+        hasRestoredPosition = false
+        shouldAutoPlayOnReady = true
+        // onPlaybackEnded ハンドラを新しいプレイヤーに再設定
+        viewModel.playerService.onPlaybackEnded = {
+            playNextIfAvailable()
+        }
     }
 }
 
@@ -147,9 +192,17 @@ struct SettingsSheetView: View {
     @State private var yomiExportItem: IdentifiableURL?
     @State private var audioExportItem: IdentifiableURL?
     @State private var isFileImporterPresented: Bool = false
+    @State private var hasExportedSRT: Bool = false
+    @State private var hasExportedYomi: Bool = false
+    @State private var hasExportedAudio: Bool = false
     
     enum ImportMode { case srt, yomi }
     @State private var importMode: ImportMode = .srt
+    
+    // エクスポート中のステータス
+    @State private var isExporting: Bool = false
+    @State private var exportProgress: Double = 0.0
+    @State private var exportingType: String = ""
     
     var body: some View {
         VStack(spacing: 0) {
@@ -163,7 +216,14 @@ struct SettingsSheetView: View {
             .padding(.bottom, 12)
             
             if selectedTab == 0 {
-                generalSettings
+                ScrollView {
+                    VStack(spacing: 20) {
+                        generalSettings
+                        exportSection
+                        importSection
+                    }
+                    .padding(.vertical, 16)
+                }
             } else {
                 learningSettings
             }
@@ -171,107 +231,11 @@ struct SettingsSheetView: View {
             Spacer()
         }
         .background(Color(.systemGroupedBackground))
-    }
-    
-    private var generalSettings: some View {
-        VStack(spacing: 0) {
-            settingsRow(icon: "textformat.size", title: "font_size", color: .green) {
-                HStack(spacing: 12) {
-                    Button { viewModel.adjustFontSize(by: -2) } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title3).foregroundStyle(.green)
-                    }.disabled(viewModel.fontSize <= 12)
-                    
-                    Text("\(Int(viewModel.fontSize))")
-                        .font(.subheadline).monospacedDigit().frame(width: 28)
-                    
-                    Button { viewModel.adjustFontSize(by: 2) } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title3).foregroundStyle(.green)
-                    }.disabled(viewModel.fontSize >= 32)
-                }
-            }
-            
-            Divider().padding(.leading, 52)
-            
-            settingsRow(icon: "gauge.with.dots.needle.33percent", title: "playback_speed", color: .green) {
-                Text(viewModel.playbackRateText)
-                    .font(.subheadline).foregroundStyle(.secondary)
-            }
-            
-            Divider().padding(.leading, 52)
-            
-            settingsRow(icon: "waveform", title: "导出音频", color: .green) {
-                if let url = viewModel.document.source.playbackURL {
-                    Button("export") {
-                        audioExportItem = IdentifiableURL(url: url)
-                    }
-                    .font(.subheadline).foregroundStyle(.green)
-                } else {
-                    Text("无音频文件")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            
-            Divider().padding(.leading, 52)
-            
-            settingsRow(icon: "square.and.arrow.up", title: "export_subtitles_srt", color: .green) {
-                Button("export") {
-                    if let url = SubtitleExportService.writeSRTToTempFile(
-                        segments: viewModel.document.segments,
-                        fileName: viewModel.document.source.title
-                    ) {
-                        srtExportItem = IdentifiableURL(url: url)
-                    }
-                }
-                .font(.subheadline).foregroundStyle(.green)
-            }
-            
-            Divider().padding(.leading, 52)
-            
-            settingsRow(icon: "square.and.arrow.down", title: "import_subtitles_srt", color: .green) {
-                if viewModel.isImportingSRT {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button("select_file") {
-                        importMode = .srt
-                        isFileImporterPresented = true
-                    }
-                    .font(.subheadline).foregroundStyle(.green)
-                }
-            }
-            
-            Divider().padding(.leading, 52)
-            
-            settingsRow(icon: "square.and.arrow.up.fill", title: "player_export_yomi_title", color: .green) {
-                Button("export") {
-                    if let url = SubtitleExportService.writeYomiToTempFile(
-                        document: viewModel.document,
-                        fileName: viewModel.document.source.title
-                    ) {
-                        yomiExportItem = IdentifiableURL(url: url)
-                    }
-                }
-                .font(.subheadline).foregroundStyle(.green)
-            }
-            
-            Divider().padding(.leading, 52)
-            
-            settingsRow(icon: "square.and.arrow.down.fill", title: "player_import_yomi_title", color: .green) {
-                if viewModel.isImportingYomi {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button("select_file") {
-                        importMode = .yomi
-                        isFileImporterPresented = true
-                    }
-                    .font(.subheadline).foregroundStyle(.green)
-                }
+        .overlay {
+            if isExporting {
+                exportingOverlay
             }
         }
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(12)
-        .padding(.horizontal, 16)
         .fileImporter(
             isPresented: $isFileImporterPresented,
             allowedContentTypes: importMode == .srt ? [.plainText] : [.yomiDocument, .json],
@@ -296,45 +260,328 @@ struct SettingsSheetView: View {
         }
         .sheet(item: $srtExportItem) { item in
             NavigationStack {
-                VStack(spacing: 20) {
-                    ShareLink(item: item.url, preview: SharePreview(Text("srt"), image: Image(systemName: "doc.text")))
-                        .font(.headline)
-                    Button("close") { srtExportItem = nil }
-                        .foregroundStyle(.secondary)
+                VStack(spacing: 24) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(.blue)
+                    
+                    VStack(spacing: 4) {
+                        Text("export_subtitles_srt")
+                            .font(.headline)
+                        Text(item.url.lastPathComponent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    
+                    ShareLink(item: item.url, preview: SharePreview(Text("srt"), image: Image(systemName: "doc.text"))) {
+                        Label("share_subtitles", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("close") {
+                        srtExportItem = nil
+                        hasExportedSRT = true
+                    }
+                    .foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(.horizontal, 24)
+                .padding(.vertical, 32)
                 .navigationTitle("share_subtitles")
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
         .sheet(item: $yomiExportItem) { item in
             NavigationStack {
-                VStack(spacing: 20) {
-                    ShareLink(item: item.url, preview: SharePreview("YomiPlay", image: Image(systemName: "doc.text.fill")))
-                        .font(.headline)
-                    Text("full_subtitle_file_with_furigana_translations_etc")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Button("close") { yomiExportItem = nil }
-                        .foregroundStyle(.secondary)
+                VStack(spacing: 24) {
+                    Image("yomi-mark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    
+                    VStack(spacing: 4) {
+                        Text("player_export_yomi_title")
+                            .font(.headline)
+                        Text(item.url.lastPathComponent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Text("full_subtitle_file_with_furigana_translations_etc")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    ShareLink(item: item.url, preview: SharePreview("YomiPlay", image: Image("yomi-mark"))) {
+                        Label("share_subtitles", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("close") {
+                        yomiExportItem = nil
+                        hasExportedYomi = true
+                    }
+                    .foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(.horizontal, 24)
+                .padding(.vertical, 32)
                 .navigationTitle(String(localized: "player_share_yomi_title"))
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
         .sheet(item: $audioExportItem) { item in
             NavigationStack {
-                VStack(spacing: 20) {
-                    ShareLink(item: item.url, preview: SharePreview(viewModel.document.source.title, image: Image(systemName: "waveform")))
-                        .font(.headline)
-                    Button("close") { audioExportItem = nil }
-                        .foregroundStyle(.secondary)
+                VStack(spacing: 24) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(.green)
+                    
+                    VStack(spacing: 4) {
+                        Text("settings_export_media_title")
+                            .font(.headline)
+                        Text(item.url.lastPathComponent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    
+                    ShareLink(item: item.url, preview: SharePreview(viewModel.document.source.title, image: Image(systemName: "waveform"))) {
+                        Label("share_subtitles", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("close") {
+                        audioExportItem = nil
+                        hasExportedAudio = true
+                    }
+                    .foregroundStyle(.secondary)
                 }
-                .padding()
-                .navigationTitle("分享音频")
+                .padding(.horizontal, 24)
+                .padding(.vertical, 32)
+                .navigationTitle("settings_share_audio_title")
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
+    }
+    
+    private var exportingTitle: String {
+        switch exportingType {
+        case "SRT":
+            return String(localized: "export_subtitles_srt")
+        case "YOMI":
+            return String(localized: "player_export_yomi_title")
+        case "Media":
+            return String(localized: "settings_export_media_title")
+        default:
+            return ""
+        }
+    }
+    
+    private var exportingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.3).ignoresSafeArea()
+            VStack(spacing: 20) {
+                ProgressView(value: exportProgress, total: 1.0)
+                    .progressViewStyle(.linear)
+                    .tint(.green)
+                    .frame(width: 200)
+                
+                Text(exportingTitle.isEmpty ? "..." : "\(exportingTitle)...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            }
+            .padding(32)
+            .background(.ultraThinMaterial)
+            .cornerRadius(20)
+            .shadow(radius: 10)
+        }
+    }
+    
+    private func runExportTask(type: String, action: @escaping () -> URL?) {
+        exportingType = type
+        isExporting = true
+        exportProgress = 0.0
+        
+        HapticManager.shared.impact(style: .medium)
+        
+        // 擬似的なプログレス（プレミアム感を出すため）
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+            exportProgress += 0.2
+            if exportProgress >= 1.0 {
+                timer.invalidate()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    if let url = action() {
+                        HapticManager.shared.success()
+                        switch type {
+                        case "SRT": srtExportItem = IdentifiableURL(url: url)
+                        case "YOMI": yomiExportItem = IdentifiableURL(url: url)
+                        default: audioExportItem = IdentifiableURL(url: url)
+                        }
+                    }
+                    isExporting = false
+                }
+            }
+        }
+    }
+    
+    private var generalSettings: some View {
+        VStack(spacing: 0) {
+            settingsRow(icon: "textformat.size", title: "font_size", color: .green) {
+                HStack(spacing: 12) {
+                    Button { viewModel.adjustFontSize(by: -2) } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title3).foregroundStyle(.green)
+                    }.disabled(viewModel.fontSize <= 12)
+                    
+                    Text("\(Int(viewModel.fontSize))")
+                        .font(.subheadline).monospacedDigit().frame(width: 32)
+                    
+                    Button { viewModel.adjustFontSize(by: 2) } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3).foregroundStyle(.green)
+                    }.disabled(viewModel.fontSize >= 48)
+                }
+            }
+        }
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(12)
+        .padding(.horizontal, 16)
+    }
+    
+    private var exportSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("export").font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+            
+            VStack(spacing: 0) {
+                // Media Export (audio or video)
+                if let url = viewModel.document.source.playbackURL {
+                    exportRow(
+                        icon: "waveform",
+                        title: "settings_export_media_title",
+                        color: .green,
+                        hasExported: hasExportedAudio,
+                        isExporting: isExporting && exportingType == "Media"
+                    ) {
+                        runExportTask(type: "Media") { url }
+                    }
+                    Divider().padding(.leading, 52)
+                }
+                
+                // SRT Export
+                exportRow(
+                    icon: "doc.text",
+                    title: "export_subtitles_srt",
+                    color: .blue,
+                    hasExported: hasExportedSRT,
+                    isExporting: isExporting && exportingType == "SRT"
+                ) {
+                    runExportTask(type: "SRT") {
+                        SubtitleExportService.writeSRTToTempFile(
+                            segments: viewModel.document.segments,
+                            fileName: viewModel.document.source.title
+                        )
+                    }
+                }
+                
+                Divider().padding(.leading, 52)
+                
+                // YOMI Export
+                exportRow(
+                    icon: "character.bubble.fill",
+                    title: "player_export_yomi_title",
+                    color: .orange,
+                    hasExported: hasExportedYomi,
+                    isExporting: isExporting && exportingType == "YOMI"
+                ) {
+                    runExportTask(type: "YOMI") {
+                        SubtitleExportService.writeYomiToTempFile(
+                            document: viewModel.document,
+                            fileName: viewModel.document.source.title
+                        )
+                    }
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+        }
+    }
+    
+    private var importSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("import").font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+            
+            VStack(spacing: 0) {
+                settingsRow(icon: "square.and.arrow.down", title: "import_subtitles_srt", color: .green) {
+                    if viewModel.isImportingSRT {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("select_file") {
+                            importMode = .srt
+                            isFileImporterPresented = true
+                        }
+                        .font(.subheadline).foregroundStyle(.green)
+                    }
+                }
+                
+                Divider().padding(.leading, 52)
+                
+                settingsRow(icon: "square.and.arrow.down.fill", title: "player_import_yomi_title", color: .green) {
+                    if viewModel.isImportingYomi {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("select_file") {
+                            importMode = .yomi
+                            isFileImporterPresented = true
+                        }
+                        .font(.subheadline).foregroundStyle(.green)
+                    }
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+        }
+    }
+    
+    private func exportRow(
+        icon: String,
+        title: LocalizedStringKey,
+        color: Color,
+        hasExported: Bool,
+        isExporting: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).font(.body).foregroundStyle(color).frame(width: 28)
+                Text(title).font(.subheadline)
+                Spacer()
+                if isExporting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(.green)
+                } else if hasExported {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                } else {
+                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isExporting ? Color.green.opacity(0.08) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isExporting)
     }
     
     private var learningSettings: some View {

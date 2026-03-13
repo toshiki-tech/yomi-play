@@ -12,6 +12,7 @@ import Translation
 
 // MARK: - プレーヤー画面ViewModel
 
+@MainActor
 @Observable
 final class PlayerViewModel {
     
@@ -41,6 +42,8 @@ final class PlayerViewModel {
     var editingSegmentID: UUID? = nil
     var editingText: String = ""
     var editingSkipFurigana: Bool = false
+    var editingStartTime: TimeInterval = 0
+    var editingEndTime: TimeInterval = 0
     
     private let furiganaService = CFStringTokenizerFuriganaService()
     private let translationService = TranslationService.shared
@@ -61,8 +64,6 @@ final class PlayerViewModel {
         }
         playerService.setSegments(document.segments)
         playerService.setPlaybackRate(playbackRate)
-        
-        regenerateFuriganaIfNeeded()
     }
     
     /// UserDefaults から保存済みの設定を復元する
@@ -83,7 +84,7 @@ final class PlayerViewModel {
         }
         if d.object(forKey: "fontSize") != nil {
             let stored = d.double(forKey: "fontSize")
-            if stored >= 12 && stored <= 32 { fontSize = stored }
+            if stored >= 12 && stored <= 48 { fontSize = stored }
         }
         if d.object(forKey: "playbackRate") != nil {
             let stored = d.float(forKey: "playbackRate")
@@ -104,33 +105,6 @@ final class PlayerViewModel {
         if preferred.hasPrefix("zh-Hant") || preferred.hasPrefix("zh-TW") || preferred.hasPrefix("zh-HK") { return "zh-Hant" }
         if preferred.hasPrefix("en") { return "en" }
         return "zh-Hans"
-    }
-    
-    /// 保存済みドキュメントの tokens に isKatakana / englishMeaning が入っていない場合、
-    /// 全セグメントの振り仮名を再生成して最新の辞書データを反映する
-    private func regenerateFuriganaIfNeeded() {
-        let needsRegeneration = document.segments.contains { segment in
-            !segment.skipFurigana &&
-            !segment.originalText.isEmpty &&
-            segment.tokens.contains { token in
-                CFStringTokenizerFuriganaService.isKatakanaWord(token.surface) && token.englishMeaning == nil
-            }
-        }
-        guard needsRegeneration else { return }
-        
-        Task {
-            var updated = document.segments
-            for i in updated.indices where !updated[i].skipFurigana {
-                let newTokens = await furiganaService.generateFurigana(for: updated[i].originalText)
-                updated[i].tokens = newTokens
-            }
-            await MainActor.run {
-                document.segments = updated
-                playerService.setSegments(document.segments)
-                saveDocument()
-                print("PlayerViewModel: 振り仮名を再生成しました（外来語辞書反映）")
-            }
-        }
     }
     
     // MARK: - 再生コントロール
@@ -197,6 +171,8 @@ final class PlayerViewModel {
         editingSegmentID = segment.id
         editingText = segment.originalText
         editingSkipFurigana = segment.skipFurigana
+        editingStartTime = segment.startTime
+        editingEndTime = segment.endTime
     }
     
     /// 編集をキャンセルする
@@ -204,43 +180,178 @@ final class PlayerViewModel {
         editingSegmentID = nil
         editingText = ""
         editingSkipFurigana = false
+        editingStartTime = 0
+        editingEndTime = 0
     }
     
     /// 編集を確定し、振り仮名を再生成する
     func confirmEditing() {
         guard let segmentID = editingSegmentID,
               let index = document.segments.firstIndex(where: { $0.id == segmentID }) else {
+            print("PlayerViewModel: 編集対象が見つかりません id=\(String(describing: editingSegmentID))")
             cancelEditing()
             return
         }
         
         let newText = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !newText.isEmpty else {
+            print("PlayerViewModel: 空のテキストのため編集をキャンセルします")
             cancelEditing()
             return
         }
         
         let shouldSkip = editingSkipFurigana
         let segmentIndex = index
+        let duration = playerService.duration
+        let clampedStart = max(0, min(editingStartTime, duration))
+        let clampedEnd = max(clampedStart, min(editingEndTime, duration > 0 ? duration : editingEndTime))
+        
+        print("PlayerViewModel: 編集を確定中... text=\(newText), skip=\(shouldSkip), start=\(clampedStart), end=\(clampedEnd)")
         
         Task {
+            // 1. 新しい振り仮名を生成（非メインスレッド）
             let tokens: [FuriganaToken] = shouldSkip
                 ? []
                 : await furiganaService.generateFurigana(for: newText)
             
+            // 2. メインスレッドでドキュメントを更新して保存
             await MainActor.run {
-                document.segments[segmentIndex].originalText = newText
-                document.segments[segmentIndex].tokens = tokens
-                document.segments[segmentIndex].skipFurigana = shouldSkip
-                // テキストが変わったので翻訳は一旦破棄する
-                document.segments[segmentIndex].translatedText = nil
+                // インデックスガード
+                guard segmentIndex < self.document.segments.count else { return }
                 
-                playerService.setSegments(document.segments)
-                saveDocument()
+                // プロパティを個別に更新
+                self.document.segments[segmentIndex].startTime = clampedStart
+                self.document.segments[segmentIndex].endTime = clampedEnd
+                self.document.segments[segmentIndex].originalText = newText
+                self.document.segments[segmentIndex].tokens = tokens
+                self.document.segments[segmentIndex].skipFurigana = shouldSkip
+                self.document.segments[segmentIndex].translatedText = nil
                 
-                editingSegmentID = nil
-                editingText = ""
-                editingSkipFurigana = false
+                // 再生サービス側も同期
+                self.playerService.setSegments(self.document.segments)
+                
+                // 編集状態リセット
+                self.editingSegmentID = nil
+                self.editingText = ""
+                self.editingSkipFurigana = false
+                self.editingStartTime = 0
+                self.editingEndTime = 0
+                
+                // 即座に保存
+                self.saveDocument()
+                print("PlayerViewModel: 編集内容を適用して保存しました id=\(segmentID)")
+            }
+        }
+    }
+    
+    /// 現在編集中の字幕を削除する
+    func deleteCurrentSegment() {
+        guard let segmentID = editingSegmentID,
+              let index = document.segments.firstIndex(where: { $0.id == segmentID }) else {
+            return
+        }
+        document.segments.remove(at: index)
+        playerService.setSegments(document.segments)
+        cancelEditing()
+        saveDocument()
+        print("PlayerViewModel: セグメントを削除しました id=\(segmentID)")
+    }
+    
+    /// 現在の再生位置で字幕を二つに分割する
+    func splitCurrentSegmentAtCurrentTime() {
+        guard let segmentID = editingSegmentID,
+              let index = document.segments.firstIndex(where: { $0.id == segmentID }) else {
+            return
+        }
+        let segment = document.segments[index]
+        let t = playerService.currentTime
+        guard t > segment.startTime, t < segment.endTime else {
+            print("PlayerViewModel: 分割位置がセグメント範囲外のため処理しません")
+            return
+        }
+        
+        let first = TranscriptSegment(
+            id: segment.id,
+            startTime: segment.startTime,
+            endTime: t,
+            originalText: segment.originalText,
+            tokens: segment.tokens,
+            confidence: segment.confidence,
+            skipFurigana: segment.skipFurigana,
+            translatedText: segment.translatedText
+        )
+        let second = TranscriptSegment(
+            startTime: t,
+            endTime: segment.endTime,
+            originalText: segment.originalText,
+            tokens: segment.tokens,
+            confidence: segment.confidence,
+            skipFurigana: segment.skipFurigana,
+            translatedText: segment.translatedText
+        )
+        
+        document.segments.remove(at: index)
+        document.segments.insert(contentsOf: [first, second], at: index)
+        playerService.setSegments(document.segments)
+        
+        // 新しい後半セグメントを編集中として扱う
+        editingSegmentID = second.id
+        editingStartTime = second.startTime
+        editingEndTime = second.endTime
+        editingText = second.originalText
+        editingSkipFurigana = second.skipFurigana
+        
+        saveDocument()
+        print("PlayerViewModel: セグメントを分割しました id=\(segmentID) at t=\(t)")
+    }
+    
+    /// 現在編集中の字幕を前の字幕と結合する
+    func mergeCurrentWithPrevious() {
+        guard let segmentID = editingSegmentID,
+              let index = document.segments.firstIndex(where: { $0.id == segmentID }),
+              index > 0 else {
+            return
+        }
+        
+        let prev = document.segments[index - 1]
+        let current = document.segments[index]
+        
+        let mergedStart = min(prev.startTime, current.startTime)
+        let mergedEnd = max(prev.endTime, current.endTime)
+        let mergedText = (prev.originalText + " " + current.originalText).trimmingCharacters(in: .whitespacesAndNewlines)
+        let shouldSkip = prev.skipFurigana && current.skipFurigana
+        let targetIndex = index - 1
+        
+        Task {
+            let tokens: [FuriganaToken] = shouldSkip
+                ? []
+                : await furiganaService.generateFurigana(for: mergedText)
+            
+            await MainActor.run {
+                guard targetIndex < self.document.segments.count else { return }
+                self.document.segments[targetIndex].startTime = mergedStart
+                self.document.segments[targetIndex].endTime = mergedEnd
+                self.document.segments[targetIndex].originalText = mergedText
+                self.document.segments[targetIndex].tokens = tokens
+                self.document.segments[targetIndex].skipFurigana = shouldSkip
+                self.document.segments[targetIndex].translatedText = nil
+                
+                // 現在のセグメントを削除
+                if index < self.document.segments.count {
+                    self.document.segments.remove(at: index)
+                }
+                
+                self.playerService.setSegments(self.document.segments)
+                
+                // 結合後のセグメントを編集中として扱う
+                self.editingSegmentID = self.document.segments[targetIndex].id
+                self.editingStartTime = mergedStart
+                self.editingEndTime = mergedEnd
+                self.editingText = mergedText
+                self.editingSkipFurigana = shouldSkip
+                
+                self.saveDocument()
+                print("PlayerViewModel: セグメントを結合しました prev=\(prev.id), current=\(segmentID)")
             }
         }
     }
@@ -386,7 +497,7 @@ final class PlayerViewModel {
     // MARK: - 設定
     
     func adjustFontSize(by delta: CGFloat) {
-        fontSize = max(12, min(32, fontSize + delta))
+        fontSize = max(12, min(48, fontSize + delta))
     }
     
     // MARK: - ヘルパー

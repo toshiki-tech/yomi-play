@@ -19,10 +19,15 @@ struct TranscriptView: View {
     let editingSegmentID: UUID?
     @Binding var editingText: String
     @Binding var editingSkipFurigana: Bool
+    @Binding var editingStartTime: TimeInterval
+    @Binding var editingEndTime: TimeInterval
     let onSegmentTapped: (TranscriptSegment) -> Void
     let onEditTapped: (TranscriptSegment) -> Void
     let onEditConfirmed: () -> Void
     let onEditCancelled: () -> Void
+    let onDeleteSegment: () -> Void
+    let onSplitSegment: () -> Void
+    let onMergeWithPrevious: () -> Void
     
     @FocusState private var focusedSegmentID: UUID?
     
@@ -30,7 +35,7 @@ struct TranscriptView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 4) {
-                    ForEach(segments) { segment in
+                    ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
                         SegmentRowView(
                             segment: segment,
                             isActive: segment.id == currentSegmentID,
@@ -42,11 +47,17 @@ struct TranscriptView: View {
                             fontSize: fontSize,
                             editingText: $editingText,
                             editingSkipFurigana: $editingSkipFurigana,
+                            editingStartTime: $editingStartTime,
+                            editingEndTime: $editingEndTime,
                             focusedSegmentID: $focusedSegmentID,
                             onTapped: { onSegmentTapped(segment) },
                             onEditTapped: { onEditTapped(segment) },
                             onEditConfirmed: onEditConfirmed,
-                            onEditCancelled: onEditCancelled
+                            onEditCancelled: onEditCancelled,
+                            onDeleteSegment: onDeleteSegment,
+                            onSplitSegment: onSplitSegment,
+                            onMergeWithPrevious: onMergeWithPrevious,
+                            canMergeWithPrevious: index > 0
                         )
                         .id(segment.id)
                     }
@@ -64,12 +75,12 @@ struct TranscriptView: View {
             }
             .onChange(of: editingSegmentID) { _, newID in
                 if let id = newID {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            proxy.scrollTo(id, anchor: .center)
-                        }
+                    // 編集開始時にスクロールとフォーカスを制御
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(id, anchor: .center)
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    // アニメーション完了を待たずに早めにフォーカスを当てる
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         focusedSegmentID = id
                     }
                 } else {
@@ -93,11 +104,17 @@ struct SegmentRowView: View {
     let fontSize: CGFloat
     @Binding var editingText: String
     @Binding var editingSkipFurigana: Bool
+    @Binding var editingStartTime: TimeInterval
+    @Binding var editingEndTime: TimeInterval
     var focusedSegmentID: FocusState<UUID?>.Binding
     let onTapped: () -> Void
     let onEditTapped: () -> Void
     let onEditConfirmed: () -> Void
     let onEditCancelled: () -> Void
+    let onDeleteSegment: () -> Void
+    let onSplitSegment: () -> Void
+    let onMergeWithPrevious: () -> Void
+    let canMergeWithPrevious: Bool
     
     @State private var isLongPressing = false
     
@@ -176,10 +193,57 @@ struct SegmentRowView: View {
     
     private var editingBody: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(formatTimeRange(start: segment.startTime, end: segment.endTime))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Start")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Button {
+                            editingStartTime = max(0, editingStartTime - 0.1)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(AudioPlayerService.formatTime(editingStartTime))
+                            .font(.caption2)
+                            .monospacedDigit()
+                        Button {
+                            editingStartTime += 0.1
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("End")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Button {
+                            editingEndTime = max(0, editingEndTime - 0.1)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(AudioPlayerService.formatTime(editingEndTime))
+                            .font(.caption2)
+                            .monospacedDigit()
+                        Button {
+                            editingEndTime += 0.1
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
             
             TextField("enter_subtitle_text", text: $editingText, axis: .vertical)
                 .font(.system(size: fontSize, weight: .medium))
@@ -201,7 +265,20 @@ struct SegmentRowView: View {
             .tint(.orange)
             
             HStack(spacing: 12) {
+                Button(role: .destructive, action: onDeleteSegment) {
+                    Text("delete")
+                        .font(.caption)
+                }
                 Spacer()
+                Button(action: onSplitSegment) {
+                    Text("split_segment")
+                        .font(.caption)
+                }
+                Button(action: onMergeWithPrevious) {
+                    Text("merge_with_previous")
+                        .font(.caption)
+                }
+                .disabled(!canMergeWithPrevious)
                 Button(action: onEditCancelled) {
                     Text("cancel")
                         .font(.caption)
@@ -224,11 +301,9 @@ struct SegmentRowView: View {
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green, lineWidth: 2))
-    }
-    
-    private func formatTimeRange(start: TimeInterval, end: TimeInterval) -> String {
-        let startStr = AudioPlayerService.formatTime(start)
-        let endStr = AudioPlayerService.formatTime(end)
-        return "\(startStr) - \(endStr)"
+        .onTapGesture {
+            // 背景タップでも確実にフォーカスを当てる（キーボード表示用）
+            focusedSegmentID.wrappedValue = segment.id
+        }
     }
 }

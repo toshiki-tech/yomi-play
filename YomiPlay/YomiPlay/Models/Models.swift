@@ -113,8 +113,8 @@ struct FuriganaToken: Identifiable, Codable, Equatable, Hashable {
 /// 一文の字幕データ（タイムスタンプ・テキスト・振り仮名を含む）
 struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
-    let startTime: TimeInterval   // 開始時間（秒）
-    let endTime: TimeInterval     // 終了時間（秒）
+    var startTime: TimeInterval   // 開始時間（秒）
+    var endTime: TimeInterval     // 終了時間（秒）
     var originalText: String      // 元のテキスト（ユーザーが編集可能）
     var tokens: [FuriganaToken]   // 振り仮名トークンの配列
     var confidence: Float?        // 認識信頼度（オプション）

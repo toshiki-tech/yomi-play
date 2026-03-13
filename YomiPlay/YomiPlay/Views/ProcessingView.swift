@@ -33,16 +33,17 @@ struct ProcessingView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(viewModel.state.isProcessing)
         .onAppear {
-            viewModel.startProcessing(source: audioSource)
+            // 防止 SwiftUI 重复触发 onAppear 时重复开始处理，导致生成多条记录
+            if viewModel.state == .idle {
+                viewModel.startProcessing(source: audioSource)
+            }
         }
         .onChange(of: viewModel.isCompleted) { _, completed in
             if completed, let document = viewModel.document {
-                // 処理完了：ProcessingView を PlayerView に置き換える
-                // 1. ProcessingView（自分自身）をスタックから削除
-                // 2. PlayerView をスタックにプッシュ
-                // 結果：PlayerView の「戻る」ボタンで直接 HomeView に戻る
-                navigationPath.removeLast()
-                navigationPath.append(AppDestination.player(document))
+                if !navigationPath.isEmpty {
+                    navigationPath.removeLast()
+                    navigationPath.append(AppDestination.player(documents: [document], currentIndex: 0))
+                }
             }
         }
     }
@@ -104,7 +105,9 @@ struct ProcessingView: View {
                         .foregroundStyle(.secondary)
                     
                     Button {
-                        navigationPath.removeLast()
+                        if !navigationPath.isEmpty {
+                            navigationPath.removeLast()
+                        }
                     } label: {
                         Label("back_to_home", systemImage: "house")
                             .font(.headline)

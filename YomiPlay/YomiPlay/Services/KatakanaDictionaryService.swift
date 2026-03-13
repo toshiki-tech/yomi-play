@@ -36,7 +36,31 @@ final class KatakanaDictionaryService {
     
     /// 片仮名語 surface に対応する英語原綴りを返す
     func lookup(_ surface: String) -> String? {
-        dictionary[surface]
+        guard let raw = dictionary[surface] else { return nil }
+        return Self.simplifiedEnglish(from: raw)
+    }
+    
+    /// 辞書内の英語訳から、UI に表示するための短いラベルを生成する
+    private static func simplifiedEnglish(from text: String) -> String {
+        var result = text
+        
+        // カンマ以降や括弧内は説明が長くなりがちなので削る
+        if let parenIndex = result.firstIndex(of: "(") {
+            result = String(result[..<parenIndex])
+        }
+        if let commaIndex = result.firstIndex(of: ",") {
+            result = String(result[..<commaIndex])
+        }
+        
+        result = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 依然として長い場合は、先頭の数単語だけを残す
+        let words = result.split(whereSeparator: { $0.isWhitespace })
+        if words.count > 3 {
+            result = words.prefix(3).joined(separator: " ")
+        }
+        
+        return result
     }
 }
 

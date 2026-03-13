@@ -13,7 +13,7 @@ import SwiftUI
 /// ナビゲーション先を表す列挙型
 enum AppDestination: Hashable {
     case processing(AudioSource)
-    case player(TranscriptDocument)
+    case player(documents: [TranscriptDocument], currentIndex: Int)
 }
 
 // MARK: - ルートビュー
@@ -32,9 +32,10 @@ struct ContentView: View {
                             audioSource: source,
                             navigationPath: $navigationPath
                         )
-                    case .player(let document):
+                    case .player(let documents, let currentIndex):
                         PlayerView(
-                            document: document,
+                            documents: documents,
+                            currentIndex: currentIndex,
                             navigationPath: $navigationPath
                         )
                     }
