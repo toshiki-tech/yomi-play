@@ -27,6 +27,8 @@ struct AudioSource: Identifiable, Codable, Hashable {
     var duration: TimeInterval?
     /// SRT ファイルの Documents からの相対パス（インポート時に設定）
     var srtRelativeFilePath: String?
+    /// 元の動画ファイルの Documents からの相対パス（動画インポート時に設定）
+    var videoRelativeFilePath: String?
     
     init(
         id: UUID = UUID(),
@@ -36,7 +38,8 @@ struct AudioSource: Identifiable, Codable, Hashable {
         relativeFilePath: String? = nil,
         title: String = "",
         duration: TimeInterval? = nil,
-        srtRelativeFilePath: String? = nil
+        srtRelativeFilePath: String? = nil,
+        videoRelativeFilePath: String? = nil
     ) {
         self.id = id
         self.type = type
@@ -46,6 +49,7 @@ struct AudioSource: Identifiable, Codable, Hashable {
         self.title = title
         self.duration = duration
         self.srtRelativeFilePath = srtRelativeFilePath
+        self.videoRelativeFilePath = videoRelativeFilePath
     }
     
     /// 再生用URLを返す（ローカルは相対パスから再構築を優先）
@@ -63,6 +67,15 @@ struct AudioSource: Identifiable, Codable, Hashable {
         case .remote:
             return remoteURL
         }
+    }
+    
+    /// 元の動画ファイルの URL を返す（Documents 内の相対パスから解決）
+    var videoPlaybackURL: URL? {
+        guard let rel = videoRelativeFilePath, !rel.isEmpty,
+              let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        else { return nil }
+        let resolved = docs.appendingPathComponent(rel)
+        return FileManager.default.fileExists(atPath: resolved.path) ? resolved : nil
     }
     
     /// SRT ファイルの URL を返す（Documents 内の相対パスから解決）

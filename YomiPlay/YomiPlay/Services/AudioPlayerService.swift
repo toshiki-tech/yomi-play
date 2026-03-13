@@ -42,9 +42,12 @@ final class AudioPlayerService {
     /// 再生が最後まで到達したときに呼ばれるコールバック（プレイリスト制御用）
     var onPlaybackEnded: (() -> Void)?
     
-    // MARK: - 内部プロパティ
+    // MARK: - 公開プロパティ（VideoPlayer との共有用）
     
-    private var player: AVPlayer?
+    /// VideoPlayer と AVPlayer インスタンスを共有するために公開
+    private(set) var player: AVPlayer?
+    
+    // MARK: - 内部プロパティ
     private var timeObserver: Any?
     private var segments: [TranscriptSegment] = []
     private var statusObserver: NSKeyValueObservation?

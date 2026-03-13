@@ -7,8 +7,29 @@
 //
 
 import SwiftUI
+import AVKit
 import Translation
 import UniformTypeIdentifiers
+
+// MARK: - AVPlayer ネイティブコントロール非表示ラッパー
+
+private struct VideoPlayerView: UIViewControllerRepresentable {
+    let player: AVPlayer
+    
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let vc = AVPlayerViewController()
+        vc.player = player
+        vc.showsPlaybackControls = false
+        vc.videoGravity = .resizeAspect
+        return vc
+    }
+    
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        if uiViewController.player !== player {
+            uiViewController.player = player
+        }
+    }
+}
 
 // MARK: - プレーヤー画面
 
@@ -32,6 +53,14 @@ struct PlayerView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            // 動画エリア（動画ファイルの場合のみ表示）
+            if viewModel.videoPlaybackURL != nil, let player = viewModel.playerService.player {
+                VideoPlayerView(player: player)
+                    .aspectRatio(16/9, contentMode: .fit)
+                    .background(Color.black)
+                    .frame(maxWidth: .infinity)
+            }
+            
             // 字幕エリア
             transcriptSection
             

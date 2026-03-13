@@ -51,6 +51,11 @@ final class PlayerViewModel {
     /// 翻訳中かどうか
     var isTranslating: Bool = false
     
+    /// 元の動画ファイルの URL（動画インポート時のみ設定される）
+    var videoPlaybackURL: URL? {
+        document.source.videoPlaybackURL
+    }
+    
     // MARK: - 初期化
     
     init(document: TranscriptDocument) {
@@ -59,7 +64,9 @@ final class PlayerViewModel {
         
         restoreSettings()
         
-        if let url = document.source.playbackURL {
+        // 動画がある場合は動画ファイルをロード（映像＋音声を統一AVPlayerで管理）
+        let mediaURL = document.source.videoPlaybackURL ?? document.source.playbackURL
+        if let url = mediaURL {
             playerService.loadAudio(from: url)
         }
         playerService.setSegments(document.segments)

@@ -292,7 +292,8 @@ final class HomeViewModel {
                         type: .local,
                         localURL: outputURL,
                         relativeFilePath: outputURL.lastPathComponent,
-                        title: title
+                        title: title,
+                        videoRelativeFilePath: sourceURL.lastPathComponent
                     ))
                 }
             } catch {
