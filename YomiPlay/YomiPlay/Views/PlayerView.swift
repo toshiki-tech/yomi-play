@@ -18,7 +18,6 @@ struct PlayerView: View {
     @State private var playlist: [TranscriptDocument]
     @State private var currentIndex: Int
     @State private var showSettings: Bool = false
-    @State private var hasRestoredPosition: Bool = false
     @State private var shouldAutoPlayOnReady: Bool = false
     @Environment(\.dismiss) private var dismiss
     
@@ -78,12 +77,10 @@ struct PlayerView: View {
             viewModel.savePlaybackPosition()
         }
         .onChange(of: viewModel.playerService.isAudioReady) { _, ready in
-            guard ready, !hasRestoredPosition else { return }
-            hasRestoredPosition = true
-            if let pos = viewModel.document.lastPlaybackPosition, pos > 0 {
-                viewModel.seek(to: pos)
-            }
+            guard ready else { return }
             if shouldAutoPlayOnReady {
+                // 自動で次の記録へ進んだ場合のみ、読み込み完了後に再生開始
+                viewModel.seek(to: 0)
                 viewModel.togglePlayPause()
                 shouldAutoPlayOnReady = false
             }
@@ -167,7 +164,6 @@ struct PlayerView: View {
         let nextDocument = playlist[nextIndex]
         currentIndex = nextIndex
         viewModel = PlayerViewModel(document: nextDocument)
-        hasRestoredPosition = false
         shouldAutoPlayOnReady = true
         // onPlaybackEnded ハンドラを新しいプレイヤーに再設定
         viewModel.playerService.onPlaybackEnded = {
