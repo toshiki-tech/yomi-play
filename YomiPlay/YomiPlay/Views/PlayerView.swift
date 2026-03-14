@@ -55,10 +55,22 @@ struct PlayerView: View {
         VStack(spacing: 0) {
             // 動画エリア（動画ファイルの場合のみ表示）
             if viewModel.videoPlaybackURL != nil, let player = viewModel.playerService.player {
-                VideoPlayerView(player: player)
-                    .aspectRatio(16/9, contentMode: .fit)
-                    .background(Color.black)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    VideoPlayerView(player: player)
+                        .aspectRatio(16/9, contentMode: .fit)
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+                }
+                .background(Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color(.systemGray5).opacity(0.8), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
             }
             
             // 字幕エリア
