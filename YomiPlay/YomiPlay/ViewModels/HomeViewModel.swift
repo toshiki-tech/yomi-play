@@ -44,6 +44,18 @@ enum DocumentSortOrder: String, CaseIterable, Hashable {
     }
 }
 
+/// 記録一覧のグループ（フォルダ or 未グループ）
+struct GroupedLibraryItem: Identifiable {
+    let id: String
+    let folder: TranscriptFolder?
+    let documents: [TranscriptDocument]
+    init(folder: TranscriptFolder?, documents: [TranscriptDocument]) {
+        self.folder = folder
+        self.documents = documents
+        self.id = folder?.id.uuidString ?? "uncategorized"
+    }
+}
+
 @Observable
 final class HomeViewModel {
     
@@ -59,14 +71,22 @@ final class HomeViewModel {
         case audioVideo
         case srt
         case yomi
+        case zip
     }
     var fileImportMode: FileImportMode = .audioVideo
+    
+    /// ZIP インポート処理中
+    var isImportingZip: Bool = false
+    var zipImportProgressMessage: String = ""
     
     // 検索・フィルタリング
     var searchText: String = ""
     /// 一覧の並び順
     var sortOrder: DocumentSortOrder = .dateNewestFirst
     private var allSavedDocuments: [TranscriptDocument] = []
+    private var allFolders: [TranscriptFolder] = []
+    /// フォルダ一覧（UI 用の読み取り専用）
+    var folders: [TranscriptFolder] { allFolders }
     
     // ナビゲーション
     var selectedAudioSource: AudioSource?
@@ -83,13 +103,36 @@ final class HomeViewModel {
     var newTitle: String = ""
     var showRenameAlert: Bool = false
     
+    // フォルダ重命名
+    var folderToRename: TranscriptFolder?
+    var newFolderName: String = ""
+    var showFolderRenameAlert: Bool = false
+    
+    // フォルダ削除確認（削除対象を保持）
+    var folderToDelete: TranscriptFolder?
+    var showDeleteFolderConfirmation: Bool = false
+    
     init() {
         loadSavedDocuments()
     }
     
-    /// 保存済みドキュメントを読み込む
+    /// 保存済みドキュメントとフォルダを読み込む
     func loadSavedDocuments() {
         allSavedDocuments = DocumentStore.shared.loadAll()
+        allFolders = DocumentStore.shared.loadAllFolders()
+    }
+    
+    /// フォルダ＋未グループでグループ化した一覧（検索・並び順適用済み）
+    var groupedLibrary: [GroupedLibraryItem] {
+        let docs = filteredDocuments
+        var result: [GroupedLibraryItem] = []
+        for f in allFolders {
+            let group = docs.filter { $0.folderId == f.id }
+            if !group.isEmpty { result.append(GroupedLibraryItem(folder: f, documents: group)) }
+        }
+        let uncategorized = docs.filter { $0.folderId == nil }
+        if !uncategorized.isEmpty { result.append(GroupedLibraryItem(folder: nil, documents: uncategorized)) }
+        return result
     }
     
     /// 検索フィルタリング＋並び順適用済みのドキュメント一覧
@@ -109,6 +152,94 @@ final class HomeViewModel {
     
     /// 保存済みが 0 件か（空状態ガイド表示用）
     var hasNoSavedDocuments: Bool { allSavedDocuments.isEmpty }
+    
+    /// 削除確認用にフォルダを指定し、確認ダイアログを表示する
+    func requestDeleteFolder(_ folder: TranscriptFolder) {
+        folderToDelete = folder
+        showDeleteFolderConfirmation = true
+    }
+    
+    /// フォルダを削除する（配下のドキュメントは未グループに移す）
+    func deleteFolder(_ folder: TranscriptFolder) {
+        var updated = allSavedDocuments
+        for i in updated.indices where updated[i].folderId == folder.id {
+            updated[i].folderId = nil
+            try? DocumentStore.shared.save(updated[i])
+        }
+        try? DocumentStore.shared.deleteFolder(id: folder.id)
+        folderToDelete = nil
+        showDeleteFolderConfirmation = false
+        loadSavedDocuments()
+    }
+    
+    /// 指定フォルダ内のドキュメント数
+    func documentCount(inFolderId folderId: UUID?) -> Int {
+        allSavedDocuments.filter { $0.folderId == folderId }.count
+    }
+    
+    /// 指定フォルダ内のドキュメント一覧（folderId == nil で未分组）
+    func documents(inFolderId folderId: UUID?) -> [TranscriptDocument] {
+        filteredDocuments.filter { $0.folderId == folderId }
+    }
+    
+    /// フォルダ ID からフォルダを取得
+    func folder(byId id: UUID) -> TranscriptFolder? {
+        allFolders.first { $0.id == id }
+    }
+    
+    /// フォルダ表示名（nil = 未分组）
+    func folderDisplayName(for folderId: UUID?) -> String {
+        guard let id = folderId, let f = folder(byId: id) else { return String(localized: "uncategorized") }
+        return f.name
+    }
+    
+    /// 新規フォルダを作成する
+    func createFolder(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let folder = TranscriptFolder(name: trimmed)
+        do {
+            try DocumentStore.shared.addFolder(folder)
+            loadSavedDocuments()
+        } catch {
+            showErrorMessage(error.localizedDescription)
+        }
+    }
+    
+    /// ドキュメントを指定フォルダに移動する（nil = 未分组）
+    func moveDocument(_ document: TranscriptDocument, toFolderId folderId: UUID?) {
+        guard var updated = allSavedDocuments.first(where: { $0.id == document.id }) else { return }
+        updated.folderId = folderId
+        do {
+            try DocumentStore.shared.save(updated)
+            loadSavedDocuments()
+        } catch {
+            showErrorMessage(error.localizedDescription)
+        }
+    }
+    
+    /// フォルダ名の変更を開始
+    func startRenamingFolder(_ folder: TranscriptFolder) {
+        folderToRename = folder
+        newFolderName = folder.name
+        showFolderRenameAlert = true
+    }
+    
+    /// フォルダ名の変更を確定
+    func confirmFolderRename() {
+        guard var folder = folderToRename else { return }
+        let name = newFolderName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        folder.name = name
+        do {
+            try DocumentStore.shared.updateFolder(folder)
+            loadSavedDocuments()
+        } catch {
+            showErrorMessage(error.localizedDescription)
+        }
+        folderToRename = nil
+        showFolderRenameAlert = false
+    }
     
     /// ドキュメントを削除する
     func deleteDocument(_ document: TranscriptDocument) {
@@ -322,6 +453,120 @@ final class HomeViewModel {
     private func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+    }
+    
+    // MARK: - ZIP インポート
+    
+    private static let mediaExtensions = ["mp4", "mov", "m4v", "mp3", "m4a", "wav", "aiff", "avi", "mkv", "webm"]
+    private static let srtExtension = "srt"
+    private static let yomiExtensions = ["yomi", "json"]
+    
+    /// ZIP を解凍し、メディア＋字幕を同名でマッチしてフォルダとドキュメントを作成する
+    func handleZipImport(url: URL) {
+        isImportingZip = true
+        zipImportProgressMessage = String(localized: "extracting_zip")
+        let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let folderName = url.deletingPathExtension().lastPathComponent
+        if folderName.isEmpty {
+            isImportingZip = false
+            showErrorMessage(String(localized: "invalid_zip_file"))
+            return
+        }
+        Task {
+            do {
+                let destDir = try ZipExtractService.extract(zipURL: url, destinationParent: docsURL, folderName: folderName)
+                await MainActor.run { zipImportProgressMessage = String(localized: "matching_files") }
+                
+                let contents = try FileManager.default.contentsOfDirectory(at: destDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+                var mediaByBase: [String: URL] = [:]
+                var srtByBase: [String: URL] = [:]
+                var yomiByBase: [String: URL] = [:]
+                let impRel = "Imports/\(folderName)"
+                for url in contents {
+                    let ext = url.pathExtension.lowercased()
+                    let base = url.deletingPathExtension().lastPathComponent
+                    if Self.mediaExtensions.contains(ext) {
+                        mediaByBase[base] = url
+                    } else if ext == Self.srtExtension {
+                        srtByBase[base] = url
+                    } else if Self.yomiExtensions.contains(ext) {
+                        yomiByBase[base] = url
+                    }
+                }
+                
+                let folder = TranscriptFolder(name: folderName)
+                try DocumentStore.shared.addFolder(folder)
+                let furiganaService = CFStringTokenizerFuriganaService()
+                var created = 0
+                let baseNames = Set(mediaByBase.keys).sorted()
+                for base in baseNames {
+                    guard let mediaURL = mediaByBase[base] else { continue }
+                    let relPath = "\(impRel)/\(mediaURL.lastPathComponent)"
+                    let title = base
+                    var doc: TranscriptDocument?
+                    // 配对规则：仅 .srt → 用 .srt；仅 .yomi → 用 .yomi；同时有 .srt 与 .yomi → 优先 .yomi
+                    let hasYomi = yomiByBase[base] != nil
+                    let hasSrt = srtByBase[base] != nil
+                    if hasYomi {
+                        // 有 .yomi（无论是否同时有 .srt，都优先用 .yomi）
+                        let yomiURL = yomiByBase[base]!
+                        let imported = try SubtitleExportService.readYomiFile(from: yomiURL)
+                        var source = AudioSource(
+                            type: .local,
+                            localURL: mediaURL,
+                            relativeFilePath: relPath,
+                            title: title
+                        )
+                        if isVideoFile(url: mediaURL) {
+                            source.videoRelativeFilePath = relPath
+                        }
+                        doc = TranscriptDocument(source: source, segments: imported.segments, folderId: folder.id)
+                    } else if hasSrt {
+                        // 仅有 .srt（无 .yomi 时用 .srt）
+                        let srtURL = srtByBase[base]!
+                        let srtSegments = try SubtitleImportService.parseSRT(from: srtURL)
+                        var segments: [TranscriptSegment] = []
+                        for seg in srtSegments {
+                            let tokens = await furiganaService.generateFurigana(for: seg.text)
+                            segments.append(TranscriptSegment(
+                                startTime: seg.startTime,
+                                endTime: seg.endTime,
+                                originalText: seg.text,
+                                tokens: tokens
+                            ))
+                        }
+                        var source = AudioSource(
+                            type: .local,
+                            localURL: mediaURL,
+                            relativeFilePath: relPath,
+                            title: title
+                        )
+                        if isVideoFile(url: mediaURL) {
+                            source.videoRelativeFilePath = relPath
+                        }
+                        doc = TranscriptDocument(source: source, segments: segments, folderId: folder.id)
+                    }
+                    if let d = doc {
+                        try DocumentStore.shared.save(d)
+                        created += 1
+                    }
+                }
+                await MainActor.run {
+                    loadSavedDocuments()
+                    isImportingZip = false
+                    zipImportProgressMessage = ""
+                    if created == 0 {
+                        showErrorMessage(String(localized: "zip_no_matching_pairs"))
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isImportingZip = false
+                    zipImportProgressMessage = ""
+                    showErrorMessage(String(localized: "zip_import_error") + ": " + error.localizedDescription)
+                }
+            }
+        }
     }
 }
 

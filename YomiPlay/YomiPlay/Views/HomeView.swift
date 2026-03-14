@@ -12,7 +12,7 @@ import PhotosUI
 
 struct HomeView: View {
     @Binding var navigationPath: NavigationPath
-    @State private var viewModel = HomeViewModel()
+    @Bindable var viewModel: HomeViewModel
     
     // タブの選択状態
     @State private var selectedTab = 0
@@ -51,6 +51,7 @@ struct HomeView: View {
                 case .audioVideo: return [.mp3, .mpeg4Audio, .wav, .aiff, .audio, .mpeg4Movie, .quickTimeMovie, .movie, .video]
                 case .srt: return [.plainText]
                 case .yomi: return [.yomiDocument, .json]
+                case .zip: return [.zip]
                 }
             }(),
             allowsMultipleSelection: false
@@ -63,6 +64,8 @@ struct HomeView: View {
                     viewModel.attachSRT(url: url)
                 case .yomi:
                     viewModel.attachYomi(url: url)
+                case .zip:
+                    viewModel.handleZipImport(url: url)
                 }
             }
         }
@@ -85,9 +88,22 @@ struct HomeView: View {
             Button("cancel", role: .cancel) { viewModel.documentToRename = nil }
             Button("save") { viewModel.confirmRename() }
         }
+        .alert("rename_folder", isPresented: $viewModel.showFolderRenameAlert) {
+            TextField("folder_name", text: $viewModel.newFolderName)
+            Button("cancel", role: .cancel) { viewModel.folderToRename = nil }
+            Button("save") { viewModel.confirmFolderRename() }
+                .disabled(viewModel.newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
+        } message: {
+            Text("rename_folder_message")
+        }
         .overlay {
             if viewModel.isLoadingVideo {
                 loadingOverlay
+            }
+        }
+        .overlay {
+            if viewModel.isImportingZip {
+                zipImportOverlay
             }
         }
     }
@@ -98,6 +114,17 @@ struct HomeView: View {
             VStack(spacing: 16) {
                 ProgressView().scaleEffect(1.5).tint(.green)
                 Text("loading_video").font(.headline).foregroundStyle(.white)
+            }
+            .padding(32).background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
+        }
+    }
+    
+    private var zipImportOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.5).ignoresSafeArea()
+            VStack(spacing: 16) {
+                ProgressView().scaleEffect(1.5).tint(.orange)
+                Text(viewModel.zipImportProgressMessage).font(.headline).foregroundStyle(.white)
             }
             .padding(32).background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
         }

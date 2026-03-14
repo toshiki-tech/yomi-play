@@ -162,6 +162,21 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     }
 }
 
+// MARK: - 学習フォルダ（ZIP インポート等でグループ化）
+
+/// 記録をグループ化するフォルダ（ZIP インポート時に自動作成）
+struct TranscriptFolder: Identifiable, Codable, Hashable {
+    let id: UUID
+    var name: String
+    let createdAt: Date
+    
+    init(id: UUID = UUID(), name: String, createdAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+    }
+}
+
 // MARK: - 字幕ドキュメント
 
 /// 音声ファイルに対応する字幕全体
@@ -172,19 +187,23 @@ struct TranscriptDocument: Identifiable, Codable, Hashable {
     let createdAt: Date
     /// 最後に再生した位置（秒）。次回開いたときに復元する
     var lastPlaybackPosition: TimeInterval?
+    /// 所属フォルダ ID（nil の場合は未グループ）
+    var folderId: UUID?
     
     init(
         id: UUID = UUID(),
         source: AudioSource,
         segments: [TranscriptSegment] = [],
         createdAt: Date = Date(),
-        lastPlaybackPosition: TimeInterval? = nil
+        lastPlaybackPosition: TimeInterval? = nil,
+        folderId: UUID? = nil
     ) {
         self.id = id
         self.source = source
         self.segments = segments
         self.createdAt = createdAt
         self.lastPlaybackPosition = lastPlaybackPosition
+        self.folderId = folderId
     }
 }
 

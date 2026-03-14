@@ -23,6 +23,8 @@ final class DocumentStore: @unchecked Sendable {
         return dir
     }
     
+    private var foldersFileURL: URL { storeDirectory.appendingPathComponent("folders.json") }
+    
     private init() {}
     
     // MARK: - 保存
@@ -100,5 +102,47 @@ final class DocumentStore: @unchecked Sendable {
         for file in files {
             try FileManager.default.removeItem(at: file)
         }
+    }
+    
+    // MARK: - フォルダ
+    
+    /// 全フォルダを読み込む
+    func loadAllFolders() -> [TranscriptFolder] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? Data(contentsOf: foldersFileURL),
+              let folders = try? decoder.decode([TranscriptFolder].self, from: data)
+        else { return [] }
+        return folders.sorted { $0.createdAt > $1.createdAt }
+    }
+    
+    /// フォルダ一覧を保存する
+    func saveFolders(_ folders: [TranscriptFolder]) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = .prettyPrinted
+        let data = try encoder.encode(folders)
+        try data.write(to: foldersFileURL)
+    }
+    
+    /// フォルダを追加する
+    func addFolder(_ folder: TranscriptFolder) throws {
+        var folders = loadAllFolders()
+        folders.insert(folder, at: 0)
+        try saveFolders(folders)
+    }
+    
+    /// フォルダを削除する（ドキュメントの folderId は呼び出し側で nil にすること）
+    func deleteFolder(id: UUID) throws {
+        var folders = loadAllFolders().filter { $0.id != id }
+        try saveFolders(folders)
+    }
+    
+    /// フォルダ名を更新する
+    func updateFolder(_ folder: TranscriptFolder) throws {
+        var folders = loadAllFolders()
+        guard let idx = folders.firstIndex(where: { $0.id == folder.id }) else { return }
+        folders[idx] = folder
+        try saveFolders(folders)
     }
 }

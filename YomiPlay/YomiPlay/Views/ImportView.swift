@@ -44,6 +44,7 @@ struct ImportView: View {
                 
                 VStack(spacing: 16) {
                     fileImportSection
+                    zipImportSection
                     photoLibrarySection
                 }
                 
@@ -197,6 +198,33 @@ struct ImportView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("select_from_files").font(.headline)
                     Text("mp3, m4a, wav, mp4, mov").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var zipImportSection: some View {
+        Button {
+            viewModel.fileImportMode = .zip
+            viewModel.isFileImporterPresented = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.orange.opacity(0.1))
+                    Image(systemName: "doc.zipper")
+                        .font(.title2)
+                        .foregroundStyle(.orange)
+                }
+                .frame(width: 50, height: 50)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("import_from_zip").font(.headline)
+                    Text("import_zip_description").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)

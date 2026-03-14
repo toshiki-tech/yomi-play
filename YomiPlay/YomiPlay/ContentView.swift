@@ -14,6 +14,8 @@ import SwiftUI
 enum AppDestination: Hashable {
     case processing(AudioSource)
     case player(documents: [TranscriptDocument], currentIndex: Int)
+    /// フォルダ内一覧（nil = 未分组）
+    case folder(folderId: UUID?)
 }
 
 // MARK: - ルートビュー
@@ -21,10 +23,11 @@ enum AppDestination: Hashable {
 /// アプリのルートビュー。NavigationStackとNavigationPathを管理する
 struct ContentView: View {
     @State private var navigationPath = NavigationPath()
+    @State private var homeViewModel = HomeViewModel()
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            HomeView(navigationPath: $navigationPath)
+            HomeView(navigationPath: $navigationPath, viewModel: homeViewModel)
                 .navigationDestination(for: AppDestination.self) { destination in
                     switch destination {
                     case .processing(let source):
@@ -36,6 +39,12 @@ struct ContentView: View {
                         PlayerView(
                             documents: documents,
                             currentIndex: currentIndex,
+                            navigationPath: $navigationPath
+                        )
+                    case .folder(let folderId):
+                        FolderContentView(
+                            viewModel: homeViewModel,
+                            folderId: folderId,
                             navigationPath: $navigationPath
                         )
                     }
