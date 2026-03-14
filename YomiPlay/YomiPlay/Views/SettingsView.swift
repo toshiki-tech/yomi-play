@@ -13,8 +13,8 @@ struct SettingsView: View {
     @State private var showEnglish: Bool = UserDefaults.standard.bool(forKey: "showEnglish")
     @State private var fontSize: CGFloat = CGFloat(UserDefaults.standard.double(forKey: "fontSize"))
     @State private var targetLanguageCode: String = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
-    @AppStorage("enableURLImport") private var enableURLImport: Bool = true
-    
+    @AppStorage("whisperPreferJapanese") private var preferJapaneseForRecognition: Bool = true
+
     // 初期値が0（未設定）の場合はデフォルト値を設定
     init() {
         if UserDefaults.standard.object(forKey: "showFurigana") == nil { _showFurigana = State(initialValue: true) }
@@ -106,16 +106,19 @@ struct SettingsView: View {
             }
             
             Section {
-                Toggle(isOn: $enableURLImport) {
+                Toggle(isOn: $preferJapaneseForRecognition) {
                     Label {
-                        Text("enable_url_import").font(.subheadline)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("prefer_japanese_for_recognition").font(.subheadline)
+                            Text("prefer_japanese_for_recognition_hint").font(.caption).foregroundStyle(.secondary)
+                        }
                     } icon: {
-                        Image(systemName: "link").foregroundStyle(.green)
+                        Image(systemName: "waveform").foregroundStyle(.orange)
                     }
                 }
-                .tint(.green)
+                .tint(.orange)
             } header: {
-                Text("import_settings")
+                Text("recognition_settings")
             }
             
             Section {

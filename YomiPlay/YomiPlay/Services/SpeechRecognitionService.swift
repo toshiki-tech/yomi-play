@@ -18,6 +18,16 @@ struct RecognitionSegment {
     let startTime: TimeInterval
     let endTime: TimeInterval
     let confidence: Float
+    /// 该句是否主要为日语（含平假名/片假名/汉字）。非日语句不生成注音。
+    let isJapanese: Bool
+
+    init(text: String, startTime: TimeInterval, endTime: TimeInterval, confidence: Float, isJapanese: Bool = true) {
+        self.text = text
+        self.startTime = startTime
+        self.endTime = endTime
+        self.confidence = confidence
+        self.isJapanese = isJapanese
+    }
 }
 
 // MARK: - プロトコル定義

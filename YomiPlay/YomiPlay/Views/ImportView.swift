@@ -11,8 +11,7 @@ import PhotosUI
 struct ImportView: View {
     @Bindable var viewModel: HomeViewModel
     @State private var selectedVideoItem: PhotosPickerItem?
-    @FocusState private var isUrlFieldFocused: Bool
-    @AppStorage("enableURLImport") private var enableURLImport: Bool = true
+    @State private var showPodcastImport: Bool = false
     
     var body: some View {
         ZStack {
@@ -22,9 +21,6 @@ struct ImportView: View {
                         viewModel.handlePhotoPickerItem(item)
                         selectedVideoItem = nil
                     }
-                }
-                .onAppear {
-                    isUrlFieldFocused = false
                 }
             
             if viewModel.showSRTOption {
@@ -43,26 +39,18 @@ struct ImportView: View {
                 headerSection
                 
                 VStack(spacing: 16) {
+                    podcastImportSection
+                    photoLibrarySection
                     fileImportSection
                     zipImportSection
-                    photoLibrarySection
-                }
-                
-                if enableURLImport {
-                    urlImportSection
                 }
                 
                 Spacer()
             }
             .padding(20)
             .contentShape(Rectangle())
-            .onTapGesture {
-                isUrlFieldFocused = false
-            }
         }
-        .background(Color(.systemBackground).onTapGesture {
-            isUrlFieldFocused = false
-        })
+        .background(Color(.systemBackground))
         .disabled(viewModel.showSRTOption) // 選択中は背面を操作不可にする
     }
     
@@ -235,6 +223,35 @@ struct ImportView: View {
         .buttonStyle(.plain)
     }
     
+    private var podcastImportSection: some View {
+        Button {
+            showPodcastImport = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.pink.opacity(0.1))
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.title2)
+                        .foregroundStyle(.pink)
+                }
+                .frame(width: 50, height: 50)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("import_from_podcast_or_url").font(.headline)
+                    Text("import_podcast_or_url_description").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showPodcastImport) {
+            PodcastImportView(viewModel: viewModel, onDismiss: { showPodcastImport = false })
+        }
+    }
+    
     private var photoLibrarySection: some View {
         PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
             HStack(spacing: 16) {
@@ -260,35 +277,287 @@ struct ImportView: View {
         .buttonStyle(.plain)
     }
     
-    private var urlImportSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("load_from_url", systemImage: "link").font(.headline)
-            
-            HStack(spacing: 12) {
-                TextField("enter_audio_video_url", text: $viewModel.urlText)
-                    .textFieldStyle(.plain)
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green, lineWidth: 2))
-                    .keyboardType(.URL)
-                    .autocorrectionDisabled()
-                    .focused($isUrlFieldFocused)
-                
-                Button {
-                    isUrlFieldFocused = false
-                    viewModel.loadFromURL()
-                } label: {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(viewModel.urlText.isEmpty ? Color.secondary : Color.green)
+    // MARK: - 播客或URL导入（搜索播客 + 直接粘贴链接）
+    
+    private struct PodcastImportView: View {
+        @Bindable var viewModel: HomeViewModel
+        let onDismiss: () -> Void
+        @State private var urlInputText = ""
+        @State private var urlImportError: String?
+        @State private var searchText = ""
+        @State private var isSearching = false
+        @State private var searchResults: [PodcastSearchResult] = []
+        @State private var searchError: String?
+        @State private var selectedPodcast: PodcastSearchResult?
+        @State private var episodes: [PodcastEpisode] = []
+        @State private var isLoadingEpisodes = false
+        @State private var episodesError: String?
+        @FocusState private var isSearchFocused: Bool
+        @FocusState private var isUrlFieldFocused: Bool
+
+        var body: some View {
+            NavigationStack {
+                Group {
+                    if let podcast = selectedPodcast {
+                        episodeListView(podcast: podcast)
+                    } else {
+                        mainInputView
+                    }
                 }
-                .disabled(viewModel.urlText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .navigationTitle(selectedPodcast != nil ? selectedPodcast!.name : String(localized: "import_from_podcast_or_url"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        if selectedPodcast != nil {
+                            Button {
+                                selectedPodcast = nil
+                                episodes = []
+                                episodesError = nil
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                Text("back")
+                            }
+                        } else {
+                            Button("close") { onDismiss() }
+                        }
+                    }
+                }
             }
         }
-        .padding(20)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemBackground)))
+
+        /// 首页：URL 输入区 + 播客搜索
+        private var mainInputView: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // URL 输入区
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("paste_url_section_title", systemImage: "link")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        TextEditor(text: $urlInputText)
+                            .frame(minHeight: 80, maxHeight: 120)
+                            .padding(10)
+                            .scrollContentBackground(.hidden)
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(isUrlFieldFocused ? Color.green : Color.clear, lineWidth: 2))
+                            .focused($isUrlFieldFocused)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                        if let err = urlImportError {
+                            Text(err).font(.caption).foregroundStyle(.red)
+                        }
+                        Button {
+                            importFromPastedURL()
+                        } label: {
+                            Label("import_from_link", systemImage: "arrow.down.circle.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .disabled(urlInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground).opacity(0.6)))
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    // 搜索播客节目
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("podcast_search_section_title")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        searchViewContent
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 24)
+            }
+        }
+
+        private var searchViewContent: some View {
+            VStack(spacing: 16) {
+                HStack(spacing: 12) {
+                    TextField("podcast_search_placeholder", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit { runSearch() }
+                        .focused($isSearchFocused)
+                    Button {
+                        runSearch()
+                    } label: {
+                        if isSearching {
+                            ProgressView()
+                                .scaleEffect(0.9)
+                        } else {
+                            Image(systemName: "magnifyingglass")
+                        }
+                    }
+                    .disabled(searchText.trimmingCharacters(in: .whitespaces).isEmpty || isSearching)
+                }
+                .padding(.horizontal)
+
+                if let err = searchError {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal)
+                }
+
+                if isSearching && searchResults.isEmpty {
+                    ProgressView()
+                    Text("podcast_searching").font(.subheadline).foregroundStyle(.secondary)
+                        .padding(.vertical, 20)
+                } else if searchResults.isEmpty && !searchText.isEmpty && !isSearching {
+                    Text("podcast_no_results").font(.subheadline).foregroundStyle(.secondary)
+                        .padding(.vertical, 20)
+                } else if searchResults.isEmpty {
+                    Text("podcast_search_hint").font(.subheadline).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.vertical, 20)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(searchResults) { podcast in
+                            Button {
+                                selectedPodcast = podcast
+                                loadEpisodes(for: podcast)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    if let url = podcast.artworkURL {
+                                        AsyncImage(url: url) { img in
+                                            img.resizable().aspectRatio(contentMode: .fill)
+                                        } placeholder: {
+                                            Color.gray.opacity(0.2)
+                                        }
+                                        .frame(width: 56, height: 56)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(podcast.name).font(.headline).lineLimit(2)
+                                        Text(podcast.artistName).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+
+        private func importFromPastedURL() {
+            let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return }
+            // 多行时取第一行
+            let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
+            guard let url = URL(string: firstLine), url.scheme != nil else {
+                urlImportError = String(localized: "invalid_url_hint")
+                return
+            }
+            urlImportError = nil
+            let title = url.deletingPathExtension().lastPathComponent
+            if title.isEmpty || title == "/" {
+                viewModel.startImportFromURLDirect(url, title: "URL")
+            } else {
+                viewModel.startImportFromURLDirect(url, title: title)
+            }
+            onDismiss()
+        }
+
+        private func episodeListView(podcast: PodcastSearchResult) -> some View {
+            Group {
+                if isLoadingEpisodes {
+                    VStack(spacing: 12) {
+                        Spacer()
+                        ProgressView()
+                        Text("podcast_loading_episodes").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                } else if let err = episodesError {
+                    VStack(spacing: 12) {
+                        Spacer()
+                        Image(systemName: "exclamationmark.triangle").font(.title).foregroundStyle(.orange)
+                        Text(err).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center).padding()
+                        Spacer()
+                    }
+                } else if episodes.isEmpty {
+                    VStack(spacing: 12) {
+                        Spacer()
+                        Text("podcast_no_episodes").font(.subheadline).foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                } else {
+                    List(episodes) { ep in
+                        Button {
+                            viewModel.startImportFromURLDirect(ep.audioURL, title: ep.title)
+                            onDismiss()
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(ep.title).font(.subheadline).lineLimit(2)
+                                if let date = ep.pubDate {
+                                    Text(date, style: .date)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+        }
+
+        private func runSearch() {
+            let term = searchText.trimmingCharacters(in: .whitespaces)
+            guard !term.isEmpty else { return }
+            searchError = nil
+            isSearching = true
+            Task {
+                do {
+                    let results = try await PodcastSearchService.search(term: term)
+                    await MainActor.run {
+                        searchResults = results
+                        isSearching = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        searchError = error.localizedDescription
+                        searchResults = []
+                        isSearching = false
+                    }
+                }
+            }
+        }
+
+        private func loadEpisodes(for podcast: PodcastSearchResult) {
+            episodes = []
+            episodesError = nil
+            isLoadingEpisodes = true
+            Task {
+                do {
+                    let list = try await PodcastSearchService.fetchEpisodes(feedURL: podcast.feedURL)
+                    await MainActor.run {
+                        episodes = list
+                        isLoadingEpisodes = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        episodesError = error.localizedDescription
+                        isLoadingEpisodes = false
+                    }
+                }
+            }
+        }
     }
-    
+
     private var headerSection: some View {
         VStack(spacing: 16) {
             Image(systemName: "waveform.circle.fill")

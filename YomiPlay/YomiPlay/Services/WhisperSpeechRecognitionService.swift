@@ -20,11 +20,11 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     private var whisperKit: WhisperKit?
     /// 現在キャッシュ中のモデル名。設定が変わったら破棄して再ロードする
     private var loadedModelFolder: String?
-    private var initFailed = false
-    private let fallback = AppleSpeechRecognitionService()
     
     /// UserDefaults に保存するモデル選択キー
     static let modelVariantDefaultsKey = "whisperModelVariant"
+    /// 识别时偏好日语（true=主要日语内容不易被误识为英文；false=自动检测，便于节目中夹杂多语时各语言正确输出）
+    static let preferJapaneseDefaultsKey = "whisperPreferJapanese"
     
     /// バンドル同梱モデルのフォルダ名（UserDefaults の設定に応じて切り替え）
     /// - "tiny"  : openai_whisper-tiny
@@ -39,100 +39,53 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     func invalidateModel() {
         whisperKit = nil
         loadedModelFolder = nil
-        initFailed = false
         print("WhisperRecognition: モデルキャッシュを破棄しました（次回再ロード）")
     }
-    
+
     init() {}
-    
+
     func requestAuthorization() async -> Bool {
         return true
     }
-    
+
+    /// 仅接受本地音频文件 URL；远程下载由上层（Coordinator/ViewModel）完成后再传入。
     func recognize(audioURL: URL) async throws -> [RecognitionSegment] {
-        if initFailed {
-            print("WhisperRecognition: 前回失敗のため Apple Speech にフォールバック")
-            return try await fallback.recognize(audioURL: audioURL)
+        guard audioURL.isFileURL else {
+            throw NSError(domain: "WhisperRecognition", code: -1, userInfo: [NSLocalizedDescriptionKey: String(localized: "podcast_link_unresolvable")])
         }
-        
-        // リモートURLの場合はダウンロードする
-        let localURL: URL
-        let isRemote = !audioURL.isFileURL
-        
-        if isRemote {
-            print("WhisperRecognition: リモートURLをダウンロード中: \(audioURL)")
-            localURL = try await downloadRemoteAudio(from: audioURL)
-        } else {
-            localURL = audioURL
+        let localURL = audioURL
+
+        let whisper = try await getOrInitWhisperKit()
+        var options = DecodingOptions()
+        options.task = .transcribe
+        let preferJapanese = UserDefaults.standard.object(forKey: Self.preferJapaneseDefaultsKey) as? Bool ?? true
+        if preferJapanese {
+            options.language = "ja"
         }
-        
-        defer {
-            if isRemote {
-                try? FileManager.default.removeItem(at: localURL)
-                print("WhisperRecognition: 一時ファイルを削除しました")
-            }
-        }
-        
-        do {
-            let whisper = try await getOrInitWhisperKit()
-            
-            var options = DecodingOptions()
-            // language を指定しないことで、多言語混在の音声でも自動言語検出に任せる
-            options.task = .transcribe
-            // デフォルト (0.6) より高めに設定して、無音と誤判定されるセグメントを減らす
-            // 値を上げるほど「無音でも無理やり認識する」方向になるので 0.8 程度が無難
-            options.noSpeechThreshold = 0.8
-            
-            print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) モデル=\(Self.bundledModelFolder)...")
-            let results = try await whisper.transcribe(audioPath: localURL.path, decodeOptions: options)
-            
-            var allSegments: [RecognitionSegment] = []
-            
-            for result in results {
-                let segments = result.segments
-                for segment in segments {
-                    let cleanedText = Self.cleanWhisperText(segment.text)
-                    if !cleanedText.isEmpty {
-                        allSegments.append(
-                            RecognitionSegment(
-                                text: cleanedText,
-                                startTime: Double(segment.start),
-                                endTime: Double(segment.end),
-                                confidence: 1.0
-                            )
-                        )
-                    }
+        options.noSpeechThreshold = 0.8
+
+        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=\(preferJapanese ? "ja" : "auto") モデル=\(Self.bundledModelFolder)...")
+        let results = try await whisper.transcribe(audioPath: localURL.path, decodeOptions: options)
+
+        var allSegments: [RecognitionSegment] = []
+        for result in results {
+            for segment in result.segments {
+                let cleanedText = Self.cleanWhisperText(segment.text)
+                if !cleanedText.isEmpty {
+                    let isJapanese = Self.isLikelyJapanese(cleanedText)
+                    allSegments.append(RecognitionSegment(
+                        text: cleanedText,
+                        startTime: Double(segment.start),
+                        endTime: Double(segment.end),
+                        confidence: 1.0,
+                        isJapanese: isJapanese
+                    ))
                 }
             }
-            
-            // Whisper の生セグメントを少し整形して、字幕としてより自然な断句に近づける
-            let processedSegments = Self.mergeShortSegments(allSegments)
-            
-            print("WhisperRecognition: 認識完了 セグメント数=\(processedSegments.count) (merged from \(allSegments.count))")
-            return processedSegments
-            
-        } catch {
-            print("WhisperRecognition: エラー \(error.localizedDescription) → フォールバック")
-            // initFailed は WhisperKit 固有のエラー（モデル読み込み失敗など）の場合のみセットする
-            // ネットワークエラーなどは含めないほうが良いが、一旦単純化して保持
-            if (error as NSError).domain == NSURLErrorDomain {
-                throw error // ネットワークエラーはそのまま投げる
-            }
-            initFailed = true
-            return try await fallback.recognize(audioURL: audioURL)
         }
-    }
-    
-    private func downloadRemoteAudio(from url: URL) async throws -> URL {
-        let (tempURL, response) = try await URLSession.shared.download(from: url)
-        
-        if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-            throw NSError(domain: "WhisperRecognition", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP error: \(httpResponse.statusCode)"])
-        }
-        
-        let destinationURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "_" + url.lastPathComponent)
-        try FileManager.default.moveItem(at: tempURL, to: destinationURL)
-        return destinationURL
+        let processedSegments = Self.mergeShortSegments(allSegments)
+        print("WhisperRecognition: 認識完了 セグメント数=\(processedSegments.count)")
+        return processedSegments
     }
     
     private func getOrInitWhisperKit() async throws -> WhisperKit {
@@ -169,8 +122,8 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     }
     
     /// App Bundle 内のモデルフォルダパスを取得する
-    /// モデルは WhisperModels/ フォルダに格納されている
-    /// WhisperKit は modelFolder として親ディレクトリ（WhisperModels/）のパスを期待する
+    /// モデルは WhisperModels/openai_whisper-base/ に格納され、MelSpectrogram.mlmodelc 等はこの直下にある
+    /// WhisperKit の modelFolder は .mlmodelc が直下にあるディレクトリ（例: .../openai_whisper-base）を指す必要がある
     private static func bundledModelPath() -> String? {
         guard let modelsURL = Bundle.main.resourceURL?.appendingPathComponent("WhisperModels") else {
             return nil
@@ -178,11 +131,26 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         let modelDir = modelsURL.appendingPathComponent(bundledModelFolder)
         let configPath = modelDir.appendingPathComponent("config.json").path
         if FileManager.default.fileExists(atPath: configPath) {
-            return modelsURL.path
+            return modelDir.path
         }
         return nil
     }
     
+    /// 判断该句是否主要为日语（含平假名/片假名/汉字）。用于标记非日语句以便跳过注音。
+    static func isLikelyJapanese(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return true }
+        for ch in t.unicodeScalars {
+            switch ch.value {
+            case 0x3040..<0x30A0: return true   // 平假名
+            case 0x30A0..<0x3100: return true   // 片假名
+            case 0x4E00..<0xA000: return true   // CJK 统一汉字
+            default: break
+            }
+        }
+        return false
+    }
+
     // MARK: - Whisper テキストクリーニング
     
     static func cleanWhisperText(_ text: String) -> String {
@@ -230,7 +198,8 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
                     text: buffer.text + seg.text,
                     startTime: buffer.startTime,
                     endTime: seg.endTime,
-                    confidence: min(buffer.confidence, seg.confidence)
+                    confidence: min(buffer.confidence, seg.confidence),
+                    isJapanese: buffer.isJapanese || seg.isJapanese
                 )
             } else {
                 flushBuffer()
@@ -247,7 +216,22 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
 
 /// WhisperKit 未導入時のフォールバック
 final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol {
-    
+
+    /// 判断该句是否主要为日语（与 canImport(WhisperKit) 分支逻辑一致，供 SRT 等路径使用）
+    static func isLikelyJapanese(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return true }
+        for ch in t.unicodeScalars {
+            switch ch.value {
+            case 0x3040..<0x30A0: return true
+            case 0x30A0..<0x3100: return true
+            case 0x4E00..<0xA000: return true
+            default: break
+            }
+        }
+        return false
+    }
+
     private let fallback = AppleSpeechRecognitionService()
     
     init() {

@@ -211,29 +211,35 @@ struct TranscriptDocument: Identifiable, Codable, Hashable {
 
 /// 音声処理の進行状態
 enum ProcessingState: Equatable {
-    case idle                    // 未開始
-    case loadingAudio            // 音声読み込み中
-    case recognizing             // 音声認識中
-    case parsingSRT              // SRT 解析中
-    case generatingFurigana      // 振り仮名生成中
-    case completed               // 完了
-    case error(String)           // エラー
-    
+    case idle
+    case preparing
+    case loadingAudio
+    case resolvingRemoteSource
+    case downloadingPodcast
+    case recognizing
+    case parsingSRT
+    case generatingFurigana
+    case completed
+    case error(String)
+
     var displayText: String {
         switch self {
-        case .idle:                return String(localized: "preparing")
-        case .loadingAudio:        return String(localized: "loading_audio_2")
-        case .recognizing:         return String(localized: "recognizing_speech")
-        case .parsingSRT:          return String(localized: "parsing_subtitles")
-        case .generatingFurigana:  return String(localized: "generating_furigana")
-        case .completed:           return String(localized: "done")
-        case .error(let message):  return String(localized: "error") + ": " + message
+        case .idle: return String(localized: "preparing")
+        case .preparing: return String(localized: "preparing")
+        case .loadingAudio: return String(localized: "loading_audio_2")
+        case .resolvingRemoteSource: return String(localized: "resolving_podcast_link")
+        case .downloadingPodcast: return String(localized: "downloading_podcast_audio")
+        case .recognizing: return String(localized: "recognizing_speech")
+        case .parsingSRT: return String(localized: "parsing_subtitles")
+        case .generatingFurigana: return String(localized: "generating_phonetic_subtitles")
+        case .completed: return String(localized: "done")
+        case .error(let message): return String(localized: "error") + ": " + message
         }
     }
-    
+
     var isProcessing: Bool {
         switch self {
-        case .loadingAudio, .recognizing, .parsingSRT, .generatingFurigana:
+        case .preparing, .loadingAudio, .resolvingRemoteSource, .downloadingPodcast, .recognizing, .parsingSRT, .generatingFurigana:
             return true
         default:
             return false

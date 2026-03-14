@@ -135,11 +135,24 @@ struct ProcessingView: View {
                     state: srtStepState(for: .parsingSRT)
                 )
                 StepRow(
-                    title: String(localized: "generating_furigana_2"),
+                    title: String(localized: "generating_phonetic_subtitles"),
                     icon: "character.textbox",
                     state: srtStepState(for: .generatingFurigana)
                 )
             } else {
+                // 通常フロー：リモートは 解析→下载→加载→识别→生成注音；ローカルは 加载→识别→生成注音
+                if audioSource.type == .remote {
+                    StepRow(
+                        title: String(localized: "resolving_podcast_link"),
+                        icon: "link",
+                        state: stepState(for: .resolvingRemoteSource)
+                    )
+                    StepRow(
+                        title: String(localized: "downloading_podcast_audio"),
+                        icon: "arrow.down.circle",
+                        state: stepState(for: .downloadingPodcast)
+                    )
+                }
                 StepRow(
                     title: String(localized: "loading_audio"),
                     icon: "waveform",
@@ -151,7 +164,7 @@ struct ProcessingView: View {
                     state: stepState(for: .recognizing)
                 )
                 StepRow(
-                    title: String(localized: "generating_furigana_2"),
+                    title: String(localized: "generating_phonetic_subtitles"),
                     icon: "character.textbox",
                     state: stepState(for: .generatingFurigana)
                 )
@@ -164,19 +177,16 @@ struct ProcessingView: View {
         )
     }
     
-    /// 通常フロー：各ステップの状態を計算する
+    /// 通常フロー：リモートは 解析→下载→加载→识别→生成、ローカルは 加载→识别→生成 の順で状態を計算
     private func stepState(for step: ProcessingState) -> StepState {
-        let order: [ProcessingState] = [.loadingAudio, .recognizing, .generatingFurigana, .completed]
+        let order: [ProcessingState] = audioSource.type == .remote
+            ? [.resolvingRemoteSource, .downloadingPodcast, .loadingAudio, .recognizing, .generatingFurigana, .completed]
+            : [.loadingAudio, .recognizing, .generatingFurigana, .completed]
         let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
         let stepIndex = order.firstIndex(of: step) ?? 0
-        
-        if currentIndex > stepIndex {
-            return .completed
-        } else if currentIndex == stepIndex {
-            return .active
-        } else {
-            return .pending
-        }
+        if currentIndex > stepIndex { return .completed }
+        if currentIndex == stepIndex { return .active }
+        return .pending
     }
     
     /// SRT フロー：各ステップの状態を計算する

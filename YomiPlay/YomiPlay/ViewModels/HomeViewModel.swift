@@ -345,7 +345,19 @@ final class HomeViewModel {
     func loadFromURL() {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let url = URL(string: trimmed), url.scheme != nil else { return }
-        promptSRTOption(for: AudioSource(type: .remote, remoteURL: url, title: url.deletingPathExtension().lastPathComponent))
+        startImportFromURL(url, title: url.deletingPathExtension().lastPathComponent)
+    }
+    
+    /// 从指定 URL 开始导入（用于手动输入 URL），弹出 SRT 选项后进入处理
+    func startImportFromURL(_ url: URL, title: String) {
+        promptSRTOption(for: AudioSource(type: .remote, remoteURL: url, title: title))
+    }
+
+    /// 直接开始处理（不弹字幕选项），用于播客导入等场景，一律走 AI 语音识别
+    func startImportFromURLDirect(_ url: URL, title: String) {
+        let source = AudioSource(type: .remote, remoteURL: url, title: title)
+        selectedAudioSource = source
+        navigateToProcessing = true
     }
     
     // MARK: - SRT 附带导入
@@ -532,12 +544,14 @@ final class HomeViewModel {
                         let srtSegments = try SubtitleImportService.parseSRT(from: srtURL)
                         var segments: [TranscriptSegment] = []
                         for seg in srtSegments {
-                            let tokens = await furiganaService.generateFurigana(for: seg.text)
+                            let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
+                            let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
                             segments.append(TranscriptSegment(
                                 startTime: seg.startTime,
                                 endTime: seg.endTime,
                                 originalText: seg.text,
-                                tokens: tokens
+                                tokens: tokens,
+                                skipFurigana: !isJapanese
                             ))
                         }
                         var source = AudioSource(

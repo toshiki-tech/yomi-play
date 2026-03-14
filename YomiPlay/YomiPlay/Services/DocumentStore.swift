@@ -84,12 +84,34 @@ final class DocumentStore: @unchecked Sendable {
     
     // MARK: - 削除
     
-    /// ドキュメントを削除する
+    /// ドキュメントを削除する（参照している Media 内の音声・動画ファイルも削除し、残りファイルを防ぐ）
     func delete(id: UUID) throws {
+        if let doc = load(id: id) {
+            removeMediaFilesIfOwned(for: doc)
+        }
         let fileURL = storeDirectory.appendingPathComponent("\(id.uuidString).json")
         if FileManager.default.fileExists(atPath: fileURL.path) {
             try FileManager.default.removeItem(at: fileURL)
             print("DocumentStore: 削除完了 id=\(id)")
+        }
+    }
+
+    /// ドキュメントが参照する音声・動画ファイルが Documents 直下または Media 内にあれば削除する
+    private func removeMediaFilesIfOwned(for document: TranscriptDocument) {
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        if let rel = document.source.relativeFilePath, !rel.isEmpty {
+            let url = docs.appendingPathComponent(rel)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try? FileManager.default.removeItem(at: url)
+                print("DocumentStore: メディア削除 \(rel)")
+            }
+        }
+        if let rel = document.source.videoRelativeFilePath, !rel.isEmpty {
+            let url = docs.appendingPathComponent(rel)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try? FileManager.default.removeItem(at: url)
+                print("DocumentStore: 動画削除 \(rel)")
+            }
         }
     }
     
