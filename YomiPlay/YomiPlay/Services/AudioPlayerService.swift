@@ -169,6 +169,9 @@ final class AudioPlayerService {
                     print("AudioPlayerService: ✅ PlayerItem is ready to play")
                     self.isAudioReady = true
                     
+                    // 動画の場合は先頭に seek して第一フレームを表示（黒画面を防ぐ）
+                    self.player?.seek(to: .zero) { _ in }
+                    
                     // durationを取得
                     let seconds = CMTimeGetSeconds(item.duration)
                     if seconds.isFinite && seconds > 0 {

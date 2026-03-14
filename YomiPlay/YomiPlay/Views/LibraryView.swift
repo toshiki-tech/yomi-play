@@ -16,9 +16,8 @@ struct LibraryView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            searchBar
+            searchSection
             Divider()
-            
             if viewModel.hasNoSavedDocuments {
                 emptyStateView
             } else if viewModel.filteredDocuments.isEmpty {
@@ -32,7 +31,25 @@ struct LibraryView: View {
         .onTapGesture { isSearchFocused = false }
         .navigationTitle("saved_records")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            if !viewModel.hasNoSavedDocuments {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(DocumentSortOrder.allCases, id: \.self) { order in
+                            Button {
+                                viewModel.sortOrder = order
+                            } label: {
+                                HStack {
+                                    Text(order.displayName)
+                                    if viewModel.sortOrder == order { Image(systemName: "checkmark") }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("sort_label", systemImage: "arrow.up.arrow.down.circle")
+                    }
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     newFolderName = ""
                     showNewFolderAlert = true
@@ -69,73 +86,43 @@ struct LibraryView: View {
         }
     }
     
-    private var searchBar: some View {
-        VStack(spacing: 10) {
+    // MARK: - 搜索：仅负责关键词筛选，与排序分离
+    private var searchSection: some View {
+        VStack(spacing: 0) {
             HStack(spacing: 10) {
-                // 搜索输入框
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.body)
-                        .foregroundStyle(.tertiary)
-                    TextField("search_placeholder", text: $viewModel.searchText)
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-                        .focused($isSearchFocused)
-                        .submitLabel(.search)
-                    if !viewModel.searchText.isEmpty {
-                        Button {
-                            viewModel.searchText = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.body)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color(.tertiarySystemFill))
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(isSearchFocused ? Color.green.opacity(0.5) : Color.clear, lineWidth: 1.5)
-                )
-                // 排序：显示当前模式 + 下拉
-                Menu {
-                    ForEach(DocumentSortOrder.allCases, id: \.self) { order in
-                        Button {
-                            viewModel.sortOrder = order
-                        } label: {
-                            HStack {
-                                Text(order.displayName)
-                                if viewModel.sortOrder == order { Image(systemName: "checkmark") }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.up.arrow.down.circle.fill")
+                Image(systemName: "magnifyingglass")
+                    .font(.body)
+                    .foregroundStyle(.tertiary)
+                TextField("search_placeholder", text: $viewModel.searchText)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .focused($isSearchFocused)
+                    .submitLabel(.search)
+                if !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Button {
+                        viewModel.searchText = ""
+                        isSearchFocused = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
                             .font(.body)
-                            .foregroundStyle(.green)
-                        Text(viewModel.sortOrder.displayName)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.caption2.weight(.semibold))
                             .foregroundStyle(.tertiary)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(Color(.tertiarySystemFill))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .buttonStyle(.plain)
                 }
-                .fixedSize(horizontal: true, vertical: false)
             }
-            // 有搜索词时显示结果数量
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(.tertiarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isSearchFocused ? Color.green.opacity(0.4) : Color.clear, lineWidth: 1.5)
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
             if !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-                HStack {
+                HStack(spacing: 8) {
                     Text(searchResultSummary)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -146,14 +133,14 @@ struct LibraryView: View {
                     } label: {
                         Text("clear_search")
                             .font(.caption)
+                            .fontWeight(.medium)
                             .foregroundStyle(.green)
                     }
                 }
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
         .background(Color(.systemBackground))
     }
     
@@ -340,6 +327,8 @@ struct FolderContentView: View {
     let folderId: UUID?
     @Binding var navigationPath: NavigationPath
     @State private var documentToMove: TranscriptDocument?
+    /// 进入分组后短时内不响应行点击，避免列表未完全呈现时的二次点击误进播放页
+    @State private var allowRowTap: Bool = false
     
     private var folderName: String {
         viewModel.folderDisplayName(for: folderId)
@@ -364,6 +353,12 @@ struct FolderContentView: View {
         }
         .navigationTitle(folderName)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            allowRowTap = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                allowRowTap = true
+            }
+        }
         .sheet(item: $documentToMove) { doc in
             MoveToFolderSheet(
                 viewModel: viewModel,
@@ -378,6 +373,7 @@ struct FolderContentView: View {
     
     private func documentRow(_ doc: TranscriptDocument) -> some View {
         Button {
+            guard allowRowTap else { return }
             HapticManager.shared.impact(style: .light)
             let allDocs = viewModel.filteredDocuments
             if let index = allDocs.firstIndex(of: doc) {

@@ -253,6 +253,14 @@
         }
       }
     },
+    "sort_label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sort" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "並び順" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "排序" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "排序" } }
+      }
+    },
     "close" : {
       "localizations" : {
         "en" : {
@@ -2787,25 +2795,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search groups and records"
+            "value" : "Search"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "グループ・記録を検索"
+            "value" : "検索"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜索分组与记录"
+            "value" : "搜索"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜尋分組與記錄"
+            "value" : "搜尋"
           }
         }
       }

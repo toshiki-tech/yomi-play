@@ -135,7 +135,7 @@ final class HomeViewModel {
         return result
     }
     
-    /// 検索フィルタリング＋並び順適用済みのドキュメント一覧
+    /// 検索フィルタ（分组名 OR 记录标题/字幕）＋並び順適用済みのドキュメント一覧
     var filteredDocuments: [TranscriptDocument] {
         let query = searchText.trimmingCharacters(in: .whitespaces)
         let list: [TranscriptDocument]
@@ -143,8 +143,13 @@ final class HomeViewModel {
             list = allSavedDocuments
         } else {
             list = allSavedDocuments.filter { doc in
-                doc.source.title.localizedCaseInsensitiveContains(query)
+                let recordMatches = doc.source.title.localizedCaseInsensitiveContains(query)
                     || doc.segments.contains { $0.originalText.localizedCaseInsensitiveContains(query) }
+                if recordMatches { return true }
+                if let fid = doc.folderId, let folder = allFolders.first(where: { $0.id == fid }) {
+                    return folder.name.localizedCaseInsensitiveContains(query)
+                }
+                return false
             }
         }
         return list.sorted(by: sortOrder.predicate)
