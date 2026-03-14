@@ -20,6 +20,8 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -73,6 +75,8 @@
 			<array>
 				<string>com.yomiplay.yomi</string>
 			</array>
+			<key>LSSupportsOpenInPlace</key>
+			<false/>
 		</dict>
 	</array>
 	<key>UILaunchScreen</key>

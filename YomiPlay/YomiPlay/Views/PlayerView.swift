@@ -44,10 +44,12 @@ struct PlayerView: View {
     
     init(documents: [TranscriptDocument], currentIndex: Int, navigationPath: Binding<NavigationPath>) {
         let safeIndex = max(0, min(documents.count - 1, currentIndex))
-        let initialDocument = documents.isEmpty ? TranscriptDocument(source: AudioSource(type: .local, title: "")) : documents[safeIndex]
+        // 从存储重新加载，保证进入播放页看到的是最新保存内容
+        let playlist = documents.isEmpty ? [] : documents.map { DocumentStore.shared.load(id: $0.id) ?? $0 }
+        let initialDocument = playlist.isEmpty ? TranscriptDocument(source: AudioSource(type: .local, title: "")) : playlist[safeIndex]
         self._navigationPath = navigationPath
         self._viewModel = State(initialValue: PlayerViewModel(document: initialDocument))
-        self._playlist = State(initialValue: documents.isEmpty ? [initialDocument] : documents)
+        self._playlist = State(initialValue: playlist.isEmpty ? [initialDocument] : playlist)
         self._currentIndex = State(initialValue: safeIndex)
     }
     
@@ -132,9 +134,6 @@ struct PlayerView: View {
                 playNextIfAvailable()
             }
         }
-        .translationTask(viewModel.translationConfiguration) { session in
-            await viewModel.performTranslation(using: session)
-        }
     }
     
     // MARK: - 字幕セクション
@@ -150,9 +149,11 @@ struct PlayerView: View {
             fontSize: viewModel.fontSize,
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
+            editingTranslatedText: Binding(get: { viewModel.editingTranslatedText }, set: { viewModel.editingTranslatedText = $0 }),
             editingSkipFurigana: $viewModel.editingSkipFurigana,
             editingStartTime: $viewModel.editingStartTime,
             editingEndTime: $viewModel.editingEndTime,
+            isTranslating: viewModel.isTranslating,
             onSegmentTapped: { segment in
                 viewModel.onSegmentTapped(segment)
             },
@@ -174,6 +175,9 @@ struct PlayerView: View {
             },
             onMergeWithPrevious: {
                 viewModel.mergeCurrentWithPrevious()
+            },
+            onTranslateThisSegment: {
+                await viewModel.translateCurrentSegment()
             }
         )
     }
@@ -202,7 +206,8 @@ struct PlayerView: View {
     private func playNextIfAvailable() {
         let nextIndex = currentIndex + 1
         guard nextIndex < playlist.count else { return }
-        let nextDocument = playlist[nextIndex]
+        let nextDoc = playlist[nextIndex]
+        let nextDocument = DocumentStore.shared.load(id: nextDoc.id) ?? nextDoc
         currentIndex = nextIndex
         viewModel = PlayerViewModel(document: nextDocument)
         shouldAutoPlayOnReady = true
@@ -294,6 +299,11 @@ struct SettingsSheetView: View {
             Button("ok") {}
         } message: {
             Text(verbatim: "\(viewModel.document.segments.count) " + String(localized: "segments_updated"))
+        }
+        .alert("translation_failed", isPresented: $viewModel.showTranslationError) {
+            Button("ok") { viewModel.showTranslationError = false }
+        } message: {
+            Text(viewModel.translationErrorMessage ?? String(localized: "unknown_error"))
         }
         .sheet(item: $srtExportItem) { item in
             NavigationStack {
@@ -684,7 +694,7 @@ struct SettingsSheetView: View {
                                 .controlSize(.small)
                         } else {
                             Button("start_translation") {
-                                viewModel.requestTranslation()
+                                Task { await viewModel.translateAllSegments() }
                             }
                             .font(.subheadline)
                             .foregroundStyle(.green)

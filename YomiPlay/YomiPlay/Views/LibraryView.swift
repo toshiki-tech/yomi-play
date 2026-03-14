@@ -353,6 +353,24 @@ struct FolderContentView: View {
         }
         .navigationTitle(folderName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    ForEach(DocumentSortOrder.allCases, id: \.self) { order in
+                        Button {
+                            viewModel.sortOrder = order
+                        } label: {
+                            HStack {
+                                Text(order.displayName)
+                                if viewModel.sortOrder == order { Image(systemName: "checkmark") }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("sort_label", systemImage: "arrow.up.arrow.down.circle")
+                }
+            }
+        }
         .onAppear {
             allowRowTap = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
@@ -375,9 +393,10 @@ struct FolderContentView: View {
         Button {
             guard allowRowTap else { return }
             HapticManager.shared.impact(style: .light)
-            let allDocs = viewModel.filteredDocuments
-            if let index = allDocs.firstIndex(of: doc) {
-                navigationPath.append(AppDestination.player(documents: allDocs, currentIndex: index))
+            // 分组内进入播放：播放列表仅含本分组记录（与当前列表顺序一致），便于顺序播放时停留在分组内
+            let folderDocs = documents
+            if let index = folderDocs.firstIndex(where: { $0.id == doc.id }) {
+                navigationPath.append(AppDestination.player(documents: folderDocs, currentIndex: index))
             }
         } label: {
             HStack(spacing: 12) {

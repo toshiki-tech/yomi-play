@@ -216,16 +216,8 @@ final class AppleSpeechRecognitionService: SpeechRecognitionServiceProtocol {
         let endTime = CMTime(seconds: end, preferredTimescale: 600)
         exportSession.timeRange = CMTimeRange(start: startTime, end: endTime)
         
-        await exportSession.export()
-        
-        switch exportSession.status {
-        case .completed:
-            return outputURL
-        case .failed:
-            throw exportSession.error ?? RecognitionError.audioLoadFailed
-        default:
-            throw RecognitionError.audioLoadFailed
-        }
+        try await exportSession.export(to: outputURL, as: .m4a)
+        return outputURL
     }
     
     // MARK: - セグメント抽出

@@ -219,6 +219,7 @@ enum ProcessingState: Equatable {
     case recognizing
     case parsingSRT
     case generatingFurigana
+    case translating
     case completed
     case error(String)
 
@@ -232,6 +233,7 @@ enum ProcessingState: Equatable {
         case .recognizing: return String(localized: "recognizing_speech")
         case .parsingSRT: return String(localized: "parsing_subtitles")
         case .generatingFurigana: return String(localized: "generating_phonetic_subtitles")
+        case .translating: return String(localized: "translating_subtitles")
         case .completed: return String(localized: "done")
         case .error(let message): return String(localized: "error") + ": " + message
         }
@@ -239,7 +241,7 @@ enum ProcessingState: Equatable {
 
     var isProcessing: Bool {
         switch self {
-        case .preparing, .loadingAudio, .resolvingRemoteSource, .downloadingPodcast, .recognizing, .parsingSRT, .generatingFurigana:
+        case .preparing, .loadingAudio, .resolvingRemoteSource, .downloadingPodcast, .recognizing, .parsingSRT, .generatingFurigana, .translating:
             return true
         default:
             return false

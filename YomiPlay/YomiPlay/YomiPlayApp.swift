@@ -10,14 +10,24 @@ import AVFoundation
 
 @main
 struct YomiPlayApp: App {
-    
+    @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
+
     init() {
+        WhisperSpeechRecognitionService.ensureModelVariantInitialized()
         configureAudioSession()
     }
-    
+
+    private var effectiveLocale: Locale {
+        if appInterfaceLanguage.isEmpty || appInterfaceLanguage == "system" {
+            return Locale.current
+        }
+        return Locale(identifier: appInterfaceLanguage)
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(\.locale, effectiveLocale)
                 .preferredColorScheme(.dark)
         }
     }

@@ -21,17 +21,68 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     /// 現在キャッシュ中のモデル名。設定が変わったら破棄して再ロードする
     private var loadedModelFolder: String?
     
-    /// UserDefaults に保存するモデル選択キー
+    /// UserDefaults に保存するモデル選択キー（値: "tiny" | "base" | "small" | "medium" | "large"）
     static let modelVariantDefaultsKey = "whisperModelVariant"
-    /// 识别时偏好日语（true=主要日语内容不易被误识为英文；false=自动检测，便于节目中夹杂多语时各语言正确输出）
-    static let preferJapaneseDefaultsKey = "whisperPreferJapanese"
-    
-    /// バンドル同梱モデルのフォルダ名（UserDefaults の設定に応じて切り替え）
-    /// - "tiny"  : openai_whisper-tiny
-    /// - "base"  : openai_whisper-base
-    static var bundledModelFolder: String {
-        // 設定画面からの切り替えは廃止し、常に Base モデルを使用する
-        return "openai_whisper-base"
+
+    /// 识别模式：Tiny / Base / Small / Medium / Large，与 Whisper 模型尺寸一致
+    enum RecognitionMode: String, CaseIterable {
+        case tiny = "tiny"
+        case base = "base"
+        case small = "small"
+        case medium = "medium"
+        case large = "large"
+        var folderName: String {
+            switch self {
+            case .tiny: return "openai_whisper-tiny"
+            case .base: return "openai_whisper-base"
+            case .small: return "openai_whisper-small"
+            case .medium: return "openai_whisper-medium"
+            case .large: return "openai_whisper-large-v3"
+            }
+        }
+    }
+
+    /// 根据设备内存推荐可流畅运行的模型档位（首次安装时作为默认值）
+    static var recommendedModeForDevice: RecognitionMode {
+        let mem = ProcessInfo.processInfo.physicalMemory
+        let gb = Double(mem) / (1024.0 * 1024.0 * 1024.0)
+        if gb < 3 { return .tiny }
+        if gb < 4 { return .base }
+        if gb < 6 { return .small }
+        if gb < 8 { return .medium }
+        return .large
+    }
+
+    /// 迁移旧值并确保 UserDefaults 中有有效选择；首次安装时写入设备推荐档位
+    static func ensureModelVariantInitialized() {
+        let ud = UserDefaults.standard
+        var raw = ud.string(forKey: modelVariantDefaultsKey)
+        let validRaw = Set(RecognitionMode.allCases.map(\.rawValue))
+
+        if let r = raw, !validRaw.contains(r) {
+            let migrated: String
+            switch r {
+            case "fast": migrated = "base"
+            case "standard": migrated = "small"
+            case "high": migrated = "medium"
+            case "large": migrated = "large"
+            default: migrated = recommendedModeForDevice.rawValue
+            }
+            raw = migrated
+            ud.set(migrated, forKey: modelVariantDefaultsKey)
+        }
+        if raw == nil {
+            let recommended = recommendedModeForDevice
+            ud.set(recommended.rawValue, forKey: modelVariantDefaultsKey)
+        }
+    }
+
+    /// 当前设置对应的同梱モデルフォルダ名
+    private static var bundledModelFolder: String {
+        Self.ensureModelVariantInitialized()
+        let raw = UserDefaults.standard.string(forKey: Self.modelVariantDefaultsKey) ?? Self.recommendedModeForDevice.rawValue
+        let mode = RecognitionMode(rawValue: raw) ?? .small
+        return mode.folderName
     }
     
     /// 設定画面でモデルを変更したときに呼び出す
@@ -57,14 +108,13 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
 
         let whisper = try await getOrInitWhisperKit()
         var options = DecodingOptions()
+        // 必须使用转写（原文输出），禁止使用 translation（会译成英文）
         options.task = .transcribe
-        let preferJapanese = UserDefaults.standard.object(forKey: Self.preferJapaneseDefaultsKey) as? Bool ?? true
-        if preferJapanese {
-            options.language = "ja"
-        }
+        // 本 App 以日语学习为主，固定按日语转写
+        options.language = "ja"
         options.noSpeechThreshold = 0.8
 
-        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=\(preferJapanese ? "ja" : "auto") モデル=\(Self.bundledModelFolder)...")
+        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=ja モデル=\(Self.bundledModelFolder)...")
         let results = try await whisper.transcribe(audioPath: localURL.path, decodeOptions: options)
 
         var allSegments: [RecognitionSegment] = []
@@ -122,18 +172,20 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     }
     
     /// App Bundle 内のモデルフォルダパスを取得する
-    /// モデルは WhisperModels/openai_whisper-base/ に格納され、MelSpectrogram.mlmodelc 等はこの直下にある
-    /// WhisperKit の modelFolder は .mlmodelc が直下にあるディレクトリ（例: .../openai_whisper-base）を指す必要がある
+    /// モデルは WhisperModels/openai_whisper-*/ に格納。config.json に加え、必須の .mlmodelc が揃っている場合のみパスを返す（small/medium は変換後に .mlmodelc を置けば利用可能）。
     private static func bundledModelPath() -> String? {
         guard let modelsURL = Bundle.main.resourceURL?.appendingPathComponent("WhisperModels") else {
             return nil
         }
-        let modelDir = modelsURL.appendingPathComponent(bundledModelFolder)
+        let folderName = bundledModelFolder
+        let modelDir = modelsURL.appendingPathComponent(folderName)
         let configPath = modelDir.appendingPathComponent("config.json").path
-        if FileManager.default.fileExists(atPath: configPath) {
-            return modelDir.path
-        }
-        return nil
+        guard FileManager.default.fileExists(atPath: configPath) else { return nil }
+        let encoderDir = modelDir.appendingPathComponent("AudioEncoder.mlmodelc")
+        let hasEncoder = FileManager.default.fileExists(atPath: encoderDir.appendingPathComponent("model.mlmodel").path)
+            || FileManager.default.fileExists(atPath: encoderDir.appendingPathComponent("model.mil").path)
+        guard hasEncoder else { return nil }
+        return modelDir.path
     }
     
     /// 判断该句是否主要为日语（含平假名/片假名/汉字）。用于标记非日语句以便跳过注音。

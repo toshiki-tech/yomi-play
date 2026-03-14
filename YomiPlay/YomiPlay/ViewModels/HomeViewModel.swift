@@ -462,9 +462,8 @@ final class HomeViewModel {
         }
         exportSession.outputURL = outputURL
         exportSession.outputFileType = .m4a
-        await exportSession.export()
-        if exportSession.status == .completed { return outputURL }
-        throw exportSession.error ?? NSError(domain: "HomeViewModel", code: -2)
+        try await exportSession.export(to: outputURL, as: .m4a)
+        return outputURL
     }
     
     private func showErrorMessage(_ message: String) {

@@ -56,7 +56,19 @@ final class TranslationService {
         }
         return result
     }
-    
+
+    /// 单句翻译（用于编辑时「翻译这条」）
+    func translateText(
+        _ text: String,
+        sourceLanguageCode: String = "ja",
+        targetLanguageCode: String
+    ) async throws -> String {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
+        let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: text)
+        let result = try await translateSegments([segment], sourceLanguageCode: sourceLanguageCode, targetLanguageCode: targetLanguageCode)
+        return result.first?.translatedText ?? ""
+    }
+
     /// 翻訳用の Configuration を作成する（SwiftUI の .translationTask で使用）
     func makeConfiguration(
         sourceLanguageCode: String = "ja",

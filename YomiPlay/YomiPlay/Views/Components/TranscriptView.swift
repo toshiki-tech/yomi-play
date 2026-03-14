@@ -18,9 +18,11 @@ struct TranscriptView: View {
     let fontSize: CGFloat
     let editingSegmentID: UUID?
     @Binding var editingText: String
+    @Binding var editingTranslatedText: String?
     @Binding var editingSkipFurigana: Bool
     @Binding var editingStartTime: TimeInterval
     @Binding var editingEndTime: TimeInterval
+    let isTranslating: Bool
     let onSegmentTapped: (TranscriptSegment) -> Void
     let onEditTapped: (TranscriptSegment) -> Void
     let onEditConfirmed: () -> Void
@@ -28,7 +30,8 @@ struct TranscriptView: View {
     let onDeleteSegment: () -> Void
     let onSplitSegment: () -> Void
     let onMergeWithPrevious: () -> Void
-    
+    let onTranslateThisSegment: () async -> Void
+
     @FocusState private var focusedSegmentID: UUID?
     
     var body: some View {
@@ -46,9 +49,11 @@ struct TranscriptView: View {
                             showTranslation: showTranslation,
                             fontSize: fontSize,
                             editingText: $editingText,
+                            editingTranslatedText: $editingTranslatedText,
                             editingSkipFurigana: $editingSkipFurigana,
                             editingStartTime: $editingStartTime,
                             editingEndTime: $editingEndTime,
+                            isTranslating: isTranslating,
                             focusedSegmentID: $focusedSegmentID,
                             onTapped: { onSegmentTapped(segment) },
                             onEditTapped: { onEditTapped(segment) },
@@ -57,6 +62,7 @@ struct TranscriptView: View {
                             onDeleteSegment: onDeleteSegment,
                             onSplitSegment: onSplitSegment,
                             onMergeWithPrevious: onMergeWithPrevious,
+                            onTranslateThisSegment: onTranslateThisSegment,
                             canMergeWithPrevious: index > 0
                         )
                         .id(segment.id)
@@ -103,9 +109,11 @@ struct SegmentRowView: View {
     let showTranslation: Bool
     let fontSize: CGFloat
     @Binding var editingText: String
+    @Binding var editingTranslatedText: String?
     @Binding var editingSkipFurigana: Bool
     @Binding var editingStartTime: TimeInterval
     @Binding var editingEndTime: TimeInterval
+    let isTranslating: Bool
     var focusedSegmentID: FocusState<UUID?>.Binding
     let onTapped: () -> Void
     let onEditTapped: () -> Void
@@ -114,6 +122,7 @@ struct SegmentRowView: View {
     let onDeleteSegment: () -> Void
     let onSplitSegment: () -> Void
     let onMergeWithPrevious: () -> Void
+    let onTranslateThisSegment: () async -> Void
     let canMergeWithPrevious: Bool
     
     @State private var isLongPressing = false
@@ -263,6 +272,38 @@ struct SegmentRowView: View {
             }
             .toggleStyle(.switch)
             .tint(.orange)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("translation_editable_label")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                TextField("translation_edit_placeholder", text: Binding(
+                    get: { editingTranslatedText ?? "" },
+                    set: { editingTranslatedText = $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+                ), axis: .vertical)
+                    .font(.system(size: fontSize * 0.9))
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...4)
+                    .padding(8)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.tertiarySystemBackground)))
+            }
+            Button {
+                Task { await onTranslateThisSegment() }
+            } label: {
+                HStack(spacing: 6) {
+                    if isTranslating && isEditing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "text.bubble")
+                            .font(.caption)
+                    }
+                    Text("translate_this_segment")
+                        .font(.caption)
+                }
+                .foregroundStyle(.green)
+            }
+            .disabled(editingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isTranslating)
             
             HStack(spacing: 12) {
                 Button(role: .destructive, action: onDeleteSegment) {

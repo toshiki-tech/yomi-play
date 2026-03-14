@@ -27,6 +27,7 @@ final class ProcessingViewModel {
     
     private let speechService: SpeechRecognitionServiceProtocol
     private let furiganaService: FuriganaServiceProtocol
+    private let translationService = TranslationService.shared
     
     // MARK: - 初期化
     
@@ -93,20 +94,22 @@ final class ProcessingViewModel {
             }
             
             print("ProcessingViewModel: 振り仮名生成完了")
-            
-            let doc = TranscriptDocument(source: source, segments: transcriptSegments)
+
+            state = .translating
+            let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
+            let doc = TranscriptDocument(source: source, segments: segmentsToSave)
             document = doc
             state = .completed
-            
+
             do {
                 try DocumentStore.shared.save(doc)
             } catch {
                 print("ProcessingViewModel: 保存失敗: \(error)")
             }
-            
+
             try? await Task.sleep(nanoseconds: 500_000_000)
             isCompleted = true
-            
+
         } catch {
             print("ProcessingViewModel: SRT エラー: \(error)")
             state = .error(String(localized: "failed_to_parse_srt_file"))
@@ -116,99 +119,97 @@ final class ProcessingViewModel {
     /// 流程：远程则 解析链接 → 下载到本地 → Whisper 识别 → 假名；本地则直接识别。
     @MainActor
     private func processWithRecognition(source: AudioSource) async {
-        do {
-            let authorized = await speechService.requestAuthorization()
-            guard authorized else {
-                state = .error(String(localized: "speech_recognition_permission_denied_please_enable_it_in_settings"))
+        let authorized = await speechService.requestAuthorization()
+        guard authorized else {
+            state = .error(String(localized: "speech_recognition_permission_denied_please_enable_it_in_settings"))
+            return
+        }
+
+        guard let url = source.playbackURL else {
+            state = .error(String(localized: "audio_url_not_found"))
+            return
+        }
+
+        var tempDownloadURL: URL?
+        let localAudioURL: URL
+        if source.type == .remote {
+            state = .resolvingRemoteSource
+            let resolved = await RemoteMediaResolver.resolve(originalURL: url)
+            guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
+                state = .error(String(localized: "podcast_link_unresolvable"))
                 return
             }
 
-            guard let url = source.playbackURL else {
-                state = .error(String(localized: "audio_url_not_found"))
-                return
-            }
-
-            var tempDownloadURL: URL?
-            let localAudioURL: URL
-            if source.type == .remote {
-                state = .resolvingRemoteSource
-                let resolved = await RemoteMediaResolver.resolve(originalURL: url)
-                guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
-                    state = .error(String(localized: "podcast_link_unresolvable"))
-                    return
-                }
-
-                state = .downloadingPodcast
-                do {
-                    localAudioURL = try await RemoteAudioFetcher.download(url: audioURL)
-                    tempDownloadURL = localAudioURL
-                } catch {
-                    state = .error(Self.userFacingMessage(for: error))
-                    return
-                }
-                state = .loadingAudio
-                state = .recognizing
-            } else {
-                state = .loadingAudio
-                localAudioURL = url
-                state = .recognizing
-            }
-
-            var recognitionSegments: [RecognitionSegment]
+            state = .downloadingPodcast
             do {
-                recognitionSegments = try await speechService.recognize(audioURL: localAudioURL)
+                localAudioURL = try await RemoteAudioFetcher.download(url: audioURL)
+                tempDownloadURL = localAudioURL
             } catch {
-                if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
                 state = .error(Self.userFacingMessage(for: error))
                 return
             }
-
-            guard !recognitionSegments.isEmpty else {
-                if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
-                state = .error(String(localized: "could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech")
-                    + (source.type == .remote ? "\n\n" + String(localized: "recognition_error_podcast_hint") : ""))
-                return
-            }
-
-            state = .generatingFurigana
-            var transcriptSegments: [TranscriptSegment] = []
-            for segment in recognitionSegments {
-                let tokens: [FuriganaToken]
-                if segment.isJapanese {
-                    tokens = await furiganaService.generateFurigana(for: segment.text)
-                } else {
-                    tokens = []
-                }
-                transcriptSegments.append(TranscriptSegment(
-                    startTime: segment.startTime,
-                    endTime: segment.endTime,
-                    originalText: segment.text,
-                    tokens: tokens,
-                    confidence: segment.confidence,
-                    skipFurigana: !segment.isJapanese
-                ))
-            }
-
-            let finalSource: AudioSource
-            if let temp = tempDownloadURL {
-                finalSource = Self.persistDownloadedMedia(from: temp, title: source.title)
-            } else {
-                finalSource = source
-            }
-
-            let doc = TranscriptDocument(source: finalSource, segments: transcriptSegments)
-            document = doc
-            state = .completed
-            do {
-                try DocumentStore.shared.save(doc)
-            } catch {
-                print("ProcessingViewModel: 保存失敗: \(error)")
-            }
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            isCompleted = true
-        } catch {
-            state = .error(Self.userFacingMessage(for: error))
+            state = .loadingAudio
+            state = .recognizing
+        } else {
+            state = .loadingAudio
+            localAudioURL = url
+            state = .recognizing
         }
+
+        var recognitionSegments: [RecognitionSegment]
+        do {
+            recognitionSegments = try await speechService.recognize(audioURL: localAudioURL)
+        } catch {
+            if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+            state = .error(Self.userFacingMessage(for: error))
+            return
+        }
+
+        guard !recognitionSegments.isEmpty else {
+            if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+            state = .error(String(localized: "could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech")
+                + (source.type == .remote ? "\n\n" + String(localized: "recognition_error_podcast_hint") : ""))
+            return
+        }
+
+        state = .generatingFurigana
+        var transcriptSegments: [TranscriptSegment] = []
+        for segment in recognitionSegments {
+            let tokens: [FuriganaToken]
+            if segment.isJapanese {
+                tokens = await furiganaService.generateFurigana(for: segment.text)
+            } else {
+                tokens = []
+            }
+            transcriptSegments.append(TranscriptSegment(
+                startTime: segment.startTime,
+                endTime: segment.endTime,
+                originalText: segment.text,
+                tokens: tokens,
+                confidence: segment.confidence,
+                skipFurigana: !segment.isJapanese
+            ))
+        }
+
+        let finalSource: AudioSource
+        if let temp = tempDownloadURL {
+            finalSource = Self.persistDownloadedMedia(from: temp, title: source.title)
+        } else {
+            finalSource = source
+        }
+
+        state = .translating
+        let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
+        let doc = TranscriptDocument(source: finalSource, segments: segmentsToSave)
+        document = doc
+        state = .completed
+        do {
+            try DocumentStore.shared.save(doc)
+        } catch {
+            print("ProcessingViewModel: 保存失敗: \(error)")
+        }
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        isCompleted = true
     }
 
     /// 播客下载的临时文件移动到 Documents/Media，返回本地 AudioSource，便于播放时直接读文件。
@@ -229,6 +230,24 @@ final class ProcessingViewModel {
             relativeFilePath: relativePath,
             title: title
         )
+    }
+
+    /// 使用设置中的目标语言对字幕做一次翻译，失败则返回原 segments（不阻塞导入）
+    private func runTranslationIfNeeded(_ segments: [TranscriptSegment]) async -> [TranscriptSegment] {
+        guard !segments.isEmpty else { return segments }
+        let targetLang = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
+        do {
+            let result = try await translationService.translateSegments(
+                segments,
+                sourceLanguageCode: "ja",
+                targetLanguageCode: targetLang
+            )
+            print("ProcessingViewModel: 自动翻译完成 target=\(targetLang)")
+            return result
+        } catch {
+            print("ProcessingViewModel: 自动翻译跳过 \(error)")
+            return segments
+        }
     }
 
     private static func userFacingMessage(for error: Error) -> String {

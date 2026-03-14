@@ -8,7 +8,6 @@
 
 import Foundation
 import AVFoundation
-import Translation
 
 // MARK: - プレーヤー画面ViewModel
 
@@ -41,6 +40,8 @@ final class PlayerViewModel {
     // 字幕編集
     var editingSegmentID: UUID? = nil
     var editingText: String = ""
+    /// 编辑时本条翻译结果（确定后写回 segment.translatedText）
+    var editingTranslatedText: String? = nil
     var editingSkipFurigana: Bool = false
     var editingStartTime: TimeInterval = 0
     var editingEndTime: TimeInterval = 0
@@ -50,6 +51,9 @@ final class PlayerViewModel {
     
     /// 翻訳中かどうか
     var isTranslating: Bool = false
+    /// 手动翻译失败时显示
+    var showTranslationError: Bool = false
+    var translationErrorMessage: String?
     
     /// 元の動画ファイルの URL（動画インポート時のみ設定される）
     var videoPlaybackURL: URL? {
@@ -63,6 +67,12 @@ final class PlayerViewModel {
         self.playerService = AudioPlayerService()
         
         restoreSettings()
+        // 若文档已有翻译且用户从未设置过 showTranslation，默认显示翻译
+        if !showTranslation,
+           Self.defaults.object(forKey: "showTranslation") == nil,
+           document.segments.contains(where: { $0.translatedText != nil && !($0.translatedText ?? "").isEmpty }) {
+            showTranslation = true
+        }
         
         // 動画がある場合は動画ファイルをロード（映像＋音声を統一AVPlayerで管理）
         let mediaURL = document.source.videoPlaybackURL ?? document.source.playbackURL
@@ -177,15 +187,17 @@ final class PlayerViewModel {
     func startEditing(segment: TranscriptSegment) {
         editingSegmentID = segment.id
         editingText = segment.originalText
+        editingTranslatedText = segment.translatedText
         editingSkipFurigana = segment.skipFurigana
         editingStartTime = segment.startTime
         editingEndTime = segment.endTime
     }
-    
+
     /// 編集をキャンセルする
     func cancelEditing() {
         editingSegmentID = nil
         editingText = ""
+        editingTranslatedText = nil
         editingSkipFurigana = false
         editingStartTime = 0
         editingEndTime = 0
@@ -232,7 +244,8 @@ final class PlayerViewModel {
                 self.document.segments[segmentIndex].originalText = newText
                 self.document.segments[segmentIndex].tokens = tokens
                 self.document.segments[segmentIndex].skipFurigana = shouldSkip
-                self.document.segments[segmentIndex].translatedText = nil
+                self.document.segments[segmentIndex].translatedText = self.editingTranslatedText
+                self.editingTranslatedText = nil
                 
                 // 再生サービス側も同期
                 self.playerService.setSegments(self.document.segments)
@@ -363,56 +376,50 @@ final class PlayerViewModel {
         }
     }
     
-    // MARK: - 字幕翻訳
-    
-    /// 翻訳を開始するためのトリガー（SwiftUI .translationTask で監視）
-    var translationConfiguration: TranslationSession.Configuration?
-    
-    /// 翻訳ボタンを押したとき：Configuration を設定して .translationTask を発火させる
-    func requestTranslation() {
-        translationConfiguration = nil
+    // MARK: - 字幕翻訳（仅对现有字幕文本做翻译，不涉及语音识别）
+
+    /// 翻译全部字幕：对当前每条字幕的 originalText 调用系统翻译，结果写入 translatedText
+    @MainActor
+    func translateAllSegments() async {
+        let segments = document.segments
+        guard !segments.isEmpty else { return }
         isTranslating = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
-            translationConfiguration = translationService.makeConfiguration(
+        defer { isTranslating = false }
+        do {
+            let result = try await translationService.translateSegments(
+                segments,
                 sourceLanguageCode: "ja",
                 targetLanguageCode: targetLanguageCode
             )
-        }
-    }
-    
-    /// .translationTask のコールバックで呼ばれる
-    @MainActor
-    func performTranslation(using session: TranslationSession) async {
-        let segments = document.segments
-        guard !segments.isEmpty else {
-            isTranslating = false
-            return
-        }
-        
-        let requests = segments.enumerated().map { index, seg in
-            TranslationSession.Request(
-                sourceText: seg.originalText,
-                clientIdentifier: "\(index)"
-            )
-        }
-        
-        do {
-            let responses = try await session.translations(from: requests)
-            for response in responses {
-                if let idStr = response.clientIdentifier,
-                   let idx = Int(idStr),
-                   idx < document.segments.count {
-                    document.segments[idx].translatedText = response.targetText
-                }
-            }
+            document.segments = result
+            playerService.setSegments(document.segments)
             saveDocument()
             showTranslation = true
         } catch {
-            print("PlayerViewModel: 翻訳失敗 - \(error)")
+            print("PlayerViewModel: 翻译全部失败 - \(error)")
+            translationErrorMessage = error.localizedDescription
+            showTranslationError = true
         }
-        isTranslating = false
     }
-    
+
+    /// 编辑时翻译当前这条字幕（使用当前编辑框文本与设置中的目标语言）
+    @MainActor
+    func translateCurrentSegment() async {
+        let text = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        let targetLang = targetLanguageCode
+        isTranslating = true
+        defer { isTranslating = false }
+        do {
+            let translated = try await translationService.translateText(text, targetLanguageCode: targetLang)
+            editingTranslatedText = translated.isEmpty ? nil : translated
+        } catch {
+            print("PlayerViewModel: 单条翻译失败 - \(error)")
+            translationErrorMessage = error.localizedDescription
+            showTranslationError = true
+        }
+    }
+
     // MARK: - SRT インポート
     
     var isImportingSRT: Bool = false

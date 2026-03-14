@@ -13,10 +13,12 @@ struct SettingsView: View {
     @State private var showEnglish: Bool = UserDefaults.standard.bool(forKey: "showEnglish")
     @State private var fontSize: CGFloat = CGFloat(UserDefaults.standard.double(forKey: "fontSize"))
     @State private var targetLanguageCode: String = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
-    @AppStorage("whisperPreferJapanese") private var preferJapaneseForRecognition: Bool = true
+    @AppStorage("whisperModelVariant") private var recognitionModeRaw: String = "small"
+    @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
 
     // 初期値が0（未設定）の場合はデフォルト値を設定
     init() {
+        WhisperSpeechRecognitionService.ensureModelVariantInitialized()
         if UserDefaults.standard.object(forKey: "showFurigana") == nil { _showFurigana = State(initialValue: true) }
         if UserDefaults.standard.object(forKey: "showRomaji") == nil { _showRomaji = State(initialValue: true) }
         if UserDefaults.standard.object(forKey: "showEnglish") == nil { _showEnglish = State(initialValue: true) }
@@ -72,8 +74,8 @@ struct SettingsView: View {
                     HStack {
                         Image(systemName: "textformat.size.smaller").font(.caption).foregroundStyle(.secondary)
                         Slider(value: $fontSize, in: 12...48, step: 1)
-                            .onChange(of: fontSize) { _ in
-                                UserDefaults.standard.set(Double(fontSize), forKey: "fontSize")
+                            .onChange(of: fontSize) { _, newValue in
+                                UserDefaults.standard.set(Double(newValue), forKey: "fontSize")
                                 HapticManager.shared.impact(style: .soft)
                             }
                             .tint(.purple)
@@ -83,6 +85,29 @@ struct SettingsView: View {
                 .padding(.vertical, 4)
             } header: {
                 Text("display_settings")
+            }
+
+            Section {
+                Picker(selection: $appInterfaceLanguage) {
+                    Text("interface_language_system").tag("system")
+                    Text("interface_language_en").tag("en")
+                    Text("interface_language_ja").tag("ja")
+                    Text("interface_language_zh_hans").tag("zh-Hans")
+                    Text("interface_language_zh_hant").tag("zh-Hant")
+                } label: {
+                    Label {
+                        Text("interface_language_label").font(.subheadline)
+                    } icon: {
+                        Image(systemName: "globe").foregroundStyle(.green)
+                    }
+                }
+                .onChange(of: appInterfaceLanguage) { _, _ in
+                    HapticManager.shared.selection()
+                }
+            } header: {
+                Text("interface_language_section")
+            } footer: {
+                Text("interface_language_footer")
             }
             
             Section {
@@ -97,8 +122,8 @@ struct SettingsView: View {
                         Image(systemName: "globe").foregroundStyle(.blue)
                     }
                 }
-                .onChange(of: targetLanguageCode) { _ in
-                    UserDefaults.standard.set(targetLanguageCode, forKey: "targetLanguageCode")
+                .onChange(of: targetLanguageCode) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: "targetLanguageCode")
                     HapticManager.shared.success()
                 }
             } header: {
@@ -106,21 +131,31 @@ struct SettingsView: View {
             }
             
             Section {
-                Toggle(isOn: $preferJapaneseForRecognition) {
+                Picker(selection: $recognitionModeRaw) {
+                    ForEach(WhisperSpeechRecognitionService.RecognitionMode.allCases, id: \.rawValue) { mode in
+                        Text(recognitionModeTitleKey(mode)).tag(mode.rawValue)
+                    }
+                } label: {
                     Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("prefer_japanese_for_recognition").font(.subheadline)
-                            Text("prefer_japanese_for_recognition_hint").font(.caption).foregroundStyle(.secondary)
-                        }
+                        Text("recognition_mode_label").font(.subheadline)
                     } icon: {
-                        Image(systemName: "waveform").foregroundStyle(.orange)
+                        Image(systemName: "cpu").foregroundStyle(.green)
                     }
                 }
-                .tint(.orange)
+                .onChange(of: recognitionModeRaw) { _, _ in
+                    HapticManager.shared.selection()
+                }
             } header: {
-                Text("recognition_settings")
+                Text("recognition_mode_section")
+            } footer: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(recognitionModeHintKey)
+                    Text("recognition_mode_device_recommendation \(recommendedModeDisplayName)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            
+
             Section {
                 infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
                 infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
@@ -130,7 +165,39 @@ struct SettingsView: View {
         }
         .navigationTitle("settings")
     }
-    
+
+    private func recognitionModeTitleKey(_ mode: WhisperSpeechRecognitionService.RecognitionMode) -> LocalizedStringKey {
+        switch mode {
+        case .tiny: return "recognition_mode_tiny"
+        case .base: return "recognition_mode_base"
+        case .small: return "recognition_mode_small"
+        case .medium: return "recognition_mode_medium"
+        case .large: return "recognition_mode_large"
+        }
+    }
+
+    private var recognitionModeHintKey: LocalizedStringKey {
+        let mode = WhisperSpeechRecognitionService.RecognitionMode(rawValue: recognitionModeRaw) ?? .small
+        switch mode {
+        case .tiny: return "recognition_mode_tiny_hint"
+        case .base: return "recognition_mode_base_hint"
+        case .small: return "recognition_mode_small_hint"
+        case .medium: return "recognition_mode_medium_hint"
+        case .large: return "recognition_mode_large_hint"
+        }
+    }
+
+    private var recommendedModeDisplayName: String {
+        let mode = WhisperSpeechRecognitionService.recommendedModeForDevice
+        switch mode {
+        case .tiny: return String(localized: "recognition_mode_tiny")
+        case .base: return String(localized: "recognition_mode_base")
+        case .small: return String(localized: "recognition_mode_small")
+        case .medium: return String(localized: "recognition_mode_medium")
+        case .large: return String(localized: "recognition_mode_large")
+        }
+    }
+
     private func settingsToggle(icon: String, title: LocalizedStringKey, color: Color, isOn: Binding<Bool>, action: @escaping () -> Void) -> some View {
         Toggle(isOn: isOn) {
             Label {
@@ -139,7 +206,7 @@ struct SettingsView: View {
                 Image(systemName: icon).foregroundStyle(color)
             }
         }
-        .onChange(of: isOn.wrappedValue) { _ in action() }
+        .onChange(of: isOn.wrappedValue) { _, _ in action() }
         .tint(color)
     }
     

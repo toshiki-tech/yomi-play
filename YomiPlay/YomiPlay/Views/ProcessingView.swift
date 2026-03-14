@@ -139,6 +139,11 @@ struct ProcessingView: View {
                     icon: "character.textbox",
                     state: srtStepState(for: .generatingFurigana)
                 )
+                StepRow(
+                    title: String(localized: "translating_subtitles"),
+                    icon: "text.bubble",
+                    state: srtStepState(for: .translating)
+                )
             } else {
                 // 通常フロー：リモートは 解析→下载→加载→识别→生成注音；ローカルは 加载→识别→生成注音
                 if audioSource.type == .remote {
@@ -168,6 +173,11 @@ struct ProcessingView: View {
                     icon: "character.textbox",
                     state: stepState(for: .generatingFurigana)
                 )
+                StepRow(
+                    title: String(localized: "translating_subtitles"),
+                    icon: "text.bubble",
+                    state: stepState(for: .translating)
+                )
             }
         }
         .padding(20)
@@ -177,11 +187,11 @@ struct ProcessingView: View {
         )
     }
     
-    /// 通常フロー：リモートは 解析→下载→加载→识别→生成、ローカルは 加载→识别→生成 の順で状態を計算
+    /// 通常フロー：リモートは 解析→下载→加载→识别→生成注音→翻译、ローカルは 加载→识别→生成注音→翻译 の順で状態を計算
     private func stepState(for step: ProcessingState) -> StepState {
         let order: [ProcessingState] = audioSource.type == .remote
-            ? [.resolvingRemoteSource, .downloadingPodcast, .loadingAudio, .recognizing, .generatingFurigana, .completed]
-            : [.loadingAudio, .recognizing, .generatingFurigana, .completed]
+            ? [.resolvingRemoteSource, .downloadingPodcast, .loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
+            : [.loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
         let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
         let stepIndex = order.firstIndex(of: step) ?? 0
         if currentIndex > stepIndex { return .completed }
@@ -191,7 +201,7 @@ struct ProcessingView: View {
     
     /// SRT フロー：各ステップの状態を計算する
     private func srtStepState(for step: ProcessingState) -> StepState {
-        let order: [ProcessingState] = [.parsingSRT, .generatingFurigana, .completed]
+        let order: [ProcessingState] = [.parsingSRT, .generatingFurigana, .translating, .completed]
         let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
         let stepIndex = order.firstIndex(of: step) ?? 0
         
