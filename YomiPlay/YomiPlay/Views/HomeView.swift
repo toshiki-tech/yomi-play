@@ -9,13 +9,19 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import PhotosUI
+import UIKit
+
+private enum HomeTab: Int, CaseIterable {
+    case library = 0
+    case importTab = 1
+    case settings = 2
+}
 
 struct HomeView: View {
     @Binding var navigationPath: NavigationPath
     @Bindable var viewModel: HomeViewModel
     
-    // タブの選択状態
-    @State private var selectedTab = 0
+    @State private var selectedTab: HomeTab = .library
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -24,7 +30,7 @@ struct HomeView: View {
                 .tabItem {
                     Label("saved_records", systemImage: "clock.fill")
                 }
-                .tag(0)
+                .tag(HomeTab.library)
             
             // 导入 (Import) タブ
             ImportView(viewModel: viewModel)
@@ -32,14 +38,14 @@ struct HomeView: View {
                 .tabItem {
                     Label("import", systemImage: "plus.circle.fill")
                 }
-                .tag(1)
+                .tag(HomeTab.importTab)
             
             // 设置 (Settings) タブ
             SettingsView()
                 .tabItem {
                     Label("settings", systemImage: "gearshape.fill")
                 }
-                .tag(2)
+                .tag(HomeTab.settings)
         }
         .accentColor(.green)
         // 共通のアラートやシートはここに残す
@@ -65,6 +71,11 @@ struct HomeView: View {
                 case .yomi:
                     viewModel.attachYomi(url: url)
                 case .zip:
+                    // 必须在回调内立即获取安全作用域，否则选择器关闭后 URL 可能失效导致崩溃
+                    guard url.startAccessingSecurityScopedResource() else {
+                        viewModel.showErrorMessage(String(localized: "no_permission_to_access_the_file"))
+                        return
+                    }
                     viewModel.handleZipImport(url: url)
                 }
             }
@@ -83,27 +94,33 @@ struct HomeView: View {
             }
         }
         .alert("error", isPresented: $viewModel.showError) { Button("ok") {} } message: { Text(viewModel.errorMessage ?? String(localized: "unknown_error")) }
-        .alert("rename", isPresented: $viewModel.showRenameAlert) {
-            TextField("enter_new_name", text: $viewModel.newTitle)
-            Button("cancel", role: .cancel) { viewModel.documentToRename = nil }
-            Button("save") { viewModel.confirmRename() }
-        }
-        .alert("rename_folder", isPresented: $viewModel.showFolderRenameAlert) {
-            TextField("folder_name", text: $viewModel.newFolderName)
-            Button("cancel", role: .cancel) { viewModel.folderToRename = nil }
-            Button("save") { viewModel.confirmFolderRename() }
-                .disabled(viewModel.newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
-        } message: {
-            Text("rename_folder_message")
-        }
         .overlay {
             if viewModel.isLoadingVideo {
                 loadingOverlay
             }
         }
         .overlay {
-            if viewModel.isImportingZip {
+            if viewModel.isImportingZip || viewModel.zipImportSuccessInfo != nil {
                 zipImportOverlay
+            }
+        }
+        .onChange(of: viewModel.requestSwitchToLibraryTab) { _, shouldSwitch in
+            if shouldSwitch {
+                selectedTab = .library
+                viewModel.requestSwitchToLibraryTab = false
+            }
+        }
+        .onChange(of: viewModel.zipImportNavigateToFolderId) { _, folderId in
+            if let id = folderId {
+                navigationPath.append(AppDestination.folder(folderId: id))
+                viewModel.zipImportNavigateToFolderId = nil
+            }
+        }
+        .sheet(isPresented: $viewModel.showShareZipSheet, onDismiss: { viewModel.clearExportedZip() }) {
+            if let url = viewModel.exportedZipURL {
+                ShareSheet(activityItems: [url], onDismiss: { viewModel.clearExportedZip() })
+            } else {
+                Color.clear
             }
         }
     }
@@ -123,10 +140,41 @@ struct HomeView: View {
         ZStack {
             Color.black.opacity(0.5).ignoresSafeArea()
             VStack(spacing: 16) {
-                ProgressView().scaleEffect(1.5).tint(.orange)
-                Text(viewModel.zipImportProgressMessage).font(.headline).foregroundStyle(.white)
+                if let info = viewModel.zipImportSuccessInfo {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.green)
+                    Text(String(format: String(localized: "zip_import_success_format"), info.count, info.folderName))
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                } else {
+                    ProgressView().scaleEffect(1.5).tint(.orange)
+                    Text(viewModel.zipImportProgressMessage).font(.headline).foregroundStyle(.white)
+                }
             }
             .padding(32).background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial))
         }
+        .onChange(of: viewModel.zipImportSuccessInfo) { _, newInfo in
+            guard newInfo != nil else { return }
+            Task {
+                try? await Task.sleep(for: .seconds(1.8))
+                await MainActor.run { viewModel.zipImportSuccessInfo = nil }
+            }
+        }
     }
+}
+
+// MARK: - 分享 ZIP（系统分享面板）
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    var onDismiss: (() -> Void)?
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let vc = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        vc.completionWithItemsHandler = { _, _, _, _ in onDismiss?() }
+        return vc
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

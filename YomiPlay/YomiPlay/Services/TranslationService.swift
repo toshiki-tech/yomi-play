@@ -35,7 +35,7 @@ final class TranslationService {
         let source = Locale.Language(identifier: sourceLanguageCode)
         let target = Locale.Language(identifier: targetLanguageCode)
         
-        let session = try TranslationSession(installedSource: source, target: target)
+        let session = TranslationSession(installedSource: source, target: target)
         
         let requests = segments.enumerated().map { index, seg in
             TranslationSession.Request(

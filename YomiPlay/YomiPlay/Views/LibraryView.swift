@@ -154,12 +154,13 @@ struct LibraryView: View {
         List {
             Section {
                 // 未分组（默认，不可删除/重命名）
-                groupRow(
-                    id: nil,
-                    name: String(localized: "uncategorized"),
-                    count: viewModel.documents(inFolderId: nil).count,
-                    isDefault: true
-                )
+                        groupRow(
+                            id: nil,
+                            name: String(localized: "uncategorized"),
+                            count: viewModel.documents(inFolderId: nil).count,
+                            isDefault: true,
+                            onExport: viewModel.documents(inFolderId: nil).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: nil) }
+                        )
             } header: {
                 Text("default_group")
                     .font(.caption)
@@ -175,7 +176,8 @@ struct LibraryView: View {
                             count: viewModel.documents(inFolderId: folder.id).count,
                             isDefault: false,
                             onRename: { viewModel.startRenamingFolder(folder) },
-                            onDelete: { viewModel.requestDeleteFolder(folder) }
+                            onDelete: { viewModel.requestDeleteFolder(folder) },
+                            onExport: viewModel.documents(inFolderId: folder.id).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: folder.id) }
                         )
                     }
                 } header: {
@@ -217,7 +219,8 @@ struct LibraryView: View {
         count: Int,
         isDefault: Bool,
         onRename: (() -> Void)? = nil,
-        onDelete: (() -> Void)? = nil
+        onDelete: (() -> Void)? = nil,
+        onExport: (() -> Void)? = nil
     ) -> some View {
         Button {
             HapticManager.shared.impact(style: .light)
@@ -248,6 +251,13 @@ struct LibraryView: View {
         .buttonStyle(.plain)
         .listRowBackground(Color(.secondarySystemGroupedBackground))
         .contextMenu {
+            if let onExport = onExport {
+                Button {
+                    onExport()
+                } label: {
+                    Label("export_folder_as_zip", systemImage: "square.and.arrow.up")
+                }
+            }
             if let onRename = onRename {
                 Button {
                     onRename()
@@ -264,6 +274,14 @@ struct LibraryView: View {
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if let onExport = onExport {
+                Button {
+                    onExport()
+                } label: {
+                    Label("export_folder_as_zip", systemImage: "square.and.arrow.up")
+                }
+                .tint(.green)
+            }
             if let onRename = onRename {
                 Button {
                     onRename()

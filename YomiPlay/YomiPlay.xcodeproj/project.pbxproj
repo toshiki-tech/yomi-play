@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		000584392F5D712600A32ED1 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA110001AA110001AA110001 /* WhisperKit */; };
 		BB000002BB000002BB000002 /* WhisperModels in Resources */ = {isa = PBXBuildFile; fileRef = BB000001BB000001BB000001 /* WhisperModels */; };
+		BB110003BB110003BB110003 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = BB110001BB110001BB110001 /* ZIPFoundation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				000584392F5D712600A32ED1 /* WhisperKit in Frameworks */,
+				BB110003BB110003BB110003 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +123,7 @@
 			name = YomiPlay;
 			packageProductDependencies = (
 				AA110001AA110001AA110001 /* WhisperKit */,
+				BB110001BB110001BB110001 /* ZIPFoundation */,
 			);
 			productName = YomiPlay;
 			productReference = 00E7085A2F5C63AF000FB47F /* YomiPlay.app */;
@@ -209,6 +212,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AA110002AA110002AA110002 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				BB110002BB110002BB110002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 00E7085B2F5C63AF000FB47F /* Products */;
@@ -411,19 +415,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R2WXVAJJQR;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = YomiPlay;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dogiant.YomiPlay;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dogiant.yomi.play;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -440,19 +446,21 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R2WXVAJJQR;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = YomiPlay;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dogiant.YomiPlay;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dogiant.yomi.play;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -598,6 +606,14 @@
 				minimumVersion = 0.15.0;
 			};
 		};
+		BB110002BB110002BB110002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -605,6 +621,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AA110002AA110002AA110002 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		BB110001BB110001BB110001 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BB110002BB110002BB110002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

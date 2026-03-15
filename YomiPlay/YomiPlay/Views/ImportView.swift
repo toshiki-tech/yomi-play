@@ -462,12 +462,12 @@ struct ImportView: View {
             }
             urlImportError = nil
             let title = url.deletingPathExtension().lastPathComponent
+            onDismiss() // 先关闭播客页，再在导入页显示「是否附带字幕」选择
             if title.isEmpty || title == "/" {
-                viewModel.startImportFromURLDirect(url, title: "URL")
+                viewModel.startImportFromURL(url, title: "URL")
             } else {
-                viewModel.startImportFromURLDirect(url, title: title)
+                viewModel.startImportFromURL(url, title: title)
             }
-            onDismiss()
         }
 
         private func episodeListView(podcast: PodcastSearchResult) -> some View {
@@ -495,8 +495,8 @@ struct ImportView: View {
                 } else {
                     List(episodes) { ep in
                         Button {
-                            viewModel.startImportFromURLDirect(ep.audioURL, title: ep.title)
                             onDismiss()
+                            viewModel.startImportFromURL(ep.audioURL, title: ep.title)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ep.title).font(.subheadline).lineLimit(2)

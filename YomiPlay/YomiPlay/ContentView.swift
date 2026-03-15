@@ -51,6 +51,32 @@ struct ContentView: View {
                 }
         }
         .tint(.green)
+        // 重命名弹窗放在导航栈之上，避免在分组内左滑重命名时被当前页遮挡
+        .alert("rename", isPresented: Binding(
+            get: { homeViewModel.showRenameAlert },
+            set: { homeViewModel.showRenameAlert = $0 }
+        )) {
+            TextField("enter_new_name", text: Binding(
+                get: { homeViewModel.newTitle },
+                set: { homeViewModel.newTitle = $0 }
+            ))
+            Button("cancel", role: .cancel) { homeViewModel.documentToRename = nil }
+            Button("save") { homeViewModel.confirmRename() }
+        }
+        .alert("rename_folder", isPresented: Binding(
+            get: { homeViewModel.showFolderRenameAlert },
+            set: { homeViewModel.showFolderRenameAlert = $0 }
+        )) {
+            TextField("folder_name", text: Binding(
+                get: { homeViewModel.newFolderName },
+                set: { homeViewModel.newFolderName = $0 }
+            ))
+            Button("cancel", role: .cancel) { homeViewModel.folderToRename = nil }
+            Button("save") { homeViewModel.confirmFolderRename() }
+                .disabled(homeViewModel.newFolderName.trimmingCharacters(in: .whitespaces).isEmpty)
+        } message: {
+            Text("rename_folder_message")
+        }
     }
 }
 

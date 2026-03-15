@@ -11,6 +11,7 @@ import AVFoundation
 @main
 struct YomiPlayApp: App {
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
+    @AppStorage("appInterfaceTheme") private var appInterfaceTheme: String = "system"
 
     init() {
         WhisperSpeechRecognitionService.ensureModelVariantInitialized()
@@ -24,11 +25,19 @@ struct YomiPlayApp: App {
         return Locale(identifier: appInterfaceLanguage)
     }
 
+    private var effectiveColorScheme: ColorScheme? {
+        switch appInterfaceTheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.locale, effectiveLocale)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(effectiveColorScheme)
         }
     }
     

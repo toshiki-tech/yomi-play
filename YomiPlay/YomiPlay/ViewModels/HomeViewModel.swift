@@ -10,6 +10,12 @@ import SwiftUI
 import PhotosUI
 import AVFoundation
 
+/// ZIP インポート成功時の表示用（Equatable で onChange に使用）
+struct ZipImportSuccessInfo: Equatable {
+    var folderName: String
+    var count: Int
+}
+
 /// 保存済み記録一覧の並び順
 enum DocumentSortOrder: String, CaseIterable, Hashable {
     case dateNewestFirst
@@ -78,6 +84,16 @@ final class HomeViewModel {
     /// ZIP インポート処理中
     var isImportingZip: Bool = false
     var zipImportProgressMessage: String = ""
+    /// ZIP インポート成功時の表示（nil で非表示）
+    var zipImportSuccessInfo: ZipImportSuccessInfo?
+    /// 成功后切换到 Library タブ
+    var requestSwitchToLibraryTab: Bool = false
+    /// 成功后跳转到指定フォルダ
+    var zipImportNavigateToFolderId: UUID?
+    
+    /// 分组导出为 ZIP 分享：生成的临时 ZIP URL，分享结束后需清理
+    var exportedZipURL: URL?
+    var showShareZipSheet: Bool = false
     
     // 検索・フィルタリング
     var searchText: String = ""
@@ -228,6 +244,36 @@ final class HomeViewModel {
         folderToRename = folder
         newFolderName = folder.name
         showFolderRenameAlert = true
+    }
+    
+    /// 将分组导出为 ZIP 并触发分享（异步）；使用该分组内全部文档，不受搜索过滤影响
+    func exportFolderAsZip(folderId: UUID?) {
+        let docs = allSavedDocuments.filter { $0.folderId == folderId }
+        let name = folderDisplayName(for: folderId)
+        guard !docs.isEmpty else {
+            showErrorMessage(String(localized: "folder_export_no_media"))
+            return
+        }
+        Task {
+            do {
+                let url = try FolderExportService.createZip(documents: docs, folderName: name)
+                await MainActor.run {
+                    exportedZipURL = url
+                    showShareZipSheet = true
+                }
+            } catch {
+                await MainActor.run { showErrorMessage(error.localizedDescription) }
+            }
+        }
+    }
+    
+    /// 分享结束或取消后清理临时 ZIP
+    func clearExportedZip() {
+        if let url = exportedZipURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        exportedZipURL = nil
+        showShareZipSheet = false
     }
     
     /// フォルダ名の変更を確定
@@ -466,7 +512,7 @@ final class HomeViewModel {
         return outputURL
     }
     
-    private func showErrorMessage(_ message: String) {
+    func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
     }
@@ -489,24 +535,24 @@ final class HomeViewModel {
             return
         }
         Task {
+            defer { url.stopAccessingSecurityScopedResource() }
             do {
-                let destDir = try ZipExtractService.extract(zipURL: url, destinationParent: docsURL, folderName: folderName)
+                let contentRoot = try ZipExtractService.extract(zipURL: url, destinationParent: docsURL, folderName: folderName)
                 await MainActor.run { zipImportProgressMessage = String(localized: "matching_files") }
                 
-                let contents = try FileManager.default.contentsOfDirectory(at: destDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+                let contents = try FileManager.default.contentsOfDirectory(at: contentRoot, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
                 var mediaByBase: [String: URL] = [:]
                 var srtByBase: [String: URL] = [:]
                 var yomiByBase: [String: URL] = [:]
-                let impRel = "Imports/\(folderName)"
-                for url in contents {
-                    let ext = url.pathExtension.lowercased()
-                    let base = url.deletingPathExtension().lastPathComponent
+                for itemURL in contents {
+                    let ext = itemURL.pathExtension.lowercased()
+                    let base = itemURL.deletingPathExtension().lastPathComponent
                     if Self.mediaExtensions.contains(ext) {
-                        mediaByBase[base] = url
+                        mediaByBase[base] = itemURL
                     } else if ext == Self.srtExtension {
-                        srtByBase[base] = url
+                        srtByBase[base] = itemURL
                     } else if Self.yomiExtensions.contains(ext) {
-                        yomiByBase[base] = url
+                        yomiByBase[base] = itemURL
                     }
                 }
                 
@@ -517,7 +563,14 @@ final class HomeViewModel {
                 let baseNames = Set(mediaByBase.keys).sorted()
                 for base in baseNames {
                     guard let mediaURL = mediaByBase[base] else { continue }
-                    let relPath = "\(impRel)/\(mediaURL.lastPathComponent)"
+                    var relPath = mediaURL.path
+                    let docsPath = docsURL.path
+                    if relPath.hasPrefix(docsPath) {
+                        relPath = String(relPath.dropFirst(docsPath.count))
+                        if relPath.hasPrefix("/") { relPath = String(relPath.dropFirst(1)) }
+                    } else {
+                        relPath = "Imports/\(folderName)/\(mediaURL.lastPathComponent)"
+                    }
                     let title = base
                     var doc: TranscriptDocument?
                     // 配对规则：仅 .srt → 用 .srt；仅 .yomi → 用 .yomi；同时有 .srt 与 .yomi → 优先 .yomi
@@ -575,6 +628,10 @@ final class HomeViewModel {
                     zipImportProgressMessage = ""
                     if created == 0 {
                         showErrorMessage(String(localized: "zip_no_matching_pairs"))
+                    } else {
+                        zipImportSuccessInfo = ZipImportSuccessInfo(folderName: folderName, count: created)
+                        requestSwitchToLibraryTab = true
+                        zipImportNavigateToFolderId = folder.id
                     }
                 }
             } catch {

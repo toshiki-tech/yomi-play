@@ -227,12 +227,24 @@ private struct IdentifiableURL: Identifiable {
 
 // MARK: - 設定シートビュー
 
+/// 导出类型，用于统一分享弹窗的标题、图标与按钮文案
+private enum ExportKind: String {
+    case media
+    case srt
+    case yomi
+}
+
+/// 导出完成后的分享项（音视频 / SRT / YOMI 共用同一弹窗）
+private struct ExportShareItem: Identifiable {
+    let id = UUID()
+    let kind: ExportKind
+    let url: URL
+}
+
 struct SettingsSheetView: View {
     @Bindable var viewModel: PlayerViewModel
     @State private var selectedTab = 0
-    @State private var srtExportItem: IdentifiableURL?
-    @State private var yomiExportItem: IdentifiableURL?
-    @State private var audioExportItem: IdentifiableURL?
+    @State private var exportShareItem: ExportShareItem?
     @State private var isFileImporterPresented: Bool = false
     @State private var hasExportedSRT: Bool = false
     @State private var hasExportedYomi: Bool = false
@@ -305,113 +317,126 @@ struct SettingsSheetView: View {
         } message: {
             Text(viewModel.translationErrorMessage ?? String(localized: "unknown_error"))
         }
-        .sheet(item: $srtExportItem) { item in
-            NavigationStack {
-                VStack(spacing: 24) {
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 40, weight: .semibold))
-                        .foregroundStyle(.blue)
-                    
-                    VStack(spacing: 4) {
-                        Text("export_subtitles_srt")
-                            .font(.headline)
-                        Text(item.url.lastPathComponent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                    
-                    ShareLink(item: item.url, preview: SharePreview(Text("srt"), image: Image(systemName: "doc.text"))) {
-                        Label("share_subtitles", systemImage: "square.and.arrow.up")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("close") {
-                        srtExportItem = nil
-                        hasExportedSRT = true
-                    }
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 32)
-                .navigationTitle("share_subtitles")
-                .navigationBarTitleDisplayMode(.inline)
-            }
+        .sheet(item: $exportShareItem) { item in
+            exportShareSheet(item: item)
         }
-        .sheet(item: $yomiExportItem) { item in
-            NavigationStack {
-                VStack(spacing: 24) {
-                    Image("yomi-mark")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    
-                    VStack(spacing: 4) {
-                        Text("player_export_yomi_title")
-                            .font(.headline)
-                        Text(item.url.lastPathComponent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+    }
+    
+    /// 统一导出分享弹窗：根据导出类型显示对应标题、图标与「分享」按钮文案
+    @ViewBuilder
+    private func exportShareSheet(item: ExportShareItem) -> some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // 类型图标与标题
+                VStack(spacing: 16) {
+                    exportIcon(for: item.kind)
+                    Text(exportSheetTitle(for: item.kind))
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Text(item.url.lastPathComponent)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .padding(.horizontal)
+                    if item.kind == .yomi {
                         Text("full_subtitle_file_with_furigana_translations_etc")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                             .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
                     }
-                    
-                    ShareLink(item: item.url, preview: SharePreview("YomiPlay", image: Image("yomi-mark"))) {
-                        Label("share_subtitles", systemImage: "square.and.arrow.up")
-                    }
+                }
+                .padding(.top, 28)
+                .padding(.bottom, 24)
+                
+                // 分享按钮 + 关闭
+                VStack(spacing: 16) {
+                    shareLink(for: item)
                     .buttonStyle(.borderedProminent)
+                    .tint(.green)
                     
                     Button("close") {
-                        yomiExportItem = nil
-                        hasExportedYomi = true
+                        markExported(for: item.kind)
+                        exportShareItem = nil
                     }
                     .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 24)
-                .padding(.vertical, 32)
-                .navigationTitle(String(localized: "player_share_yomi_title"))
-                .navigationBarTitleDisplayMode(.inline)
+                .padding(.bottom, 32)
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color(.secondarySystemGroupedBackground))
+            .navigationTitle(exportSheetTitle(for: item.kind))
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+    
+    private func exportIcon(for kind: ExportKind) -> some View {
+        Group {
+            switch kind {
+            case .media:
+                Image(systemName: viewModel.document.source.videoPlaybackURL != nil ? "play.rectangle.fill" : "waveform")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(.green)
+            case .srt:
+                Image(systemName: "doc.text.fill")
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(.blue)
+            case .yomi:
+                Image("yomi-mark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
-        .sheet(item: $audioExportItem) { item in
-            NavigationStack {
-                VStack(spacing: 24) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 40, weight: .semibold))
-                        .foregroundStyle(.green)
-                    
-                    VStack(spacing: 4) {
-                        Text("settings_export_media_title")
-                            .font(.headline)
-                        Text(item.url.lastPathComponent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                    
-                    ShareLink(item: item.url, preview: SharePreview(viewModel.document.source.title, image: Image(systemName: "waveform"))) {
-                        Label("share_subtitles", systemImage: "square.and.arrow.up")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("close") {
-                        audioExportItem = nil
-                        hasExportedAudio = true
-                    }
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 32)
-                .navigationTitle("settings_share_audio_title")
-                .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func exportSheetTitle(for kind: ExportKind) -> String {
+        switch kind {
+        case .media: return String(localized: "share_media")
+        case .srt: return String(localized: "export_subtitles_srt")
+        case .yomi: return String(localized: "player_export_yomi_title")
+        }
+    }
+    
+    private func exportShareButtonTitle(for kind: ExportKind) -> String {
+        switch kind {
+        case .media: return String(localized: "share_media")
+        case .srt, .yomi: return String(localized: "share_subtitles")
+        }
+    }
+    
+    @ViewBuilder
+    private func shareLink(for item: ExportShareItem) -> some View {
+        switch item.kind {
+        case .media:
+            ShareLink(item: item.url, preview: SharePreview(viewModel.document.source.title, image: Image(systemName: "waveform"))) {
+                Label(exportShareButtonTitle(for: item.kind), systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
             }
+        case .srt:
+            ShareLink(item: item.url, preview: SharePreview("SRT", image: Image(systemName: "doc.text"))) {
+                Label(exportShareButtonTitle(for: item.kind), systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+        case .yomi:
+            ShareLink(item: item.url, preview: SharePreview("YomiPlay", image: Image("yomi-mark"))) {
+                Label(exportShareButtonTitle(for: item.kind), systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+        }
+    }
+    
+    private func markExported(for kind: ExportKind) {
+        switch kind {
+        case .media: hasExportedAudio = true
+        case .srt: hasExportedSRT = true
+        case .yomi: hasExportedYomi = true
         }
     }
     
@@ -463,11 +488,13 @@ struct SettingsSheetView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     if let url = action() {
                         HapticManager.shared.success()
+                        let kind: ExportKind
                         switch type {
-                        case "SRT": srtExportItem = IdentifiableURL(url: url)
-                        case "YOMI": yomiExportItem = IdentifiableURL(url: url)
-                        default: audioExportItem = IdentifiableURL(url: url)
+                        case "SRT": kind = .srt
+                        case "YOMI": kind = .yomi
+                        default: kind = .media
                         }
+                        exportShareItem = ExportShareItem(kind: kind, url: url)
                     }
                     isExporting = false
                 }

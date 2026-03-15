@@ -58,10 +58,41 @@ final class ProcessingViewModel {
         hasSRT = source.srtURL != nil
         
         if let srtURL = source.srtURL {
-            await processWithSRT(source: source, srtURL: srtURL)
+            if source.type == .remote {
+                await processRemoteThenSRT(source: source, srtURL: srtURL)
+            } else {
+                await processWithSRT(source: source, srtURL: srtURL)
+            }
         } else {
             await processWithRecognition(source: source)
         }
+    }
+    
+    /// 远程 + 附带 SRT：先解析并下载音频到本地，再用 SRT 生成字幕（跳过 AI 识别）
+    @MainActor
+    private func processRemoteThenSRT(source: AudioSource, srtURL: URL) async {
+        guard source.type == .remote, let remoteURL = source.playbackURL else {
+            state = .error(String(localized: "audio_url_not_found"))
+            return
+        }
+        state = .resolvingRemoteSource
+        let resolved = await RemoteMediaResolver.resolve(originalURL: remoteURL)
+        guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
+            state = .error(String(localized: "podcast_link_unresolvable"))
+            return
+        }
+        state = .downloadingPodcast
+        let localAudioURL: URL
+        do {
+            localAudioURL = try await RemoteAudioFetcher.download(url: audioURL)
+        } catch {
+            state = .error(Self.userFacingMessage(for: error))
+            return
+        }
+        defer { try? FileManager.default.removeItem(at: localAudioURL) }
+        var localSource = Self.persistDownloadedMedia(from: localAudioURL, title: source.title)
+        localSource.srtRelativeFilePath = source.srtRelativeFilePath
+        await processWithSRT(source: localSource, srtURL: srtURL)
     }
     
     /// SRT 付き：語音識別をスキップし、SRT を解析して振り仮名を生成する

@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var targetLanguageCode: String = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
     @AppStorage("whisperModelVariant") private var recognitionModeRaw: String = "small"
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
+    @AppStorage("appInterfaceTheme") private var appInterfaceTheme: String = "system"
 
     // 初期値が0（未設定）の場合はデフォルト値を設定
     init() {
@@ -88,6 +89,21 @@ struct SettingsView: View {
             }
 
             Section {
+                Picker(selection: $appInterfaceTheme) {
+                    Text("interface_theme_system").tag("system")
+                    Text("interface_theme_light").tag("light")
+                    Text("interface_theme_dark").tag("dark")
+                } label: {
+                    Label {
+                        Text("interface_theme_label").font(.subheadline)
+                    } icon: {
+                        Image(systemName: "paintbrush").foregroundStyle(.green)
+                    }
+                }
+                .onChange(of: appInterfaceTheme) { _, _ in
+                    HapticManager.shared.selection()
+                }
+                
                 Picker(selection: $appInterfaceLanguage) {
                     Text("interface_language_system").tag("system")
                     Text("interface_language_en").tag("en")
@@ -105,7 +121,7 @@ struct SettingsView: View {
                     HapticManager.shared.selection()
                 }
             } header: {
-                Text("interface_language_section")
+                Text("interface_settings_section")
             } footer: {
                 Text("interface_language_footer")
             }

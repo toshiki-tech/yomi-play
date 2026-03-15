@@ -156,7 +156,7 @@ final class DocumentStore: @unchecked Sendable {
     
     /// フォルダを削除する（ドキュメントの folderId は呼び出し側で nil にすること）
     func deleteFolder(id: UUID) throws {
-        var folders = loadAllFolders().filter { $0.id != id }
+        let folders = loadAllFolders().filter { $0.id != id }
         try saveFolders(folders)
     }
     
