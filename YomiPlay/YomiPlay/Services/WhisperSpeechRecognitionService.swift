@@ -171,13 +171,26 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         }
     }
     
-    /// App Bundle 内のモデルフォルダパスを取得する
-    /// モデルは WhisperModels/openai_whisper-*/ に格納。config.json に加え、必須の .mlmodelc が揃っている場合のみパスを返す（small/medium は変換後に .mlmodelc を置けば利用可能）。
-    private static func bundledModelPath() -> String? {
+    /// 指定した認識モードのモデルが Bundle 内に存在するか（极速/轻量/标准 は通常同梱、高精度/超大 は同梱しない場合あり）
+    static func isModelAvailableLocally(_ mode: RecognitionMode) -> Bool {
+        modelPath(for: mode) != nil
+    }
+    
+    /// 高精度/超大モデルのダウンロード時の目安サイズ（確認ダイアログ用）。同梱モデルには使わない。
+    static func downloadSizeDescription(for mode: RecognitionMode) -> String {
+        switch mode {
+        case .medium: return String(localized: "recognition_model_size_medium")
+        case .large: return String(localized: "recognition_model_size_large")
+        default: return ""
+        }
+    }
+    
+    /// 指定モード用の Bundle 内モデルディレクトリパス（存在しなければ nil）
+    private static func modelPath(for mode: RecognitionMode) -> String? {
         guard let modelsURL = Bundle.main.resourceURL?.appendingPathComponent("WhisperModels") else {
             return nil
         }
-        let folderName = bundledModelFolder
+        let folderName = mode.folderName
         let modelDir = modelsURL.appendingPathComponent(folderName)
         let configPath = modelDir.appendingPathComponent("config.json").path
         guard FileManager.default.fileExists(atPath: configPath) else { return nil }
@@ -186,6 +199,14 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
             || FileManager.default.fileExists(atPath: encoderDir.appendingPathComponent("model.mil").path)
         guard hasEncoder else { return nil }
         return modelDir.path
+    }
+    
+    /// App Bundle 内のモデルフォルダパスを取得する（現在選択中のモード用）
+    private static func bundledModelPath() -> String? {
+        Self.ensureModelVariantInitialized()
+        let raw = UserDefaults.standard.string(forKey: modelVariantDefaultsKey) ?? Self.recommendedModeForDevice.rawValue
+        let mode = RecognitionMode(rawValue: raw) ?? .small
+        return modelPath(for: mode)
     }
     
     /// 判断该句是否主要为日语（含平假名/片假名/汉字）。用于标记非日语句以便跳过注音。

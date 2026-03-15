@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "yomi-mark.png",
+      "filename" : "yomi-play.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "yomi-mark-dark.png",
+      "filename" : "yomi-play-dark.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,7 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "yomi-mark-tinted.png",
+      "filename" : "yomi-play-tinted.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

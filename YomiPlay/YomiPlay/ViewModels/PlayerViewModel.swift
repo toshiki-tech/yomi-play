@@ -397,7 +397,9 @@ final class PlayerViewModel {
             showTranslation = true
         } catch {
             print("PlayerViewModel: 翻译全部失败 - \(error)")
-            translationErrorMessage = error.localizedDescription
+            translationErrorMessage = (error as? TranslationServiceError) == .notAvailable
+                ? String(localized: "translation_requires_newer_ios")
+                : error.localizedDescription
             showTranslationError = true
         }
     }
@@ -415,7 +417,9 @@ final class PlayerViewModel {
             editingTranslatedText = translated.isEmpty ? nil : translated
         } catch {
             print("PlayerViewModel: 单条翻译失败 - \(error)")
-            translationErrorMessage = error.localizedDescription
+            translationErrorMessage = (error as? TranslationServiceError) == .notAvailable
+                ? String(localized: "translation_requires_newer_ios")
+                : error.localizedDescription
             showTranslationError = true
         }
     }

@@ -3,6 +3,7 @@
 //  YomiPlay
 //
 //  Apple Translation フレームワークを使った字幕翻訳サービス
+//  Translation は iOS 26.0 以上で利用可能（SDK による）。それ未満では notAvailable を返す。
 //
 
 import Foundation
@@ -32,6 +33,23 @@ final class TranslationService {
     ) async throws -> [TranscriptSegment] {
         guard !segments.isEmpty else { return segments }
         
+        guard #available(iOS 26.0, *) else {
+            throw TranslationServiceError.notAvailable
+        }
+        
+        return try await translateSegmentsWithFramework(
+            segments,
+            sourceLanguageCode: sourceLanguageCode,
+            targetLanguageCode: targetLanguageCode
+        )
+    }
+    
+    @available(iOS 26.0, *)
+    private func translateSegmentsWithFramework(
+        _ segments: [TranscriptSegment],
+        sourceLanguageCode: String,
+        targetLanguageCode: String
+    ) async throws -> [TranscriptSegment] {
         let source = Locale.Language(identifier: sourceLanguageCode)
         let target = Locale.Language(identifier: targetLanguageCode)
         
@@ -69,7 +87,8 @@ final class TranslationService {
         return result.first?.translatedText ?? ""
     }
 
-    /// 翻訳用の Configuration を作成する（SwiftUI の .translationTask で使用）
+    /// 翻訳用の Configuration を作成する（SwiftUI の .translationTask で使用）。iOS 26.0 以上のみ。
+    @available(iOS 26.0, *)
     func makeConfiguration(
         sourceLanguageCode: String = "ja",
         targetLanguageCode: String

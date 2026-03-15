@@ -9,10 +9,12 @@ import SwiftUI
 import PhotosUI
 
 struct ImportView: View {
+    @Environment(\.locale) private var locale
     @Bindable var viewModel: HomeViewModel
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var showPodcastImport: Bool = false
-    
+    private var subscription: SubscriptionManager { SubscriptionManager.shared }
+
     var body: some View {
         ZStack {
             mainBody
@@ -37,21 +39,118 @@ struct ImportView: View {
         ScrollView {
             VStack(spacing: 32) {
                 headerSection
-                
+                headerStatusSection
                 VStack(spacing: 16) {
                     podcastImportSection
-                    photoLibrarySection
                     fileImportSection
+                    photoLibrarySection
                     zipImportSection
                 }
-                
                 Spacer()
             }
             .padding(20)
             .contentShape(Rectangle())
         }
         .background(Color(.systemBackground))
-        .disabled(viewModel.showSRTOption) // 選択中は背面を操作不可にする
+        .disabled(viewModel.showSRTOption)
+        .animation(.easeInOut(duration: 0.35), value: subscription.isProUser)
+    }
+
+    /// 根据 isProUser 动态展示：免费 = 配额进度条 + 升级 Pro；Pro = 尊贵身份条 + 有效期
+    private var headerStatusSection: some View {
+        Group {
+            if subscription.isProUser {
+                proPrivilegeBar
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            } else {
+                freeQuotaCard
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.35), value: subscription.isProUser)
+    }
+
+    /// 免费用户：配额进度条（渐变色，剩余 <5 分钟变红）+ 右侧「升级 Pro」按钮
+    private var freeQuotaCard: some View {
+        let remainingMin = subscription.remainingFreeSeconds / 60
+        let isLowQuota = remainingMin < 5
+        let progress = subscription.freeQuotaLimitSeconds > 0
+            ? Double(subscription.monthlyUsedSeconds) / Double(subscription.freeQuotaLimitSeconds)
+            : 0.0
+        let progressGradient = isLowQuota
+            ? LinearGradient(colors: [.red, .orange], startPoint: .leading, endPoint: .trailing)
+            : LinearGradient(colors: [.green, .green.opacity(0.7)], startPoint: .leading, endPoint: .trailing)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("monthly_free_quota")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(String(format: String(localized: "quota_progress_format"), subscription.monthlyUsedSeconds / 60, remainingMin))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button {
+                    viewModel.showPaywall = true
+                } label: {
+                    Text("import_upgrade_pro")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.green))
+                }
+                .buttonStyle(.plain)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.primary.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(progressGradient)
+                        .frame(width: max(0, geo.size.width * min(1, progress)))
+                }
+            }
+            .frame(height: 8)
+        }
+        .padding(14)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    /// Pro 用户：尊贵身份条 —「无限识别特权已生效」+ 小字有效期
+    private var proPrivilegeBar: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.yellow)
+                Text("import_pro_privilege_active")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+            }
+            Text(proExpiryText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+    }
+
+    private var proExpiryText: String {
+        if let date = subscription.proExpirationDate {
+            let f = DateFormatter()
+            f.locale = locale
+            f.dateStyle = .long
+            f.timeStyle = .none
+            let format = String(localized: LocalizedStringResource("settings_header_pro_expiry", locale: locale))
+            return String(format: format, f.string(from: date))
+        }
+        return String(localized: LocalizedStringResource("settings_header_pro_expiry_lifetime", locale: locale))
     }
     
     private var optionsOverlay: some View {
@@ -182,10 +281,32 @@ struct ImportView: View {
                         .foregroundStyle(.blue)
                 }
                 .frame(width: 50, height: 50)
-                
                 VStack(alignment: .leading, spacing: 4) {
                     Text("select_from_files").font(.headline)
-                    Text("mp3, m4a, wav, mp4, mov").font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text("mp3, m4a, wav,")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 2) {
+                            Text("mp4")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.yellow)
+                        }
+                        Text(",")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 2) {
+                            Text("mov")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "crown.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.yellow)
+                        }
+                    }
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
@@ -198,8 +319,12 @@ struct ImportView: View {
     
     private var zipImportSection: some View {
         Button {
-            viewModel.fileImportMode = .zip
-            viewModel.isFileImporterPresented = true
+            if subscription.isProUser {
+                viewModel.fileImportMode = .zip
+                viewModel.isFileImporterPresented = true
+            } else {
+                viewModel.showPaywall = true
+            }
         } label: {
             HStack(spacing: 16) {
                 ZStack {
@@ -211,7 +336,19 @@ struct ImportView: View {
                 }
                 .frame(width: 50, height: 50)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("import_from_zip").font(.headline)
+                    HStack(spacing: 6) {
+                        Text("import_from_zip").font(.headline)
+                        Image(systemName: "crown.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                        if !subscription.isProUser {
+                            Text("Pro").font(.caption2).fontWeight(.semibold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.orange))
+                        }
+                    }
                     Text("import_zip_description").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -263,9 +400,20 @@ struct ImportView: View {
                         .foregroundStyle(.purple)
                 }
                 .frame(width: 50, height: 50)
-                
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("select_from_photo_library").font(.headline)
+                    HStack(spacing: 6) {
+                        Text("select_from_photo_library").font(.headline)
+                        Image(systemName: "crown.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                        if !subscription.isProUser {
+                            Text("Pro").font(.caption2).fontWeight(.semibold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.orange))
+                        }
+                    }
                     Text("video_files_from_camera_roll").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -294,6 +442,9 @@ struct ImportView: View {
         @State private var episodesError: String?
         @FocusState private var isSearchFocused: Bool
         @FocusState private var isUrlFieldFocused: Bool
+        @State private var showNetworkConfirmation: Bool = false
+        @State private var pendingImportURL: URL?
+        @State private var pendingImportTitle: String = ""
 
         var body: some View {
             NavigationStack {
@@ -322,6 +473,22 @@ struct ImportView: View {
                         }
                     }
                 }
+            }
+            .alert(String(localized: "podcast_url_import_network_title"), isPresented: $showNetworkConfirmation) {
+                Button("continue", role: .none) {
+                    if let url = pendingImportURL {
+                        onDismiss()
+                        viewModel.startImportFromURL(url, title: pendingImportTitle.isEmpty ? "URL" : pendingImportTitle)
+                    }
+                    pendingImportURL = nil
+                    pendingImportTitle = ""
+                }
+                Button("cancel", role: .cancel) {
+                    pendingImportURL = nil
+                    pendingImportTitle = ""
+                }
+            } message: {
+                Text("podcast_url_import_network_message")
             }
         }
 
@@ -454,7 +621,6 @@ struct ImportView: View {
         private func importFromPastedURL() {
             let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty { return }
-            // 多行时取第一行
             let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
             guard let url = URL(string: firstLine), url.scheme != nil else {
                 urlImportError = String(localized: "invalid_url_hint")
@@ -462,12 +628,9 @@ struct ImportView: View {
             }
             urlImportError = nil
             let title = url.deletingPathExtension().lastPathComponent
-            onDismiss() // 先关闭播客页，再在导入页显示「是否附带字幕」选择
-            if title.isEmpty || title == "/" {
-                viewModel.startImportFromURL(url, title: "URL")
-            } else {
-                viewModel.startImportFromURL(url, title: title)
-            }
+            pendingImportURL = url
+            pendingImportTitle = (title.isEmpty || title == "/") ? "URL" : title
+            showNetworkConfirmation = true
         }
 
         private func episodeListView(podcast: PodcastSearchResult) -> some View {
@@ -495,8 +658,9 @@ struct ImportView: View {
                 } else {
                     List(episodes) { ep in
                         Button {
-                            onDismiss()
-                            viewModel.startImportFromURL(ep.audioURL, title: ep.title)
+                            pendingImportURL = ep.audioURL
+                            pendingImportTitle = ep.title
+                            showNetworkConfirmation = true
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ep.title).font(.subheadline).lineLimit(2)
@@ -558,16 +722,33 @@ struct ImportView: View {
         }
     }
 
+    private static let crownGradient = LinearGradient(
+        colors: [Color(red: 0.95, green: 0.78, blue: 0.2), Color(red: 0.85, green: 0.6, blue: 0.1)],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     private var headerSection: some View {
         VStack(spacing: 16) {
             Image(systemName: "waveform.circle.fill")
                 .font(.system(size: 80))
                 .foregroundStyle(.linearGradient(colors: [.green, .green.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .symbolRenderingMode(.hierarchical)
-            
+
             VStack(spacing: 4) {
-                Text("YomiPlay").font(.largeTitle).fontWeight(.bold)
-                Text("Japanese Learning & Subtitles").font(.subheadline).foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text("YomiPlay")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    if subscription.isProUser {
+                        Image(systemName: "crown.fill")
+                            .font(.title2)
+                            .foregroundStyle(Self.crownGradient)
+                    }
+                }
+                Text("Japanese Learning with AI Subtitles")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.top, 20)

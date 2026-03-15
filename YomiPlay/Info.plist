@@ -44,12 +44,10 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>音声認識のためにマイクへのアクセスが必要です。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>動画ファイルから音声を取り込むために写真ライブラリへのアクセスが必要です。</string>
+	<string>動画ファイルから音声を読み取り、字幕を生成するために写真ライブラリへのアクセスが必要です。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>日本語音声を字幕に変換するために音声認識の許可が必要です。</string>
+	<string>音声を文字に変換して字幕を生成するために音声認識の許可が必要です。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

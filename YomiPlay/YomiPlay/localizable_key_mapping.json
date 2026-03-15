@@ -72,6 +72,7 @@
   "罗马字": "romaji",
   "翻译": "translation",
   "翻译失败": "translation_failed",
+  "翻译功能需要更高版本的系统，请升级 iOS 后使用。": "translation_requires_newer_ios",
   "翻译全部字幕": "translate_all_subtitles",
   "翻译这条": "translate_this_segment",
   "翻译（可编辑）": "translation_editable_label",

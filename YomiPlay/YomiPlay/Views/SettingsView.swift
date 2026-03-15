@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  YomiPlay
 //
-//  アプリ設定画面
+//  アプリ設定画面：Free/Pro 动态头部 + iOS 18 风格
 //
 
 import SwiftUI
@@ -16,17 +16,23 @@ struct SettingsView: View {
     @AppStorage("whisperModelVariant") private var recognitionModeRaw: String = "small"
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
     @AppStorage("appInterfaceTheme") private var appInterfaceTheme: String = "system"
+    @AppStorage("translationEnabled") private var translationEnabled: Bool = false
+    @State private var showTranslationNetworkHint: Bool = false
+    @State private var showModelDownloadConfirmAlert: Bool = false
+    @State private var pendingDownloadMode: WhisperSpeechRecognitionService.RecognitionMode?
+    @State private var previousRecognitionModeRaw: String = "small"
+    private var subscription: SubscriptionManager { SubscriptionManager.shared }
 
-    // 初期値が0（未設定）の場合はデフォルト値を設定
     init() {
         WhisperSpeechRecognitionService.ensureModelVariantInitialized()
         if UserDefaults.standard.object(forKey: "showFurigana") == nil { _showFurigana = State(initialValue: true) }
         if UserDefaults.standard.object(forKey: "showRomaji") == nil { _showRomaji = State(initialValue: true) }
         if UserDefaults.standard.object(forKey: "showEnglish") == nil { _showEnglish = State(initialValue: true) }
         if UserDefaults.standard.double(forKey: "fontSize") == 0 { _fontSize = State(initialValue: 18) }
+        let raw = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey) ?? WhisperSpeechRecognitionService.recommendedModeForDevice.rawValue
+        _previousRecognitionModeRaw = State(initialValue: raw)
     }
     
-    /// 翻译目标语言列表（针对日文字幕的翻译，不包含日文本身）
     let languages = [
         ("zh-Hans", "简体中文"),
         ("zh-Hant", "繁體中文"),
@@ -36,18 +42,11 @@ struct SettingsView: View {
     var body: some View {
         List {
             Section {
-                VStack(spacing: 8) {
-                    Text("YomiPlay Premium")
-                        .font(.headline)
-                        .foregroundStyle(.linearGradient(colors: [.green, .blue], startPoint: .leading, endPoint: .trailing))
-                    Text("Unlock all features and support development.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                SettingsHeaderView(subscription: subscription)
             }
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
             
             Section {
                 settingsToggle(icon: "character.textbox", title: "furigana", color: .green, isOn: $showFurigana) {
@@ -127,6 +126,20 @@ struct SettingsView: View {
             }
             
             Section {
+                Toggle(isOn: $translationEnabled) {
+                    Label {
+                        Text("translation_enabled_label").font(.subheadline)
+                    } icon: {
+                        Image(systemName: "text.bubble").foregroundStyle(.blue)
+                    }
+                }
+                .onChange(of: translationEnabled) { _, isOn in
+                    if isOn {
+                        triggerTranslationLanguagePackDownloadAndShowNetworkHint()
+                    }
+                    HapticManager.shared.selection()
+                }
+                
                 Picker(selection: $targetLanguageCode) {
                     ForEach(languages, id: \.0) { lang in
                         Text(lang.1).tag(lang.0)
@@ -145,6 +158,11 @@ struct SettingsView: View {
             } header: {
                 Text("translation_settings")
             }
+            .alert(String(localized: "translation_network_hint_title"), isPresented: $showTranslationNetworkHint) {
+                Button("ok") { showTranslationNetworkHint = false }
+            } message: {
+                Text("translation_network_hint_message")
+            }
             
             Section {
                 Picker(selection: $recognitionModeRaw) {
@@ -158,7 +176,21 @@ struct SettingsView: View {
                         Image(systemName: "cpu").foregroundStyle(.green)
                     }
                 }
-                .onChange(of: recognitionModeRaw) { _, _ in
+                .onChange(of: recognitionModeRaw) { _, newValue in
+                    guard let mode = WhisperSpeechRecognitionService.RecognitionMode(rawValue: newValue) else {
+                        HapticManager.shared.selection()
+                        return
+                    }
+                    // 高精度 / 超大：若未同梱则先弹窗确认再切换；同梱则直接切换
+                    if mode == .medium || mode == .large {
+                        if !WhisperSpeechRecognitionService.isModelAvailableLocally(mode) {
+                            recognitionModeRaw = previousRecognitionModeRaw
+                            pendingDownloadMode = mode
+                            showModelDownloadConfirmAlert = true
+                            return
+                        }
+                    }
+                    previousRecognitionModeRaw = newValue
                     HapticManager.shared.selection()
                 }
             } header: {
@@ -171,6 +203,39 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .alert(String(localized: "recognition_model_download_confirm_title"), isPresented: $showModelDownloadConfirmAlert) {
+                Button(String(localized: "recognition_model_download_confirm_button"), role: .none) {
+                    if let mode = pendingDownloadMode {
+                        recognitionModeRaw = mode.rawValue
+                        previousRecognitionModeRaw = mode.rawValue
+                    }
+                    pendingDownloadMode = nil
+                }
+                Button("cancel", role: .cancel) {
+                    pendingDownloadMode = nil
+                }
+            } message: {
+                if let mode = pendingDownloadMode {
+                    let sizeDesc = WhisperSpeechRecognitionService.downloadSizeDescription(for: mode)
+                    Text(String(format: String(localized: "recognition_model_download_confirm_message"), sizeDesc))
+                }
+            }
+
+            #if DEBUG
+            Section {
+                Toggle(isOn: Binding(
+                    get: { subscription.debugSimulateProUser },
+                    set: { subscription.debugSimulateProUser = $0 }
+                )) {
+                    Label("模拟 Pro 用户", systemImage: "crown.fill")
+                        .foregroundStyle(.orange)
+                }
+            } header: {
+                Text("Debug")
+            } footer: {
+                Text("开启后全应用显示 Pro 状态，用于测试导入页/设置页等 Pro 界面。仅 Debug 构建有效。")
+            }
+            #endif
 
             Section {
                 infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
@@ -214,6 +279,22 @@ struct SettingsView: View {
         }
     }
 
+    /// 用户打开「开启翻译」时：触发一次最小翻译以拉取语言包，然后提示允许网络
+    private func triggerTranslationLanguagePackDownloadAndShowNetworkHint() {
+        let targetLang = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
+        let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: "こんにちは")
+        Task {
+            _ = try? await TranslationService.shared.translateSegments(
+                [segment],
+                sourceLanguageCode: "ja",
+                targetLanguageCode: targetLang
+            )
+            await MainActor.run {
+                showTranslationNetworkHint = true
+            }
+        }
+    }
+    
     private func settingsToggle(icon: String, title: LocalizedStringKey, color: Color, isOn: Binding<Bool>, action: @escaping () -> Void) -> some View {
         Toggle(isOn: isOn) {
             Label {
@@ -236,6 +317,148 @@ struct SettingsView: View {
             Spacer()
             Text(value).font(.subheadline).foregroundStyle(.secondary)
         }
+    }
+}
+
+// MARK: - 设置页头部（Free / Pro 动态状态）
+
+private struct SettingsHeaderView: View {
+    @Environment(\.locale) private var locale
+    @Bindable var subscription: SubscriptionManager
+    @State private var crownRotation: Double = 0
+    
+    private var quotaProgress: Double {
+        let limit = subscription.freeQuotaLimitSeconds
+        return limit > 0 ? min(1, Double(subscription.monthlyUsedSeconds) / Double(limit)) : 0
+    }
+    
+    private static let quotaGradient = LinearGradient(
+        colors: [.green, .orange],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
+    private static let goldGradient = LinearGradient(
+        colors: [Color(red: 0.95, green: 0.78, blue: 0.2), Color(red: 0.85, green: 0.6, blue: 0.1)],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
+    private static let proBgGradient = LinearGradient(
+        colors: [.purple.opacity(0.85), .blue.opacity(0.75)],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    var body: some View {
+        Group {
+            if subscription.isProUser {
+                proHeader
+            } else {
+                freeHeader
+            }
+        }
+        .padding(.vertical, 20)
+        .padding(.horizontal, 20)
+    }
+    
+    // MARK: - Free 状态：柔和衬底 + 居中文字 + 彩色标题 + 配额进度条
+    
+    private static let freeTitleGradient = LinearGradient(
+        colors: [.green, .blue],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
+    private var freeHeader: some View {
+        VStack(spacing: 12) {
+            Text("settings_header_free_title")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(Self.freeTitleGradient)
+                .multilineTextAlignment(.center)
+            
+            Text("settings_header_free_subtitle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            
+            VStack(spacing: 10) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.primary.opacity(0.06))
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Self.quotaGradient)
+                            .frame(width: max(0, geo.size.width * quotaProgress))
+                    }
+                }
+                .frame(height: 10)
+                
+                Text(String(format: String(localized: LocalizedStringResource("settings_header_free_quota_hint", locale: locale)), subscription.remainingFreeSeconds / 60))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+    }
+    
+    // MARK: - Pro 状态：紫蓝渐变 + 金色标题 + 皇冠动画
+    
+    private var proHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Text("settings_header_pro_title")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Self.goldGradient)
+                
+                Image(systemName: "crown.fill")
+                    .font(.title2)
+                    .foregroundStyle(Self.goldGradient)
+                    .rotationEffect(.degrees(crownRotation))
+            }
+            
+            Text("settings_header_pro_subtitle")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.95))
+            
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title3)
+                    .foregroundStyle(.yellow)
+                Text(expiryText)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Self.proBgGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+                crownRotation = 8
+            }
+        }
+    }
+    
+    private var expiryText: String {
+        if let date = subscription.proExpirationDate {
+            let f = DateFormatter()
+            f.locale = locale
+            f.dateStyle = .long
+            f.timeStyle = .none
+            let format = String(localized: LocalizedStringResource("settings_header_pro_expiry", locale: locale))
+            return String(format: format, f.string(from: date))
+        }
+        return String(localized: LocalizedStringResource("settings_header_pro_expiry_lifetime", locale: locale))
     }
 }
 

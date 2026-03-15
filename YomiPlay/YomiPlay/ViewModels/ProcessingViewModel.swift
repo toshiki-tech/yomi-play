@@ -234,6 +234,8 @@ final class ProcessingViewModel {
         let doc = TranscriptDocument(source: finalSource, segments: segmentsToSave)
         document = doc
         state = .completed
+        let usedSeconds = doc.segments.last.map { Int(ceil($0.endTime)) } ?? 0
+        SubscriptionManager.shared.addUsedSeconds(usedSeconds)
         do {
             try DocumentStore.shared.save(doc)
         } catch {
@@ -264,8 +266,12 @@ final class ProcessingViewModel {
     }
 
     /// 使用设置中的目标语言对字幕做一次翻译，失败则返回原 segments（不阻塞导入）
+    /// 仅当用户已在设置中开启「翻译」时执行
     private func runTranslationIfNeeded(_ segments: [TranscriptSegment]) async -> [TranscriptSegment] {
         guard !segments.isEmpty else { return segments }
+        guard UserDefaults.standard.bool(forKey: "translationEnabled") else {
+            return segments
+        }
         let targetLang = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
         do {
             let result = try await translationService.translateSegments(

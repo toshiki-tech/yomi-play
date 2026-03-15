@@ -249,10 +249,11 @@ struct SettingsSheetView: View {
     @State private var hasExportedSRT: Bool = false
     @State private var hasExportedYomi: Bool = false
     @State private var hasExportedAudio: Bool = false
-    
+    @State private var showPaywall: Bool = false
+
     enum ImportMode { case srt, yomi }
     @State private var importMode: ImportMode = .srt
-    
+
     // エクスポート中のステータス
     @State private var isExporting: Bool = false
     @State private var exportProgress: Double = 0.0
@@ -319,6 +320,9 @@ struct SettingsSheetView: View {
         }
         .sheet(item: $exportShareItem) { item in
             exportShareSheet(item: item)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(onDismiss: { showPaywall = false })
         }
     }
     
@@ -541,7 +545,11 @@ struct SettingsSheetView: View {
                         hasExported: hasExportedAudio,
                         isExporting: isExporting && exportingType == "Media"
                     ) {
-                        runExportTask(type: "Media") { url }
+                        if SubscriptionManager.shared.isProUser {
+                            runExportTask(type: "Media") { url }
+                        } else {
+                            showPaywall = true
+                        }
                     }
                     Divider().padding(.leading, 52)
                 }
@@ -554,11 +562,15 @@ struct SettingsSheetView: View {
                     hasExported: hasExportedSRT,
                     isExporting: isExporting && exportingType == "SRT"
                 ) {
-                    runExportTask(type: "SRT") {
-                        SubtitleExportService.writeSRTToTempFile(
-                            segments: viewModel.document.segments,
-                            fileName: viewModel.document.source.title
-                        )
+                    if SubscriptionManager.shared.isProUser {
+                        runExportTask(type: "SRT") {
+                            SubtitleExportService.writeSRTToTempFile(
+                                segments: viewModel.document.segments,
+                                fileName: viewModel.document.source.title
+                            )
+                        }
+                    } else {
+                        showPaywall = true
                     }
                 }
                 
@@ -572,11 +584,15 @@ struct SettingsSheetView: View {
                     hasExported: hasExportedYomi,
                     isExporting: isExporting && exportingType == "YOMI"
                 ) {
-                    runExportTask(type: "YOMI") {
-                        SubtitleExportService.writeYomiToTempFile(
-                            document: viewModel.document,
-                            fileName: viewModel.document.source.title
-                        )
+                    if SubscriptionManager.shared.isProUser {
+                        runExportTask(type: "YOMI") {
+                            SubtitleExportService.writeYomiToTempFile(
+                                document: viewModel.document,
+                                fileName: viewModel.document.source.title
+                            )
+                        }
+                    } else {
+                        showPaywall = true
                     }
                 }
             }

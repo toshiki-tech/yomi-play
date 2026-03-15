@@ -94,6 +94,9 @@ final class HomeViewModel {
     /// 分组导出为 ZIP 分享：生成的临时 ZIP URL，分享结束后需清理
     var exportedZipURL: URL?
     var showShareZipSheet: Bool = false
+
+    /// 是否展示订阅墙（权限不足时弹出）
+    var showPaywall: Bool = false
     
     // 検索・フィルタリング
     var searchText: String = ""
@@ -248,6 +251,10 @@ final class HomeViewModel {
     
     /// 将分组导出为 ZIP 并触发分享（异步）；使用该分组内全部文档，不受搜索过滤影响
     func exportFolderAsZip(folderId: UUID?) {
+        guard SubscriptionManager.shared.isProUser else {
+            showPaywall = true
+            return
+        }
         let docs = allSavedDocuments.filter { $0.folderId == folderId }
         let name = folderDisplayName(for: folderId)
         guard !docs.isEmpty else {
@@ -329,6 +336,10 @@ final class HomeViewModel {
     func handleFileSelected(result: Result<URL, Error>) {
         switch result {
         case .success(let url):
+            if isVideoFile(url: url), !SubscriptionManager.shared.isProUser {
+                showPaywall = true
+                return
+            }
             guard url.startAccessingSecurityScopedResource() else {
                 showErrorMessage(String(localized: "no_permission_to_access_the_file"))
                 return
@@ -361,6 +372,10 @@ final class HomeViewModel {
     }
     
     func handlePhotoPickerItem(_ item: PhotosPickerItem) {
+        if !SubscriptionManager.shared.isProUser {
+            showPaywall = true
+            return
+        }
         isLoadingVideo = true
         Task {
             do {
@@ -414,13 +429,27 @@ final class HomeViewModel {
         showSRTOption = true
     }
     
-    /// 用户选择跳过 SRT，直接进入处理流程
+    /// 用户选择跳过 SRT，直接进入处理流程（免费用户先检查本月识别时长配额）
     func skipSRT() {
         guard let source = pendingAudioSource else { return }
-        selectedAudioSource = source
-        pendingAudioSource = nil
-        showSRTOption = false
-        navigateToProcessing = true
+        Task {
+            var durationSeconds = 0
+            if let url = source.playbackURL, source.type == .local {
+                durationSeconds = await SubscriptionManager.durationSeconds(of: url)
+            }
+            guard SubscriptionManager.shared.canUseRecognitionSeconds(durationSeconds) else {
+                await MainActor.run {
+                    showPaywall = true
+                }
+                return
+            }
+            await MainActor.run {
+                selectedAudioSource = source
+                pendingAudioSource = nil
+                showSRTOption = false
+                navigateToProcessing = true
+            }
+        }
     }
     
     /// 用户选择了 SRT 文件，将其复制到 Documents 并附加到 AudioSource

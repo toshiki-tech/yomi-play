@@ -94,6 +94,9 @@ struct HomeView: View {
             }
         }
         .alert("error", isPresented: $viewModel.showError) { Button("ok") {} } message: { Text(viewModel.errorMessage ?? String(localized: "unknown_error")) }
+        .sheet(isPresented: $viewModel.showPaywall) {
+            PaywallView(onDismiss: { viewModel.showPaywall = false })
+        }
         .overlay {
             if viewModel.isLoadingVideo {
                 loadingOverlay
