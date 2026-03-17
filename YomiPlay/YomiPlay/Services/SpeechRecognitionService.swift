@@ -13,6 +13,7 @@ import AVFoundation
 
 // MARK: - 認識結果
 
+/// Whisper / Apple 共用的句级识别结果
 struct RecognitionSegment {
     let text: String
     let startTime: TimeInterval
@@ -20,14 +21,31 @@ struct RecognitionSegment {
     let confidence: Float
     /// 该句是否主要为日语（含平假名/片假名/汉字）。非日语句不生成注音。
     let isJapanese: Bool
-
-    init(text: String, startTime: TimeInterval, endTime: TimeInterval, confidence: Float, isJapanese: Bool = true) {
+    /// 可选的逐词时间戳（仅 Whisper 提供），用于更精确的卡拉 OK 高亮
+    let wordTimings: [WordTimingInfo]?
+    
+    init(
+        text: String,
+        startTime: TimeInterval,
+        endTime: TimeInterval,
+        confidence: Float,
+        isJapanese: Bool = true,
+        wordTimings: [WordTimingInfo]? = nil
+    ) {
         self.text = text
         self.startTime = startTime
         self.endTime = endTime
         self.confidence = confidence
         self.isJapanese = isJapanese
+        self.wordTimings = wordTimings
     }
+}
+
+/// 轻量版 Word 时间信息，解耦 WhisperKit 的 WordTiming 类型
+struct WordTimingInfo {
+    let word: String
+    let start: TimeInterval
+    let end: TimeInterval
 }
 
 // MARK: - プロトコル定義
@@ -165,7 +183,9 @@ final class AppleSpeechRecognitionService: SpeechRecognitionServiceProtocol {
                         text: seg.text,
                         startTime: seg.startTime + chunkStart,
                         endTime: seg.endTime + chunkStart,
-                        confidence: seg.confidence
+                        confidence: seg.confidence,
+                        isJapanese: seg.isJapanese,
+                        wordTimings: seg.wordTimings
                     )
                 }
                 allSegments.append(contentsOf: offsetSegments)
@@ -250,7 +270,9 @@ final class AppleSpeechRecognitionService: SpeechRecognitionServiceProtocol {
                     text: currentText.trimmingCharacters(in: .whitespaces),
                     startTime: currentStart,
                     endTime: currentEnd,
-                    confidence: wordCount > 0 ? totalConfidence / Float(wordCount) : 0
+                    confidence: wordCount > 0 ? totalConfidence / Float(wordCount) : 0,
+                    isJapanese: true,
+                    wordTimings: nil
                 )
                 if !segment.text.isEmpty {
                     result.append(segment)
@@ -267,7 +289,9 @@ final class AppleSpeechRecognitionService: SpeechRecognitionServiceProtocol {
                 text: currentText.trimmingCharacters(in: .whitespaces),
                 startTime: currentStart,
                 endTime: currentEnd,
-                confidence: wordCount > 0 ? totalConfidence / Float(wordCount) : 0
+                confidence: wordCount > 0 ? totalConfidence / Float(wordCount) : 0,
+                isJapanese: true,
+                wordTimings: nil
             ))
         }
         

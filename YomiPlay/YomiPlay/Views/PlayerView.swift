@@ -40,7 +40,18 @@ struct PlayerView: View {
     @State private var currentIndex: Int
     @State private var showSettings: Bool = false
     @State private var shouldAutoPlayOnReady: Bool = false
+    @State private var pinchScale: CGFloat = 1.0
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var systemColorScheme
+    @AppStorage(PlayerTheme.playerThemeStorageKey) private var playerTheme: String = "system"
+    
+    /// 实际用于播放器界面的主题（用户选择或跟随系统）
+    private var effectiveThemeScheme: ColorScheme {
+        if playerTheme == "light" { return .light }
+        if playerTheme == "dark" { return .dark }
+        return systemColorScheme
+    }
     
     init(documents: [TranscriptDocument], currentIndex: Int, navigationPath: Binding<NavigationPath>) {
         let safeIndex = max(0, min(documents.count - 1, currentIndex))
@@ -84,6 +95,8 @@ struct PlayerView: View {
             // 再生コントロール
             controlsSection
         }
+        .environment(\.playerThemeScheme, effectiveThemeScheme)
+        .tint(PlayerTheme.palette(for: effectiveThemeScheme).accent)
         .navigationTitle(viewModel.document.source.title.isEmpty ? String(localized: "now_playing") : viewModel.document.source.title)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -131,7 +144,12 @@ struct PlayerView: View {
         .onAppear {
             // 再生完了時に次の記録へ進む
             viewModel.playerService.onPlaybackEnded = {
-                playNextIfAvailable()
+                if viewModel.isLooping {
+                    viewModel.playerService.seek(to: 0)
+                    viewModel.playerService.play()
+                } else {
+                    playNextIfAvailable()
+                }
             }
         }
     }
@@ -139,14 +157,17 @@ struct PlayerView: View {
     // MARK: - 字幕セクション
     
     private var transcriptSection: some View {
-        TranscriptView(
+        let effectiveFontSize = max(12, min(viewModel.fontSize * pinchScale, 48))
+        
+        return TranscriptView(
             segments: viewModel.document.segments,
             currentSegmentID: viewModel.playerService.currentSegmentID,
+            currentTime: viewModel.playerService.currentTime,
             showFurigana: viewModel.showFurigana,
             showRomaji: viewModel.showRomaji,
             showEnglish: viewModel.showEnglish,
             showTranslation: viewModel.showTranslation,
-            fontSize: viewModel.fontSize,
+            fontSize: effectiveFontSize,
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
             editingTranslatedText: Binding(get: { viewModel.editingTranslatedText }, set: { viewModel.editingTranslatedText = $0 }),
@@ -179,6 +200,17 @@ struct PlayerView: View {
             onTranslateThisSegment: {
                 await viewModel.translateCurrentSegment()
             }
+        )
+        .gesture(
+            MagnificationGesture()
+                .onChanged { value in
+                    pinchScale = value
+                }
+                .onEnded { value in
+                    let newSize = max(12, min(viewModel.fontSize * value, 48))
+                    viewModel.fontSize = newSize
+                    pinchScale = 1.0
+                }
         )
     }
     
@@ -213,7 +245,12 @@ struct PlayerView: View {
         shouldAutoPlayOnReady = true
         // onPlaybackEnded ハンドラを新しいプレイヤーに再設定
         viewModel.playerService.onPlaybackEnded = {
-            playNextIfAvailable()
+            if viewModel.isLooping {
+                viewModel.playerService.seek(to: 0)
+                viewModel.playerService.play()
+            } else {
+                playNextIfAvailable()
+            }
         }
     }
 }
@@ -242,7 +279,9 @@ private struct ExportShareItem: Identifiable {
 }
 
 struct SettingsSheetView: View {
+    @Environment(\.locale) private var locale
     @Bindable var viewModel: PlayerViewModel
+    @AppStorage(PlayerTheme.playerThemeStorageKey) private var playerTheme: String = "system"
     @State private var selectedTab = 0
     @State private var exportShareItem: ExportShareItem?
     @State private var isFileImporterPresented: Bool = false
@@ -508,6 +547,16 @@ struct SettingsSheetView: View {
     
     private var generalSettings: some View {
         VStack(spacing: 0) {
+            // 播放器外观：浅色 / 深色 / 跟随系统
+            settingsRow(icon: "paintbrush.fill", title: "interface_theme_label", color: Color(hue: 0.46, saturation: 0.42, brightness: 0.62)) {
+                Picker("", selection: $playerTheme) {
+                    Text("interface_theme_system").tag("system")
+                    Text("interface_theme_light").tag("light")
+                    Text("interface_theme_dark").tag("dark")
+                }
+                .pickerStyle(.menu)
+            }
+            Divider().padding(.leading, 52)
             settingsRow(icon: "textformat.size", title: "font_size", color: .green) {
                 HStack(spacing: 12) {
                     Button { viewModel.adjustFontSize(by: -2) } label: {
@@ -715,9 +764,21 @@ struct SettingsSheetView: View {
                 VStack(spacing: 0) {
                     settingsRow(icon: "globe", title: "target_language", color: .green) {
                         Menu {
-                            Button("chinese_simplified") { viewModel.targetLanguageCode = "zh-Hans" }
-                            Button("chinese_traditional") { viewModel.targetLanguageCode = "zh-Hant" }
-                            Button("english") { viewModel.targetLanguageCode = "en" }
+                            Button {
+                                viewModel.targetLanguageCode = "zh-Hans"
+                            } label: {
+                                Text(String(localized: LocalizedStringResource("chinese_simplified", locale: locale)))
+                            }
+                            Button {
+                                viewModel.targetLanguageCode = "zh-Hant"
+                            } label: {
+                                Text(String(localized: LocalizedStringResource("chinese_traditional", locale: locale)))
+                            }
+                            Button {
+                                viewModel.targetLanguageCode = "en"
+                            } label: {
+                                Text(String(localized: LocalizedStringResource("english", locale: locale)))
+                            }
                         } label: {
                             HStack(spacing: 4) {
                                 Text(labelForLanguage(code: viewModel.targetLanguageCode))
@@ -791,9 +852,9 @@ struct SettingsSheetView: View {
 
     private func labelForLanguage(code: String) -> String {
         switch code {
-        case "zh-Hans": return String(localized: "chinese_simplified")
-        case "zh-Hant": return String(localized: "chinese_traditional")
-        case "en": return String(localized: "english")
+        case "zh-Hans": return String(localized: LocalizedStringResource("chinese_simplified", locale: locale))
+        case "zh-Hant": return String(localized: LocalizedStringResource("chinese_traditional", locale: locale))
+        case "en": return String(localized: LocalizedStringResource("english", locale: locale))
         default: return code
         }
     }

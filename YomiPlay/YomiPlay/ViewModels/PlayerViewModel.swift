@@ -171,14 +171,7 @@ final class PlayerViewModel {
     }
     
     func toggleCurrentLoop() {
-        if isLooping {
-            isLooping = false
-            playerService.setLoopSegment(nil)
-        } else if let segmentID = playerService.currentSegmentID,
-                  let segment = document.segments.first(where: { $0.id == segmentID }) {
-            isLooping = true
-            playerService.setLoopSegment(segment)
-        }
+        isLooping.toggle()
     }
     
     // MARK: - 字幕編集

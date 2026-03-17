@@ -16,8 +16,8 @@ struct LibraryView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            headerSection
             searchSection
-            Divider()
             if viewModel.hasNoSavedDocuments {
                 emptyStateView
             } else if viewModel.filteredDocuments.isEmpty {
@@ -26,7 +26,7 @@ struct LibraryView: View {
                 groupListView
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(.systemBackground))
         .contentShape(Rectangle())
         .onTapGesture { isSearchFocused = false }
         .navigationTitle("saved_records")
@@ -86,7 +86,26 @@ struct LibraryView: View {
         }
     }
     
-    // MARK: - 搜索：仅负责关键词筛选，与排序分离
+    // MARK: - 头部：与导入页风格统一（标题 + 副标题）
+    private var headerSection: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "clock.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(.linearGradient(colors: [.green, .green.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .symbolRenderingMode(.hierarchical)
+            Text("library_header_title")
+                .font(.title2)
+                .fontWeight(.bold)
+            Text("library_header_subtitle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 20)
+        .padding(.bottom, 16)
+    }
+
+    // MARK: - 搜索：卡片式，与导入页区块风格一致
     private var searchSection: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -112,15 +131,12 @@ struct LibraryView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color(.tertiarySystemFill))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(isSearchFocused ? Color.green.opacity(0.4) : Color.clear, lineWidth: 1.5)
             )
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 8)
             if !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 HStack(spacing: 8) {
                     Text(searchResultSummary)
@@ -137,11 +153,11 @@ struct LibraryView: View {
                             .foregroundStyle(.green)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
+                .padding(.top, 8)
             }
         }
-        .background(Color(.systemBackground))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
     }
     
     private var searchResultSummary: String {
@@ -151,26 +167,20 @@ struct LibraryView: View {
     }
     
     private var groupListView: some View {
-        List {
-            Section {
-                // 未分组（默认，不可删除/重命名）
-                        groupRow(
-                            id: nil,
-                            name: String(localized: "uncategorized"),
-                            count: viewModel.documents(inFolderId: nil).count,
-                            isDefault: true,
-                            onExport: viewModel.documents(inFolderId: nil).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: nil) }
-                        )
-            } header: {
-                Text("default_group")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
-            if !viewModel.folders.isEmpty {
-                Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                sectionLabel("default_group")
+                groupCard(
+                    id: nil,
+                    name: String(localized: "uncategorized"),
+                    count: viewModel.documents(inFolderId: nil).count,
+                    isDefault: true,
+                    onExport: viewModel.documents(inFolderId: nil).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: nil) }
+                )
+                if !viewModel.folders.isEmpty {
+                    sectionLabel("my_groups")
                     ForEach(viewModel.folders) { folder in
-                        groupRow(
+                        groupCard(
                             id: folder.id,
                             name: folder.name,
                             count: viewModel.documents(inFolderId: folder.id).count,
@@ -180,15 +190,7 @@ struct LibraryView: View {
                             onExport: viewModel.documents(inFolderId: folder.id).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: folder.id) }
                         )
                     }
-                } header: {
-                    Text("my_groups")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
-            }
-            
-            // 底部「新建分组」入口，始终可见
-            Section {
                 Button {
                     newFolderName = ""
                     showNewFolderAlert = true
@@ -202,18 +204,30 @@ struct LibraryView: View {
                             .fontWeight(.medium)
                             .foregroundStyle(.green)
                     }
-                    .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                Spacer(minLength: 24)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
         }
-        .listStyle(.insetGrouped)
         .scrollDismissesKeyboard(.immediately)
     }
     
-    private func groupRow(
+    private func sectionLabel(_ key: LocalizedStringKey) -> some View {
+        Text(key)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
+    }
+    
+    private func groupCard(
         id: UUID?,
         name: String,
         count: Int,
@@ -245,11 +259,14 @@ struct LibraryView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color(.secondarySystemGroupedBackground))
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contextMenu {
             if let onExport = onExport {
                 Button {
@@ -273,31 +290,6 @@ struct LibraryView: View {
                 }
             }
         }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if let onExport = onExport {
-                Button {
-                    onExport()
-                } label: {
-                    Label("export_folder_as_zip", systemImage: "square.and.arrow.up")
-                }
-                .tint(.green)
-            }
-            if let onRename = onRename {
-                Button {
-                    onRename()
-                } label: {
-                    Label("rename", systemImage: "pencil")
-                }
-                .tint(.blue)
-            }
-            if let onDelete = onDelete {
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
-                    Label("delete_folder", systemImage: "trash")
-                }
-            }
-        }
     }
     
     private func deleteFolderMessage(count: Int, folderName: String) -> String {
@@ -306,12 +298,13 @@ struct LibraryView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Spacer()
             Image(systemName: "doc.plaintext")
-                .font(.system(size: 80))
-                .foregroundStyle(.secondary.opacity(0.3))
-            VStack(spacing: 8) {
+                .font(.system(size: 64))
+                .foregroundStyle(.linearGradient(colors: [.green.opacity(0.4), .green.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .symbolRenderingMode(.hierarchical)
+            VStack(spacing: 10) {
                 Text("no_records_yet")
                     .font(.title3)
                     .fontWeight(.semibold)
@@ -319,23 +312,27 @@ struct LibraryView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, 32)
             }
+            .padding(.horizontal, 20)
             Spacer()
             Spacer()
         }
+        .padding(.horizontal, 20)
     }
     
     private var noResultsView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Spacer()
             Image(systemName: "magnifyingglass")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary.opacity(0.6))
             Text("no_matching_records")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
         }
+        .padding(.horizontal, 20)
     }
 }
 

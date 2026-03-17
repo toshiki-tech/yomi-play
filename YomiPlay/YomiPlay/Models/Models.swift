@@ -90,6 +90,14 @@ struct AudioSource: Identifiable, Codable, Hashable {
 
 // MARK: - 振り仮名トークン
 
+/// 詞性（品詞）— 用于按词性下划线等展示
+enum PartOfSpeech: String, Codable, Equatable {
+    case particle  // 助詞
+    case verb      // 動詞
+    case noun      // 名詞
+    case other
+}
+
 /// テキストの各トークン（漢字＋読み、またはそのまま表示する文字）
 struct FuriganaToken: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
@@ -101,6 +109,11 @@ struct FuriganaToken: Identifiable, Codable, Equatable, Hashable {
     let isKatakana: Bool
     /// 外来語の英語原綴り（例：「コンピューター」→「computer」）。該当しない場合は nil
     let englishMeaning: String?
+    /// 詞級時間（卡拉OK 逐詞高亮用）。nil 時由 UI 按句內比例推算
+    let startTime: TimeInterval?
+    let endTime: TimeInterval?
+    /// 詞性（用于按词性下划线）。nil 時不畫下劃線
+    let partOfSpeech: PartOfSpeech?
     
     init(
         id: UUID = UUID(),
@@ -109,7 +122,10 @@ struct FuriganaToken: Identifiable, Codable, Equatable, Hashable {
         romaji: String = "",
         isKanji: Bool = false,
         isKatakana: Bool = false,
-        englishMeaning: String? = nil
+        englishMeaning: String? = nil,
+        startTime: TimeInterval? = nil,
+        endTime: TimeInterval? = nil,
+        partOfSpeech: PartOfSpeech? = nil
     ) {
         self.id = id
         self.surface = surface
@@ -118,6 +134,9 @@ struct FuriganaToken: Identifiable, Codable, Equatable, Hashable {
         self.isKanji = isKanji
         self.isKatakana = isKatakana
         self.englishMeaning = englishMeaning
+        self.startTime = startTime
+        self.endTime = endTime
+        self.partOfSpeech = partOfSpeech
     }
 }
 
@@ -223,19 +242,20 @@ enum ProcessingState: Equatable {
     case completed
     case error(String)
 
-    var displayText: String {
+    /// 使用指定 locale 的本地化文案（随应用内语言切换）
+    func displayText(locale: Locale) -> String {
         switch self {
-        case .idle: return String(localized: "preparing")
-        case .preparing: return String(localized: "preparing")
-        case .loadingAudio: return String(localized: "loading_audio_2")
-        case .resolvingRemoteSource: return String(localized: "resolving_podcast_link")
-        case .downloadingPodcast: return String(localized: "downloading_podcast_audio")
-        case .recognizing: return String(localized: "recognizing_speech")
-        case .parsingSRT: return String(localized: "parsing_subtitles")
-        case .generatingFurigana: return String(localized: "generating_phonetic_subtitles")
-        case .translating: return String(localized: "translating_subtitles")
-        case .completed: return String(localized: "done")
-        case .error(let message): return String(localized: "error") + ": " + message
+        case .idle: return String(localized: LocalizedStringResource("preparing", locale: locale))
+        case .preparing: return String(localized: LocalizedStringResource("preparing", locale: locale))
+        case .loadingAudio: return String(localized: LocalizedStringResource("loading_audio_2", locale: locale))
+        case .resolvingRemoteSource: return String(localized: LocalizedStringResource("resolving_podcast_link", locale: locale))
+        case .downloadingPodcast: return String(localized: LocalizedStringResource("downloading_podcast_audio", locale: locale))
+        case .recognizing: return String(localized: LocalizedStringResource("recognizing_speech", locale: locale))
+        case .parsingSRT: return String(localized: LocalizedStringResource("parsing_subtitles", locale: locale))
+        case .generatingFurigana: return String(localized: LocalizedStringResource("generating_phonetic_subtitles", locale: locale))
+        case .translating: return String(localized: LocalizedStringResource("translating_subtitles", locale: locale))
+        case .completed: return String(localized: LocalizedStringResource("done", locale: locale))
+        case .error(let message): return String(localized: LocalizedStringResource("error", locale: locale)) + ": " + message
         }
     }
 

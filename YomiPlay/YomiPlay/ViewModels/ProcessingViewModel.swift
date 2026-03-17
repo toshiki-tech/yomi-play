@@ -67,18 +67,19 @@ final class ProcessingViewModel {
             await processWithRecognition(source: source)
         }
     }
-    
+
     /// 远程 + 附带 SRT：先解析并下载音频到本地，再用 SRT 生成字幕（跳过 AI 识别）
     @MainActor
     private func processRemoteThenSRT(source: AudioSource, srtURL: URL) async {
+        let loc = AppLocale.current
         guard source.type == .remote, let remoteURL = source.playbackURL else {
-            state = .error(String(localized: "audio_url_not_found"))
+            state = .error(String(localized: LocalizedStringResource("audio_url_not_found", locale: loc)))
             return
         }
         state = .resolvingRemoteSource
         let resolved = await RemoteMediaResolver.resolve(originalURL: remoteURL)
         guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
-            state = .error(String(localized: "podcast_link_unresolvable"))
+            state = .error(String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: loc)))
             return
         }
         state = .downloadingPodcast
@@ -103,7 +104,7 @@ final class ProcessingViewModel {
             
             let srtSegments = try SubtitleImportService.parseSRT(from: srtURL)
             guard !srtSegments.isEmpty else {
-                state = .error(String(localized: "failed_to_parse_srt_file"))
+                state = .error(String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
                 return
             }
             
@@ -143,7 +144,7 @@ final class ProcessingViewModel {
 
         } catch {
             print("ProcessingViewModel: SRT エラー: \(error)")
-            state = .error(String(localized: "failed_to_parse_srt_file"))
+            state = .error(String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
         }
     }
     
@@ -152,12 +153,12 @@ final class ProcessingViewModel {
     private func processWithRecognition(source: AudioSource) async {
         let authorized = await speechService.requestAuthorization()
         guard authorized else {
-            state = .error(String(localized: "speech_recognition_permission_denied_please_enable_it_in_settings"))
+            state = .error(String(localized: LocalizedStringResource("speech_recognition_permission_denied_please_enable_it_in_settings", locale: AppLocale.current)))
             return
         }
 
         guard let url = source.playbackURL else {
-            state = .error(String(localized: "audio_url_not_found"))
+            state = .error(String(localized: LocalizedStringResource("audio_url_not_found", locale: AppLocale.current)))
             return
         }
 
@@ -167,7 +168,7 @@ final class ProcessingViewModel {
             state = .resolvingRemoteSource
             let resolved = await RemoteMediaResolver.resolve(originalURL: url)
             guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
-                state = .error(String(localized: "podcast_link_unresolvable"))
+                state = .error(String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current)))
                 return
             }
 
@@ -198,25 +199,47 @@ final class ProcessingViewModel {
 
         guard !recognitionSegments.isEmpty else {
             if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
-            state = .error(String(localized: "could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech")
-                + (source.type == .remote ? "\n\n" + String(localized: "recognition_error_podcast_hint") : ""))
+            state = .error(String(localized: LocalizedStringResource("could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech", locale: AppLocale.current))
+                + (source.type == .remote ? "\n\n" + String(localized: LocalizedStringResource("recognition_error_podcast_hint", locale: AppLocale.current)) : ""))
             return
         }
 
         state = .generatingFurigana
         var transcriptSegments: [TranscriptSegment] = []
         for segment in recognitionSegments {
-            let tokens: [FuriganaToken]
+            let baseTokens: [FuriganaToken]
             if segment.isJapanese {
-                tokens = await furiganaService.generateFurigana(for: segment.text)
+                // 日语：正常生成带假名/罗马字/词性的 tokens，再挂上逐词时间戳
+                let tokens = await furiganaService.generateFurigana(for: segment.text)
+                baseTokens = Self.attachWordTimingsIfAvailable(
+                    tokens: tokens,
+                    text: segment.text,
+                    wordTimings: segment.wordTimings
+                )
+            } else if let wordTimings = segment.wordTimings, !wordTimings.isEmpty {
+                // 非日语：仅根据 word timings 生成简易 token，用于卡拉 OK 高亮
+                baseTokens = wordTimings.map {
+                    FuriganaToken(
+                        surface: $0.word,
+                        reading: "",
+                        romaji: "",
+                        isKanji: false,
+                        isKatakana: false,
+                        englishMeaning: nil,
+                        startTime: $0.start,
+                        endTime: $0.end,
+                        partOfSpeech: nil
+                    )
+                }
             } else {
-                tokens = []
+                baseTokens = []
             }
+            
             transcriptSegments.append(TranscriptSegment(
                 startTime: segment.startTime,
                 endTime: segment.endTime,
                 originalText: segment.text,
-                tokens: tokens,
+                tokens: baseTokens,
                 confidence: segment.confidence,
                 skipFurigana: !segment.isJapanese
             ))
@@ -234,7 +257,13 @@ final class ProcessingViewModel {
         let doc = TranscriptDocument(source: finalSource, segments: segmentsToSave)
         document = doc
         state = .completed
-        let usedSeconds = doc.segments.last.map { Int(ceil($0.endTime)) } ?? 0
+        // 按音视频实际时长统计（与播放页显示、配额预检一致），不再用最后一条字幕的 endTime
+        let usedSeconds: Int
+        if let url = doc.source.playbackURL {
+            usedSeconds = await SubscriptionManager.durationSeconds(of: url)
+        } else {
+            usedSeconds = doc.segments.last.map { Int(ceil($0.endTime)) } ?? 0
+        }
         SubscriptionManager.shared.addUsedSeconds(usedSeconds)
         do {
             try DocumentStore.shared.save(doc)
@@ -289,16 +318,79 @@ final class ProcessingViewModel {
 
     private static func userFacingMessage(for error: Error) -> String {
         if let downloadErr = error as? DownloadError {
-            return downloadErr.errorDescription ?? String(localized: "failed_to_download_audio")
+            return downloadErr.errorDescription ?? String(localized: LocalizedStringResource("failed_to_download_audio", locale: AppLocale.current))
         }
         if error is RemoteSourceError {
-            return String(localized: "podcast_link_unresolvable")
+            return String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current))
         }
         let raw = error.localizedDescription
         let isRecognitionEmpty = raw.contains("空でした") || raw.contains("empty") || raw.contains("音声認識") || raw.contains("recognition")
         if isRecognitionEmpty {
-            return String(localized: "could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech")
+            return String(localized: LocalizedStringResource("could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech", locale: AppLocale.current))
         }
         return raw
+    }
+
+    /// 将 Whisper 提供的逐词时间戳近似映射到 FuriganaToken 上，用于更精确的卡拉 OK 高亮。
+    /// - 注意：这里按文本顺序做启发式对齐，足够提升体验，但并非逐字符完美对齐。
+    static func attachWordTimingsIfAvailable(
+        tokens: [FuriganaToken],
+        text: String,
+        wordTimings: [WordTimingInfo]?
+    ) -> [FuriganaToken] {
+        guard let wordTimings, !wordTimings.isEmpty, !tokens.isEmpty, !text.isEmpty else {
+            return tokens
+        }
+        
+        // 1. 为每个 word 在原文中找出 Range
+        var wordRanges: [(range: Range<String.Index>, start: TimeInterval, end: TimeInterval)] = []
+        var searchIndex = text.startIndex
+        for wt in wordTimings {
+            guard !wt.word.isEmpty else { continue }
+            if let r = text.range(of: wt.word, range: searchIndex..<text.endIndex) ?? text.range(of: wt.word) {
+                wordRanges.append((r, wt.start, wt.end))
+                searchIndex = r.upperBound
+            }
+        }
+        guard !wordRanges.isEmpty else { return tokens }
+        
+        // 2. 按文本顺序，将 token.surface 在原文中定位，并根据与 wordRanges 的重叠估算时间
+        var newTokens: [FuriganaToken] = []
+        searchIndex = text.startIndex
+        for token in tokens {
+            var start: TimeInterval? = nil
+            var end: TimeInterval? = nil
+            
+            if let tokenRange = text.range(of: token.surface, range: searchIndex..<text.endIndex)
+                ?? text.range(of: token.surface) {
+                // 找到所有与该 token 范围有重叠的 word
+                let overlapped = wordRanges.filter { wr in
+                    tokenRange.lowerBound < wr.range.upperBound && tokenRange.upperBound > wr.range.lowerBound
+                }
+                if !overlapped.isEmpty {
+                    start = overlapped.map { $0.start }.min()
+                    end = overlapped.map { $0.end }.max()
+                }
+                searchIndex = tokenRange.upperBound
+            }
+            
+            if let s = start, let e = end, e > s {
+                newTokens.append(FuriganaToken(
+                    id: token.id,
+                    surface: token.surface,
+                    reading: token.reading,
+                    romaji: token.romaji,
+                    isKanji: token.isKanji,
+                    isKatakana: token.isKatakana,
+                    englishMeaning: token.englishMeaning,
+                    startTime: s,
+                    endTime: e,
+                    partOfSpeech: token.partOfSpeech
+                ))
+            } else {
+                newTokens.append(token)
+            }
+        }
+        return newTokens
     }
 }

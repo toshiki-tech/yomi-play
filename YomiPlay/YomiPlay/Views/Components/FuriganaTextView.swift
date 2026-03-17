@@ -12,36 +12,77 @@ import SwiftUI
 // MARK: - 振り仮名テキストビュー
 
 struct FuriganaTextView: View {
+    @Environment(\.playerThemeScheme) private var playerScheme
     let tokens: [FuriganaToken]
     let showFurigana: Bool
     let showRomaji: Bool
     let showEnglish: Bool
     let fontSize: CGFloat
+    /// 当前播放时间（仅当前行传入，用于卡拉OK 逐词高亮）
+    let currentTime: TimeInterval?
+    let segmentStart: TimeInterval
+    let segmentEnd: TimeInterval
+    
+    private var palette: PlayerPalette { PlayerTheme.palette(for: playerScheme) }
     
     init(
         tokens: [FuriganaToken],
         showFurigana: Bool = true,
         showRomaji: Bool = true,
         showEnglish: Bool = false,
-        fontSize: CGFloat = 18
+        fontSize: CGFloat = 18,
+        currentTime: TimeInterval? = nil,
+        segmentStart: TimeInterval = 0,
+        segmentEnd: TimeInterval = 0
     ) {
         self.tokens = tokens
         self.showFurigana = showFurigana
         self.showRomaji = showRomaji
         self.showEnglish = showEnglish
         self.fontSize = fontSize
+        self.currentTime = currentTime
+        self.segmentStart = segmentStart
+        self.segmentEnd = segmentEnd
+    }
+    
+    /// 按句内字符比例推算每个 token 的起止时间（当 token 无 startTime/endTime 时使用）
+    private static func tokenTimeRanges(tokens: [FuriganaToken], segmentStart: TimeInterval, segmentEnd: TimeInterval) -> [(start: TimeInterval, end: TimeInterval)] {
+        let duration = max(0, segmentEnd - segmentStart)
+        guard duration > 0, !tokens.isEmpty else {
+            return tokens.map { _ in (segmentStart, segmentEnd) }
+        }
+        let totalChars = tokens.reduce(0) { $0 + $1.surface.count }
+        guard totalChars > 0 else {
+            return tokens.map { _ in (segmentStart, segmentEnd) }
+        }
+        var ranges: [(TimeInterval, TimeInterval)] = []
+        var t = segmentStart
+        for token in tokens {
+            let span = Double(token.surface.count) / Double(totalChars) * duration
+            ranges.append((t, t + span))
+            t += span
+        }
+        return ranges
     }
     
     var body: some View {
-        // FlowLayout で折り返し表示
+        let timeRanges = Self.tokenTimeRanges(tokens: tokens, segmentStart: segmentStart, segmentEnd: segmentEnd)
         FlowLayout(spacing: 0) {
-            ForEach(tokens) { token in
+            ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
+                let (tokenStart, tokenEnd) = token.startTime.flatMap { s in token.endTime.map { e in (s, e) } }
+                    ?? (timeRanges[index].0, timeRanges[index].1)
+                let isCurrentWord: Bool = {
+                    guard let t = currentTime else { return false }
+                    return t >= tokenStart && t < tokenEnd
+                }()
                 TokenView(
                     token: token,
                     showFurigana: showFurigana,
                     showRomaji: showRomaji,
                     showEnglish: showEnglish,
-                    fontSize: fontSize
+                    fontSize: fontSize,
+                    isCurrentWord: isCurrentWord,
+                    palette: palette
                 )
             }
         }
@@ -109,9 +150,22 @@ struct TokenView: View {
     let showRomaji: Bool
     let showEnglish: Bool
     let fontSize: CGFloat
+    /// 是否为当前播放到的词（卡拉OK 框线/高亮）
+    var isCurrentWord: Bool = false
+    var palette: PlayerPalette
     
     private var readingFontSize: CGFloat { fontSize * 0.45 }
     private var romajiFontSize: CGFloat { fontSize * 0.4 }
+    
+    private var underlineColor: Color? {
+        guard let pos = token.partOfSpeech else { return nil }
+        switch pos {
+        case .particle: return palette.posParticle
+        case .verb: return palette.posVerb
+        case .noun: return palette.posNoun
+        case .other: return palette.posOther
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -123,13 +177,13 @@ struct TokenView: View {
                    !meaning.isEmpty {
                     Text(meaning)
                         .font(.system(size: readingFontSize))
-                        .foregroundStyle(Color.blue.opacity(0.85))
+                        .foregroundStyle(palette.englishMeaning)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 } else if showFurigana && token.isKanji {
                     Text(token.reading)
                         .font(.system(size: readingFontSize))
-                        .foregroundStyle(Color.green.opacity(0.8))
+                        .foregroundStyle(palette.furiganaReading)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 } else {
@@ -139,9 +193,10 @@ struct TokenView: View {
                 }
             }
             
-            // 中段：原文
+            // 中段：原文（含词性下划线）
             Text(token.surface)
                 .font(.system(size: fontSize, weight: .medium))
+                .underline(underlineColor != nil, color: underlineColor ?? .primary)
             
             // 下段：ローマ字
             if showRomaji {
@@ -151,6 +206,75 @@ struct TokenView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
+            }
+        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 1)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isCurrentWord ? palette.currentWordBackground : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(isCurrentWord ? palette.currentWordBorder : Color.clear, lineWidth: 1.5)
+        )
+    }
+}
+
+// MARK: - 非日语 / 关闭假名时的简易卡拉 OK 文本
+
+/// 使用 `FuriganaToken.surface` 与其时间戳做逐词高亮，但不显示假名/ローマ字。
+struct PlainKaraokeTextView: View {
+    let tokens: [FuriganaToken]
+    let fontSize: CGFloat
+    let currentTime: TimeInterval?
+    let segmentStart: TimeInterval
+    let segmentEnd: TimeInterval
+    let palette: PlayerPalette
+    
+    /// 若 token 无时间戳，则按整句时间等分
+    private static func tokenTimeRanges(tokens: [FuriganaToken], segmentStart: TimeInterval, segmentEnd: TimeInterval) -> [(start: TimeInterval, end: TimeInterval)] {
+        let duration = max(0, segmentEnd - segmentStart)
+        guard duration > 0, !tokens.isEmpty else {
+            return tokens.map { _ in (segmentStart, segmentEnd) }
+        }
+        let totalChars = tokens.reduce(0) { $0 + $1.surface.count }
+        guard totalChars > 0 else {
+            return tokens.map { _ in (segmentStart, segmentEnd) }
+        }
+        var ranges: [(TimeInterval, TimeInterval)] = []
+        var t = segmentStart
+        for token in tokens {
+            let span = Double(token.surface.count) / Double(totalChars) * duration
+            ranges.append((t, t + span))
+            t += span
+        }
+        return ranges
+    }
+    
+    var body: some View {
+        let timeRanges = Self.tokenTimeRanges(tokens: tokens, segmentStart: segmentStart, segmentEnd: segmentEnd)
+        FlowLayout(spacing: 0) {
+            ForEach(Array(tokens.enumerated()), id: \.element.id) { index, token in
+                let (tokenStart, tokenEnd) = token.startTime.flatMap { s in token.endTime.map { e in (s, e) } }
+                    ?? (timeRanges[index].0, timeRanges[index].1)
+                let isCurrentWord: Bool = {
+                    guard let t = currentTime else { return false }
+                    return t >= tokenStart && t < tokenEnd
+                }()
+                
+                Text(token.surface)
+                    .font(.system(size: fontSize, weight: .medium))
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(isCurrentWord ? palette.currentWordBackground : Color.clear)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(isCurrentWord ? palette.currentWordBorder : Color.clear, lineWidth: 1.5)
+                    )
             }
         }
     }

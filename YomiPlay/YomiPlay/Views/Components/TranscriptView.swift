@@ -11,6 +11,8 @@ import UIKit
 struct TranscriptView: View {
     let segments: [TranscriptSegment]
     let currentSegmentID: UUID?
+    /// 当前播放时间（秒），用于当前行卡拉OK 逐词高亮
+    let currentTime: TimeInterval
     let showFurigana: Bool
     let showRomaji: Bool
     let showEnglish: Bool
@@ -42,6 +44,7 @@ struct TranscriptView: View {
                         SegmentRowView(
                             segment: segment,
                             isActive: segment.id == currentSegmentID,
+                            currentTime: currentTime,
                             isEditing: editingSegmentID == segment.id,
                             showFurigana: showFurigana,
                             showRomaji: showRomaji,
@@ -100,10 +103,14 @@ struct TranscriptView: View {
 // MARK: - 各行のビュー（表示モードと編集モードを同一ビュー内で切り替え）
 
 struct SegmentRowView: View {
+    @Environment(\.playerThemeScheme) private var playerScheme
     let segment: TranscriptSegment
     let isActive: Bool
+    let currentTime: TimeInterval
     let isEditing: Bool
     let showFurigana: Bool
+    
+    private var palette: PlayerPalette { PlayerTheme.palette(for: playerScheme) }
     let showRomaji: Bool
     let showEnglish: Bool
     let showTranslation: Bool
@@ -141,24 +148,36 @@ struct SegmentRowView: View {
     
     private var displayBody: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // 上段：原文（日语）＋振假名/罗马字/英语外来词
-            if segment.skipFurigana {
-                Text(segment.originalText)
-                    .font(.system(size: fontSize, weight: .medium))
-                    .foregroundStyle(isActive ? .white : .primary)
-            } else if !segment.tokens.isEmpty {
-                FuriganaTextView(
-                    tokens: segment.tokens,
-                    showFurigana: showFurigana,
-                    showRomaji: showRomaji,
-                    showEnglish: showEnglish,
-                    fontSize: fontSize
-                )
-                .foregroundStyle(isActive ? .white : .primary)
+            // 上段：原文 + 卡拉 OK 高亮
+            if !segment.tokens.isEmpty {
+                if segment.skipFurigana {
+                    // 非日语或关闭假名时：使用简化版卡拉 OK 文本（按 word 时间高亮）
+                    PlainKaraokeTextView(
+                        tokens: segment.tokens,
+                        fontSize: fontSize,
+                        currentTime: isActive ? currentTime : nil,
+                        segmentStart: segment.startTime,
+                        segmentEnd: segment.endTime,
+                        palette: palette
+                    )
+                } else {
+                    // 日语：带振假名/罗马字/词性着色的高级视图
+                    FuriganaTextView(
+                        tokens: segment.tokens,
+                        showFurigana: showFurigana,
+                        showRomaji: showRomaji,
+                        showEnglish: showEnglish,
+                        fontSize: fontSize,
+                        currentTime: isActive ? currentTime : nil,
+                        segmentStart: segment.startTime,
+                        segmentEnd: segment.endTime
+                    )
+                    .foregroundStyle(isActive ? palette.contentForegroundActive : .primary)
+                }
             } else {
                 Text(segment.originalText)
                     .font(.system(size: fontSize, weight: .medium))
-                    .foregroundStyle(isActive ? .white : .primary)
+                    .foregroundStyle(isActive ? palette.contentForegroundActive : .primary)
             }
             
             // 下段：翻译文本
@@ -167,7 +186,7 @@ struct SegmentRowView: View {
                !translated.isEmpty {
                 Text(translated)
                     .font(.system(size: fontSize * 0.85))
-                    .foregroundStyle(isActive ? Color.white.opacity(0.9) : .secondary)
+                    .foregroundStyle(isActive ? palette.contentForegroundActiveSecondary : .secondary)
                     .padding(.top, 2)
             }
         }
@@ -178,12 +197,12 @@ struct SegmentRowView: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(isLongPressing
-                      ? Color.green.opacity(0.2)
-                      : (isActive ? Color.green.opacity(0.3) : Color(.secondarySystemBackground)))
+                      ? palette.segmentPressedBackground
+                      : (isActive ? palette.segmentActiveBackground : Color(.secondarySystemBackground)))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(isActive ? Color.green.opacity(0.5) : Color.clear, lineWidth: 1)
+                .stroke(isActive ? palette.segmentActiveBorder : Color.clear, lineWidth: 1)
         )
         .scaleEffect(isLongPressing ? 0.97 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isLongPressing)
@@ -301,7 +320,7 @@ struct SegmentRowView: View {
                     Text("translate_this_segment")
                         .font(.caption)
                 }
-                .foregroundStyle(.green)
+                .foregroundStyle(palette.accent)
             }
             .disabled(editingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isTranslating)
             
@@ -335,13 +354,13 @@ struct SegmentRowView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.green))
+                        .background(Capsule().fill(palette.accent))
                 }
             }
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.green, lineWidth: 2))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(palette.accent, lineWidth: 2))
         .onTapGesture {
             // 背景タップでも確実にフォーカスを当てる（キーボード表示用）
             focusedSegmentID.wrappedValue = segment.id

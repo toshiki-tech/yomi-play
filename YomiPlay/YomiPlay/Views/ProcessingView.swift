@@ -7,14 +7,18 @@
 //
 
 import SwiftUI
+import Combine
 
 // MARK: - 処理中画面
 
 /// 音声認識と振り仮名生成の処理進捗を表示する
 struct ProcessingView: View {
+    @Environment(\.locale) private var locale
     let audioSource: AudioSource
     @Binding var navigationPath: NavigationPath
     @State private var viewModel = ProcessingViewModel()
+    @State private var recognitionElapsedSeconds: Int = 0
+    private let recognitionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
         VStack(spacing: 40) {
@@ -32,6 +36,13 @@ struct ProcessingView: View {
         .navigationTitle("processing")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(viewModel.state.isProcessing)
+        .onReceive(recognitionTimer) { _ in
+            if viewModel.state == .recognizing {
+                recognitionElapsedSeconds += 1
+            } else {
+                recognitionElapsedSeconds = 0
+            }
+        }
         .onAppear {
             // 防止 SwiftUI 重复触发 onAppear 时重复开始处理，导致生成多条记录
             if viewModel.state == .idle {
@@ -46,6 +57,14 @@ struct ProcessingView: View {
                 }
             }
         }
+    }
+    
+    /// 语音识别耗时的简单格式化（MM:SS）
+    private var formattedElapsedTime: String {
+        let seconds = max(recognitionElapsedSeconds, 0)
+        let minutesPart = seconds / 60
+        let secondsPart = seconds % 60
+        return String(format: "%02d:%02d", minutesPart, secondsPart)
     }
     
     // MARK: - 処理用アイコン
@@ -86,15 +105,30 @@ struct ProcessingView: View {
     
     private var statusSection: some View {
         VStack(spacing: 16) {
-            Text(viewModel.state.displayText)
+            Text(viewModel.state.displayText(locale: locale))
                 .font(.title3)
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.center)
                 .animation(.easeInOut, value: viewModel.state)
             
+            // 当前正在处理的文件 / 播客标题，帮助用户确认导入对象
+            Text(audioSource.title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .truncationMode(.middle)
+            
             // 処理ステップのインジケーター
             if viewModel.state.isProcessing || viewModel.state == .completed {
                 stepsIndicator
+            }
+            
+            // 语音识别步骤耗时提示：显示简单计时，避免用户误以为卡死
+            if viewModel.state == .recognizing, recognitionElapsedSeconds > 0 {
+                Text("⏱ \(formattedElapsedTime)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             
             // エラー時の説明とボタン
@@ -128,19 +162,24 @@ struct ProcessingView: View {
     
     private var stepsIndicator: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // 当识别语言为日语时才显示「生成注音字幕」步骤
+            let showFuriganaStep = (UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja") == "ja"
+
             if viewModel.hasSRT {
                 StepRow(
-                    title: String(localized: "parsing_subtitles_2"),
+                    title: String(localized: LocalizedStringResource("parsing_subtitles_2", locale: locale)),
                     icon: "doc.text",
                     state: srtStepState(for: .parsingSRT)
                 )
+                if showFuriganaStep {
+                    StepRow(
+                        title: String(localized: LocalizedStringResource("generating_phonetic_subtitles", locale: locale)),
+                        icon: "character.textbox",
+                        state: srtStepState(for: .generatingFurigana)
+                    )
+                }
                 StepRow(
-                    title: String(localized: "generating_phonetic_subtitles"),
-                    icon: "character.textbox",
-                    state: srtStepState(for: .generatingFurigana)
-                )
-                StepRow(
-                    title: String(localized: "translating_subtitles"),
+                    title: String(localized: LocalizedStringResource("translating_subtitles", locale: locale)),
                     icon: "text.bubble",
                     state: srtStepState(for: .translating)
                 )
@@ -148,33 +187,35 @@ struct ProcessingView: View {
                 // 通常フロー：リモートは 解析→下载→加载→识别→生成注音；ローカルは 加载→识别→生成注音
                 if audioSource.type == .remote {
                     StepRow(
-                        title: String(localized: "resolving_podcast_link"),
+                        title: String(localized: LocalizedStringResource("resolving_podcast_link", locale: locale)),
                         icon: "link",
                         state: stepState(for: .resolvingRemoteSource)
                     )
                     StepRow(
-                        title: String(localized: "downloading_podcast_audio"),
+                        title: String(localized: LocalizedStringResource("downloading_podcast_audio", locale: locale)),
                         icon: "arrow.down.circle",
                         state: stepState(for: .downloadingPodcast)
                     )
                 }
                 StepRow(
-                    title: String(localized: "loading_audio"),
+                    title: String(localized: LocalizedStringResource("loading_audio", locale: locale)),
                     icon: "waveform",
                     state: stepState(for: .loadingAudio)
                 )
                 StepRow(
-                    title: String(localized: "speech_recognition"),
+                    title: String(localized: LocalizedStringResource("speech_recognition", locale: locale)),
                     icon: "mic.fill",
                     state: stepState(for: .recognizing)
                 )
+                if showFuriganaStep {
+                    StepRow(
+                        title: String(localized: LocalizedStringResource("generating_phonetic_subtitles", locale: locale)),
+                        icon: "character.textbox",
+                        state: stepState(for: .generatingFurigana)
+                    )
+                }
                 StepRow(
-                    title: String(localized: "generating_phonetic_subtitles"),
-                    icon: "character.textbox",
-                    state: stepState(for: .generatingFurigana)
-                )
-                StepRow(
-                    title: String(localized: "translating_subtitles"),
+                    title: String(localized: LocalizedStringResource("translating_subtitles", locale: locale)),
                     icon: "text.bubble",
                     state: stepState(for: .translating)
                 )
@@ -187,11 +228,16 @@ struct ProcessingView: View {
         )
     }
     
-    /// 通常フロー：リモートは 解析→下载→加载→识别→生成注音→翻译、ローカルは 加载→识别→生成注音→翻译 の順で状態を計算
+    /// 通常フロー：リモートは 解析→下载→加载→识别→(必要なら生成注音)→翻译、ローカルは 加载→识别→(必要なら生成注音)→翻译 の順で状態を計算
     private func stepState(for step: ProcessingState) -> StepState {
+        let isJa = (UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja") == "ja"
         let order: [ProcessingState] = audioSource.type == .remote
-            ? [.resolvingRemoteSource, .downloadingPodcast, .loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
-            : [.loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
+            ? (isJa
+               ? [.resolvingRemoteSource, .downloadingPodcast, .loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
+               : [.resolvingRemoteSource, .downloadingPodcast, .loadingAudio, .recognizing, .translating, .completed])
+            : (isJa
+               ? [.loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
+               : [.loadingAudio, .recognizing, .translating, .completed])
         let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
         let stepIndex = order.firstIndex(of: step) ?? 0
         if currentIndex > stepIndex { return .completed }
@@ -199,9 +245,12 @@ struct ProcessingView: View {
         return .pending
     }
     
-    /// SRT フロー：各ステップの状態を計算する
+    /// SRT フロー：解析→(必要なら生成注音)→翻译 各ステップの状態を計算する
     private func srtStepState(for step: ProcessingState) -> StepState {
-        let order: [ProcessingState] = [.parsingSRT, .generatingFurigana, .translating, .completed]
+        let isJa = (UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja") == "ja"
+        let order: [ProcessingState] = isJa
+            ? [.parsingSRT, .generatingFurigana, .translating, .completed]
+            : [.parsingSRT, .translating, .completed]
         let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
         let stepIndex = order.firstIndex(of: step) ?? 0
         

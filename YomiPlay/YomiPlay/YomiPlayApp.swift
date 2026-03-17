@@ -50,3 +50,14 @@ struct YomiPlayApp: App {
         }
     }
 }
+
+// MARK: - 应用内界面语言（供 ViewModel 等非 View 代码取当前 locale）
+enum AppLocale {
+    static var current: Locale {
+        let key = "appInterfaceLanguage"
+        guard let lang = UserDefaults.standard.string(forKey: key), !lang.isEmpty, lang != "system" else {
+            return Locale.current
+        }
+        return Locale(identifier: lang)
+    }
+}

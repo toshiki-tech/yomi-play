@@ -8,12 +8,14 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.locale) private var locale
     @State private var showFurigana: Bool = UserDefaults.standard.bool(forKey: "showFurigana")
     @State private var showRomaji: Bool = UserDefaults.standard.bool(forKey: "showRomaji")
     @State private var showEnglish: Bool = UserDefaults.standard.bool(forKey: "showEnglish")
     @State private var fontSize: CGFloat = CGFloat(UserDefaults.standard.double(forKey: "fontSize"))
     @State private var targetLanguageCode: String = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
     @AppStorage("whisperModelVariant") private var recognitionModeRaw: String = "small"
+    @AppStorage(WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) private var recognitionSourceLanguage: String = "ja"
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
     @AppStorage("appInterfaceTheme") private var appInterfaceTheme: String = "system"
     @AppStorage("translationEnabled") private var translationEnabled: Bool = false
@@ -33,10 +35,11 @@ struct SettingsView: View {
         _previousRecognitionModeRaw = State(initialValue: raw)
     }
     
-    let languages = [
-        ("zh-Hans", "简体中文"),
-        ("zh-Hant", "繁體中文"),
-        ("en", "English")
+    /// 翻译目标语言：用本地化 key，随界面语言显示「简体中文」/「Chinese (Simplified)」等
+    let languages: [(code: String, labelKey: String)] = [
+        ("zh-Hans", "chinese_simplified"),
+        ("zh-Hant", "chinese_traditional"),
+        ("en", "english")
     ]
     
     var body: some View {
@@ -48,45 +51,6 @@ struct SettingsView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             
-            Section {
-                settingsToggle(icon: "character.textbox", title: "furigana", color: .green, isOn: $showFurigana) {
-                    UserDefaults.standard.set(showFurigana, forKey: "showFurigana")
-                    HapticManager.shared.selection()
-                }
-                
-                settingsToggle(icon: "a.circle", title: "romaji", color: .blue, isOn: $showRomaji) {
-                    UserDefaults.standard.set(showRomaji, forKey: "showRomaji")
-                    HapticManager.shared.selection()
-                }
-                
-                settingsToggle(icon: "book.closed", title: "loanword_english", color: .orange, isOn: $showEnglish) {
-                    UserDefaults.standard.set(showEnglish, forKey: "showEnglish")
-                    HapticManager.shared.selection()
-                }
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Label {
-                        Text("font_size").font(.subheadline)
-                    } icon: {
-                        Image(systemName: "textformat.size").foregroundStyle(.purple)
-                    }
-                    
-                    HStack {
-                        Image(systemName: "textformat.size.smaller").font(.caption).foregroundStyle(.secondary)
-                        Slider(value: $fontSize, in: 12...48, step: 1)
-                            .onChange(of: fontSize) { _, newValue in
-                                UserDefaults.standard.set(Double(newValue), forKey: "fontSize")
-                                HapticManager.shared.impact(style: .soft)
-                            }
-                            .tint(.purple)
-                        Image(systemName: "textformat.size.larger").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.vertical, 4)
-            } header: {
-                Text("display_settings")
-            }
-
             Section {
                 Picker(selection: $appInterfaceTheme) {
                     Text("interface_theme_system").tag("system")
@@ -104,11 +68,11 @@ struct SettingsView: View {
                 }
                 
                 Picker(selection: $appInterfaceLanguage) {
-                    Text("interface_language_system").tag("system")
-                    Text("interface_language_en").tag("en")
-                    Text("interface_language_ja").tag("ja")
-                    Text("interface_language_zh_hans").tag("zh-Hans")
-                    Text("interface_language_zh_hant").tag("zh-Hant")
+                    Text(String(localized: LocalizedStringResource("interface_language_system", locale: locale))).tag("system")
+                    Text(String(localized: LocalizedStringResource("interface_language_en", locale: locale))).tag("en")
+                    Text(String(localized: LocalizedStringResource("interface_language_ja", locale: locale))).tag("ja")
+                    Text(String(localized: LocalizedStringResource("interface_language_zh_hans", locale: locale))).tag("zh-Hans")
+                    Text(String(localized: LocalizedStringResource("interface_language_zh_hant", locale: locale))).tag("zh-Hant")
                 } label: {
                     Label {
                         Text("interface_language_label").font(.subheadline)
@@ -126,45 +90,24 @@ struct SettingsView: View {
             }
             
             Section {
-                Toggle(isOn: $translationEnabled) {
-                    Label {
-                        Text("translation_enabled_label").font(.subheadline)
-                    } icon: {
-                        Image(systemName: "text.bubble").foregroundStyle(.blue)
-                    }
-                }
-                .onChange(of: translationEnabled) { _, isOn in
-                    if isOn {
-                        triggerTranslationLanguagePackDownloadAndShowNetworkHint()
-                    }
-                    HapticManager.shared.selection()
-                }
-                
-                Picker(selection: $targetLanguageCode) {
-                    ForEach(languages, id: \.0) { lang in
-                        Text(lang.1).tag(lang.0)
-                    }
+                // 先选「语言」
+                Picker(selection: $recognitionSourceLanguage) {
+                    Text("recognition_language_auto").tag("auto")
+                    Text("recognition_language_ja").tag("ja")
+                    Text("recognition_language_en").tag("en")
+                    Text("recognition_language_zh").tag("zh")
                 } label: {
                     Label {
-                        Text("target_language").font(.subheadline)
+                        Text("recognition_language_label").font(.subheadline)
                     } icon: {
                         Image(systemName: "globe").foregroundStyle(.blue)
                     }
                 }
-                .onChange(of: targetLanguageCode) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: "targetLanguageCode")
-                    HapticManager.shared.success()
+                .onChange(of: recognitionSourceLanguage) { _, _ in
+                    HapticManager.shared.selection()
                 }
-            } header: {
-                Text("translation_settings")
-            }
-            .alert(String(localized: "translation_network_hint_title"), isPresented: $showTranslationNetworkHint) {
-                Button("ok") { showTranslationNetworkHint = false }
-            } message: {
-                Text("translation_network_hint_message")
-            }
-            
-            Section {
+
+                // 再选「模型」
                 Picker(selection: $recognitionModeRaw) {
                     ForEach(WhisperSpeechRecognitionService.RecognitionMode.allCases, id: \.rawValue) { mode in
                         Text(recognitionModeTitleKey(mode)).tag(mode.rawValue)
@@ -219,6 +162,67 @@ struct SettingsView: View {
                     let sizeDesc = WhisperSpeechRecognitionService.downloadSizeDescription(for: mode)
                     Text(String(format: String(localized: "recognition_model_download_confirm_message"), sizeDesc))
                 }
+            }
+
+            // 显示设置：仅当识别语言为「日语」时才显示
+            if recognitionSourceLanguage == "ja" {
+                Section {
+                    settingsToggle(icon: "character.textbox", title: "furigana", color: .green, isOn: $showFurigana) {
+                        UserDefaults.standard.set(showFurigana, forKey: "showFurigana")
+                        HapticManager.shared.selection()
+                    }
+                    
+                    settingsToggle(icon: "a.circle", title: "romaji", color: .blue, isOn: $showRomaji) {
+                        UserDefaults.standard.set(showRomaji, forKey: "showRomaji")
+                        HapticManager.shared.selection()
+                    }
+                    
+                    settingsToggle(icon: "book.closed", title: "loanword_english", color: .orange, isOn: $showEnglish) {
+                        UserDefaults.standard.set(showEnglish, forKey: "showEnglish")
+                        HapticManager.shared.selection()
+                    }
+                } header: {
+                    Text("display_settings")
+                }
+            }
+
+            Section {
+                Toggle(isOn: $translationEnabled) {
+                    Label {
+                        Text("translation_enabled_label").font(.subheadline)
+                    } icon: {
+                        Image(systemName: "text.bubble").foregroundStyle(.blue)
+                    }
+                }
+                .onChange(of: translationEnabled) { _, isOn in
+                    if isOn {
+                        triggerTranslationLanguagePackDownloadAndShowNetworkHint()
+                    }
+                    HapticManager.shared.selection()
+                }
+                
+                Picker(selection: $targetLanguageCode) {
+                    ForEach(languages, id: \.code) { lang in
+                        Text(String(localized: LocalizedStringResource(String.LocalizationValue(stringLiteral: lang.labelKey), locale: locale))).tag(lang.code)
+                    }
+                } label: {
+                    Label {
+                        Text("target_language").font(.subheadline)
+                    } icon: {
+                        Image(systemName: "globe").foregroundStyle(.blue)
+                    }
+                }
+                .onChange(of: targetLanguageCode) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: "targetLanguageCode")
+                    HapticManager.shared.success()
+                }
+            } header: {
+                Text("translation_settings")
+            }
+            .alert(String(localized: "translation_network_hint_title"), isPresented: $showTranslationNetworkHint) {
+                Button("ok") { showTranslationNetworkHint = false }
+            } message: {
+                Text("translation_network_hint_message")
             }
 
             #if DEBUG
@@ -372,13 +376,13 @@ private struct SettingsHeaderView: View {
     
     private var freeHeader: some View {
         VStack(spacing: 12) {
-            Text("settings_header_free_title")
+            Text(String(localized: LocalizedStringResource("settings_header_free_title", locale: locale)))
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundStyle(Self.freeTitleGradient)
                 .multilineTextAlignment(.center)
             
-            Text("settings_header_free_subtitle")
+            Text(String(localized: LocalizedStringResource("settings_header_free_subtitle", locale: locale)))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -387,7 +391,7 @@ private struct SettingsHeaderView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.06))
+                            .fill(Color(.secondarySystemFill))
                         RoundedRectangle(cornerRadius: 6)
                             .fill(Self.quotaGradient)
                             .frame(width: max(0, geo.size.width * quotaProgress))
@@ -414,7 +418,7 @@ private struct SettingsHeaderView: View {
     private var proHeader: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
-                Text("settings_header_pro_title")
+                Text(String(localized: LocalizedStringResource("settings_header_pro_title", locale: locale)))
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(Self.goldGradient)
@@ -425,7 +429,7 @@ private struct SettingsHeaderView: View {
                     .rotationEffect(.degrees(crownRotation))
             }
             
-            Text("settings_header_pro_subtitle")
+            Text(String(localized: LocalizedStringResource("settings_header_pro_subtitle", locale: locale)))
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.95))
             

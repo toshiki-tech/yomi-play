@@ -23,6 +23,8 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     
     /// UserDefaults に保存するモデル選択キー（値: "tiny" | "base" | "small" | "medium" | "large"）
     static let modelVariantDefaultsKey = "whisperModelVariant"
+    /// UserDefaults に保存する認識言語キー（値: "ja" | "en" | "zh"）。デフォルトは日本語。
+    static let sourceLanguageDefaultsKey = "whisperSourceLanguage"
 
     /// 识别模式：Tiny / Base / Small / Medium / Large，与 Whisper 模型尺寸一致
     enum RecognitionMode: String, CaseIterable {
@@ -110,11 +112,16 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         var options = DecodingOptions()
         // 必须使用转写（原文输出），禁止使用 translation（会译成英文）
         options.task = .transcribe
-        // 本 App 以日语学习为主，固定按日语转写
-        options.language = "ja"
+        // 根据设置中的识别语言转写：
+        // - "ja" / "en" / "zh"：固定语言
+        // - "auto" 或未设置：让 Whisper 自动检测语言（不显式指定）
+        let stored = UserDefaults.standard.string(forKey: Self.sourceLanguageDefaultsKey)
+        let lang = stored ?? "ja"
+        if lang != "auto" {
+            options.language = lang
+        }
         options.noSpeechThreshold = 0.8
-
-        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=ja モデル=\(Self.bundledModelFolder)...")
+        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=\(lang) モデル=\(Self.bundledModelFolder)...")
         let results = try await whisper.transcribe(audioPath: localURL.path, decodeOptions: options)
 
         var allSegments: [RecognitionSegment] = []
@@ -123,12 +130,20 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
                 let cleanedText = Self.cleanWhisperText(segment.text)
                 if !cleanedText.isEmpty {
                     let isJapanese = Self.isLikelyJapanese(cleanedText)
+                    let words = segment.words?.map {
+                        WordTimingInfo(
+                            word: $0.word,
+                            start: TimeInterval($0.start),
+                            end: TimeInterval($0.end)
+                        )
+                    }
                     allSegments.append(RecognitionSegment(
                         text: cleanedText,
                         startTime: Double(segment.start),
                         endTime: Double(segment.end),
                         confidence: 1.0,
-                        isJapanese: isJapanese
+                        isJapanese: isJapanese,
+                        wordTimings: words
                     ))
                 }
             }

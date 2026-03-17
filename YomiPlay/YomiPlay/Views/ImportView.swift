@@ -83,12 +83,12 @@ struct ImportView: View {
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("monthly_free_quota")
+                Text(String(localized: LocalizedStringResource("monthly_free_quota", locale: locale)))
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(String(format: String(localized: "quota_progress_format"), subscription.monthlyUsedSeconds / 60, remainingMin))
+                Text(String(format: String(localized: LocalizedStringResource("quota_progress_format", locale: locale)), subscription.monthlyUsedSeconds / 60, remainingMin))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button {
@@ -374,8 +374,11 @@ struct ImportView: View {
                 }
                 .frame(width: 50, height: 50)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("import_from_podcast_or_url").font(.headline)
-                    Text("import_podcast_or_url_description").font(.caption).foregroundStyle(.secondary)
+                    Text(String(localized: LocalizedStringResource("import_from_podcast_or_url", locale: locale)))
+                        .font(.headline)
+                    Text(String(localized: LocalizedStringResource("import_podcast_or_url_description", locale: locale)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
@@ -428,6 +431,7 @@ struct ImportView: View {
     // MARK: - 播客或URL导入（搜索播客 + 直接粘贴链接）
     
     private struct PodcastImportView: View {
+        @Environment(\.locale) private var locale
         @Bindable var viewModel: HomeViewModel
         let onDismiss: () -> Void
         @State private var urlInputText = ""
@@ -442,9 +446,6 @@ struct ImportView: View {
         @State private var episodesError: String?
         @FocusState private var isSearchFocused: Bool
         @FocusState private var isUrlFieldFocused: Bool
-        @State private var showNetworkConfirmation: Bool = false
-        @State private var pendingImportURL: URL?
-        @State private var pendingImportTitle: String = ""
 
         var body: some View {
             NavigationStack {
@@ -455,7 +456,7 @@ struct ImportView: View {
                         mainInputView
                     }
                 }
-                .navigationTitle(selectedPodcast != nil ? selectedPodcast!.name : String(localized: "import_from_podcast_or_url"))
+                .navigationTitle(selectedPodcast != nil ? selectedPodcast!.name : String(localized: LocalizedStringResource("import_from_podcast_or_url", locale: locale)))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -473,22 +474,6 @@ struct ImportView: View {
                         }
                     }
                 }
-            }
-            .alert(String(localized: "podcast_url_import_network_title"), isPresented: $showNetworkConfirmation) {
-                Button("continue", role: .none) {
-                    if let url = pendingImportURL {
-                        onDismiss()
-                        viewModel.startImportFromURL(url, title: pendingImportTitle.isEmpty ? "URL" : pendingImportTitle)
-                    }
-                    pendingImportURL = nil
-                    pendingImportTitle = ""
-                }
-                Button("cancel", role: .cancel) {
-                    pendingImportURL = nil
-                    pendingImportTitle = ""
-                }
-            } message: {
-                Text("podcast_url_import_network_message")
             }
         }
 
@@ -628,9 +613,11 @@ struct ImportView: View {
             }
             urlImportError = nil
             let title = url.deletingPathExtension().lastPathComponent
-            pendingImportURL = url
-            pendingImportTitle = (title.isEmpty || title == "/") ? "URL" : title
-            showNetworkConfirmation = true
+            onDismiss()
+            viewModel.startImportFromURL(
+                url,
+                title: (title.isEmpty || title == "/") ? "URL" : title
+            )
         }
 
         private func episodeListView(podcast: PodcastSearchResult) -> some View {
@@ -658,9 +645,8 @@ struct ImportView: View {
                 } else {
                     List(episodes) { ep in
                         Button {
-                            pendingImportURL = ep.audioURL
-                            pendingImportTitle = ep.title
-                            showNetworkConfirmation = true
+                            onDismiss()
+                            viewModel.startImportFromURL(ep.audioURL, title: ep.title)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ep.title).font(.subheadline).lineLimit(2)
@@ -746,7 +732,7 @@ struct ImportView: View {
                             .foregroundStyle(Self.crownGradient)
                     }
                 }
-                Text("Japanese Learning with AI Subtitles")
+                Text("Language Learning with AI Subtitles")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

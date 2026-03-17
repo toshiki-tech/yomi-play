@@ -14,6 +14,7 @@ private let yearlyProductId = "com.dogiant.yomimark.yearly"
 private let lifetimeProductId = "com.dogiant.yomimark.lifetime"
 
 struct PaywallView: View {
+    @Environment(\.locale) private var locale
     var onDismiss: (() -> Void)?
     @State private var products: [Product] = []
     @State private var isLoading = true
@@ -198,7 +199,7 @@ struct PaywallView: View {
                             .fontWeight(.medium)
                             .foregroundStyle(.secondary)
                     }
-                    Text(String(format: String(localized: "quota_progress_format"), usedMin, remainingMin))
+                    Text(String(format: String(localized: LocalizedStringResource("quota_progress_format", locale: locale)), usedMin, remainingMin))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     ProgressView(value: min(1, progress))

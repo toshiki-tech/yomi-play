@@ -11,11 +11,14 @@ import SwiftUI
 // MARK: - 再生コントロールビュー
 
 struct PlaybackControlsView: View {
+    @Environment(\.playerThemeScheme) private var playerScheme
     let isPlaying: Bool
     let currentTime: TimeInterval
     let duration: TimeInterval
     let playbackRateText: String
     let isLooping: Bool
+    
+    private var palette: PlayerPalette { PlayerTheme.palette(for: playerScheme) }
     let onTogglePlayPause: () -> Void
     let onSkipBackward: () -> Void
     let onSkipForward: () -> Void
@@ -52,14 +55,14 @@ struct PlaybackControlsView: View {
                     .frame(height: 4)
                 
                 Capsule()
-                    .fill(Color.green)
+                    .fill(palette.accent)
                     .frame(
                         width: max(0, progressWidth(in: geometry.size.width)),
                         height: 4
                     )
                 
                 Circle()
-                    .fill(Color.green)
+                    .fill(palette.accentHighlight)
                     .frame(width: isDragging ? 16 : 10, height: isDragging ? 16 : 10)
                     .offset(x: max(0, progressWidth(in: geometry.size.width) - 5))
             }
@@ -139,7 +142,7 @@ struct PlaybackControlsView: View {
                     .frame(width: 50, height: 50)
                     .background(
                         Circle()
-                            .fill(Color.green.opacity(0.2))
+                            .fill(palette.accent.opacity(0.22))
                     )
             }
             
@@ -171,10 +174,10 @@ struct PlaybackControlsView: View {
             VStack(spacing: 2) {
                 Image(systemName: icon)
                     .font(.body)
-                    .foregroundStyle(isActive ? Color.green : .secondary)
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
                 Text(label)
                     .font(.system(size: 10))
-                    .foregroundStyle(isActive ? Color.green : .secondary)
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
             }
         }
         .frame(width: 50)
