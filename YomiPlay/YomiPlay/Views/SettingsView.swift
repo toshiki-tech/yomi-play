@@ -224,7 +224,14 @@ struct SettingsView: View {
             } message: {
                 Text("translation_network_hint_message")
             }
-
+                        
+            Section {
+                infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
+                infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
+            } header: {
+                Text("about")
+            }
+            
             #if DEBUG
             Section {
                 Toggle(isOn: Binding(
@@ -240,13 +247,6 @@ struct SettingsView: View {
                 Text("开启后全应用显示 Pro 状态，用于测试导入页/设置页等 Pro 界面。仅 Debug 构建有效。")
             }
             #endif
-
-            Section {
-                infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
-                infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
-            } header: {
-                Text("about")
-            }
         }
         .navigationTitle("settings")
     }

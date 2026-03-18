@@ -88,34 +88,35 @@ struct LibraryView: View {
     
     // MARK: - 头部：与导入页风格统一（标题 + 副标题）
     private var headerSection: some View {
-        VStack(spacing: 10) {
-            // 与导入页呼应：学习内容 + 媒体的组合图标
+        VStack(spacing: 14) {
+            // 与导入页头部同尺寸的图标容器
             ZStack {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(Color.accentColor.opacity(0.08))
-                    .frame(width: 82, height: 44)
-                HStack(spacing: 6) {
+                    .frame(width: 96, height: 56)
+                HStack(spacing: 8) {
                     Image(systemName: "books.vertical.fill")
-                        .font(.system(size: 36, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
-                    // Image(systemName: "waveform")
-                    //     .font(.system(size: 18, weight: .medium))
-                    //     .foregroundStyle(.secondary)
+                    Image(systemName: "waveform")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            Text("library_header_title")
-                .font(.title2)
-                .fontWeight(.bold)
+            VStack(spacing: 6) {
+                Text("library_header_title")
+                    .font(.title2)
+                    .fontWeight(.bold)
 
-            // 副标题使用现有本地化 key（多媒体记录页的说明）
-            Text("library_subtitle")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Text("library_subtitle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 16)
-        .padding(.bottom, 14)
+        .padding(.top, 12)   // 与导入页 headerSection 对齐
+        .padding(.bottom, 8)
     }
 
     // MARK: - 搜索：卡片式，与导入页区块风格一致

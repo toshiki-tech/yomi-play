@@ -716,36 +716,6 @@ struct SettingsSheetView: View {
     private var learningSettings: some View {
         VStack(spacing: 16) {
             VStack(spacing: 0) {
-                Text("japanese_subtitles")
-                    .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16).padding(.bottom, 8)
-                
-                VStack(spacing: 0) {
-                    settingsToggleRow(
-                        icon: "character.textbox", title: "furigana",
-                        subtitle: "show_furigana_above_text", color: .green,
-                        isOn: $viewModel.showFurigana
-                    )
-                    Divider().padding(.leading, 52)
-                    settingsToggleRow(
-                        icon: "a.circle", title: "romaji",
-                        subtitle: "show_romaji_below_text", color: .green,
-                        isOn: $viewModel.showRomaji
-                    )
-                    Divider().padding(.leading, 52)
-                    settingsToggleRow(
-                        icon: "book.closed", title: "loanword_english",
-                        subtitle: "show_english_above_katakana", color: .green,
-                        isOn: $viewModel.showEnglish
-                    )
-                }
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(12)
-                .padding(.horizontal, 16)
-            }
-            
-            VStack(spacing: 0) {
                 Text("translation")
                     .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -801,6 +771,36 @@ struct SettingsSheetView: View {
                         icon: "text.bubble.fill", title: "show_translation",
                         subtitle: "show_translation_below_each_line", color: .green,
                         isOn: $viewModel.showTranslation
+                    )
+                }
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(12)
+                .padding(.horizontal, 16)
+            }
+            
+            VStack(spacing: 0) {
+                Text("japanese_subtitles")
+                    .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+                
+                VStack(spacing: 0) {
+                    settingsToggleRow(
+                        icon: "character.textbox", title: "furigana",
+                        subtitle: "show_furigana_above_text", color: .green,
+                        isOn: $viewModel.showFurigana
+                    )
+                    Divider().padding(.leading, 52)
+                    settingsToggleRow(
+                        icon: "a.circle", title: "romaji",
+                        subtitle: "show_romaji_below_text", color: .green,
+                        isOn: $viewModel.showRomaji
+                    )
+                    Divider().padding(.leading, 52)
+                    settingsToggleRow(
+                        icon: "book.closed", title: "loanword_english",
+                        subtitle: "show_english_above_katakana", color: .green,
+                        isOn: $viewModel.showEnglish
                     )
                 }
                 .background(Color(.secondarySystemGroupedBackground))

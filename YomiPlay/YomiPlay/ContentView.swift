@@ -24,8 +24,21 @@ enum AppDestination: Hashable {
 struct ContentView: View {
     @State private var navigationPath = NavigationPath()
     @State private var homeViewModel = HomeViewModel()
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding: Bool = false
     
     var body: some View {
+        Group {
+            if hasSeenOnboarding {
+                mainShell
+            } else {
+                OnboardingView {
+                    hasSeenOnboarding = true
+                }
+            }
+        }
+    }
+
+    private var mainShell: some View {
         NavigationStack(path: $navigationPath) {
             HomeView(navigationPath: $navigationPath, viewModel: homeViewModel)
                 .navigationDestination(for: AppDestination.self) { destination in
