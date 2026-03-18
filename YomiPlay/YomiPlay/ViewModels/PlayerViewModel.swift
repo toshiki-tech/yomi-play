@@ -20,10 +20,17 @@ final class PlayerViewModel {
     var document: TranscriptDocument
     var playerService: AudioPlayerService
     
-    // 表示設定（UserDefaults で永続化）
-    var showFurigana: Bool = true { didSet { Self.defaults.set(showFurigana, forKey: "showFurigana") } }
-    var showRomaji: Bool = true { didSet { Self.defaults.set(showRomaji, forKey: "showRomaji") } }
-    var showEnglish: Bool = true { didSet { Self.defaults.set(showEnglish, forKey: "showEnglish") } }
+    // 表示設定（UserDefaults で永続化）。初始化应用「非日语识别源」默认关假名时暂不写入，避免覆盖日语内容的用户偏好
+    private var persistDisplayToggles = true
+    var showFurigana: Bool = true {
+        didSet { if persistDisplayToggles { Self.defaults.set(showFurigana, forKey: "showFurigana") } }
+    }
+    var showRomaji: Bool = true {
+        didSet { if persistDisplayToggles { Self.defaults.set(showRomaji, forKey: "showRomaji") } }
+    }
+    var showEnglish: Bool = true {
+        didSet { if persistDisplayToggles { Self.defaults.set(showEnglish, forKey: "showEnglish") } }
+    }
     var fontSize: CGFloat = 18 { didSet { Self.defaults.set(fontSize, forKey: "fontSize") } }
     var isLooping: Bool = false
     
@@ -66,7 +73,14 @@ final class PlayerViewModel {
         self.document = document
         self.playerService = AudioPlayerService()
         
+        persistDisplayToggles = false
         restoreSettings()
+        if document.isNonJapaneseRecognitionSource == true {
+            showFurigana = false
+            showRomaji = false
+            showEnglish = false
+        }
+        persistDisplayToggles = true
         // 若文档已有翻译且用户从未设置过 showTranslation，默认显示翻译
         if !showTranslation,
            Self.defaults.object(forKey: "showTranslation") == nil,

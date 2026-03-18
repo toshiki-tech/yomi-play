@@ -117,6 +117,7 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         // - "auto" 或未设置：让 Whisper 自动检测语言（不显式指定）
         let stored = UserDefaults.standard.string(forKey: Self.sourceLanguageDefaultsKey)
         let lang = stored ?? "ja"
+        let forceNonJapaneseSegments = Self.forcesNonJapaneseSegments(lang: lang)
         if lang != "auto" {
             options.language = lang
         }
@@ -129,7 +130,7 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
             for segment in result.segments {
                 let cleanedText = Self.cleanWhisperText(segment.text)
                 if !cleanedText.isEmpty {
-                    let isJapanese = Self.isLikelyJapanese(cleanedText)
+                    let isJapanese = forceNonJapaneseSegments ? false : Self.isLikelyJapanese(cleanedText)
                     let words = segment.words?.map {
                         WordTimingInfo(
                             word: $0.word,
@@ -151,6 +152,12 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         let processedSegments = Self.mergeShortSegments(allSegments)
         print("WhisperRecognition: 認識完了 セグメント数=\(processedSegments.count)")
         return processedSegments
+    }
+    
+    /// 识别语言为日语或自动时，按文本判定是否日语；为英/中等固定语言时整段视为非日语（注音流程会跳过）
+    static func forcesNonJapaneseSegments(lang: String) -> Bool {
+        if lang == "ja" || lang == "auto" { return false }
+        return true
     }
     
     private func getOrInitWhisperKit() async throws -> WhisperKit {

@@ -212,6 +212,8 @@ struct TranscriptDocument: Identifiable, Codable, Hashable {
     var lastPlaybackPosition: TimeInterval?
     /// 所属フォルダ ID（nil の場合は未グループ）
     var folderId: UUID?
+    /// 识别源语言为英/中等（非日语、非自动）时保存为 true：分句均为非日文注音模式，播放页默认关闭假名/罗马字/英译注音
+    var isNonJapaneseRecognitionSource: Bool?
     
     init(
         id: UUID = UUID(),
@@ -219,7 +221,8 @@ struct TranscriptDocument: Identifiable, Codable, Hashable {
         segments: [TranscriptSegment] = [],
         createdAt: Date = Date(),
         lastPlaybackPosition: TimeInterval? = nil,
-        folderId: UUID? = nil
+        folderId: UUID? = nil,
+        isNonJapaneseRecognitionSource: Bool? = nil
     ) {
         self.id = id
         self.source = source
@@ -227,6 +230,7 @@ struct TranscriptDocument: Identifiable, Codable, Hashable {
         self.createdAt = createdAt
         self.lastPlaybackPosition = lastPlaybackPosition
         self.folderId = folderId
+        self.isNonJapaneseRecognitionSource = isNonJapaneseRecognitionSource
     }
 }
 

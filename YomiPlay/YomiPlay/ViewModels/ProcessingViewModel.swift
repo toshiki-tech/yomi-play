@@ -132,27 +132,46 @@ final class ProcessingViewModel {
             
             print("ProcessingViewModel: SRT 解析完了 セグメント数=\(srtSegments.count)")
             
-            state = .generatingFurigana
+            let lang = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja"
+            let forceNonJa = WhisperSpeechRecognitionService.forcesNonJapaneseSegments(lang: lang)
             var transcriptSegments: [TranscriptSegment] = []
             
-            for seg in srtSegments {
-                if Task.isCancelled { return }
-                let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
-                let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
-                transcriptSegments.append(TranscriptSegment(
-                    startTime: seg.startTime,
-                    endTime: seg.endTime,
-                    originalText: seg.text,
-                    tokens: tokens,
-                    skipFurigana: !isJapanese
-                ))
+            if forceNonJa {
+                for seg in srtSegments {
+                    if Task.isCancelled { return }
+                    transcriptSegments.append(TranscriptSegment(
+                        startTime: seg.startTime,
+                        endTime: seg.endTime,
+                        originalText: seg.text,
+                        tokens: [],
+                        skipFurigana: true
+                    ))
+                }
+            } else {
+                state = .generatingFurigana
+                for seg in srtSegments {
+                    if Task.isCancelled { return }
+                    let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
+                    let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
+                    transcriptSegments.append(TranscriptSegment(
+                        startTime: seg.startTime,
+                        endTime: seg.endTime,
+                        originalText: seg.text,
+                        tokens: tokens,
+                        skipFurigana: !isJapanese
+                    ))
+                }
+                print("ProcessingViewModel: 振り仮名生成完了")
             }
-            
-            print("ProcessingViewModel: 振り仮名生成完了")
 
             state = .translating
             let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
-            let doc = TranscriptDocument(source: source, segments: segmentsToSave, folderId: source.folderId)
+            let doc = TranscriptDocument(
+                source: source,
+                segments: segmentsToSave,
+                folderId: source.folderId,
+                isNonJapaneseRecognitionSource: forceNonJa ? true : nil
+            )
             document = doc
             state = .completed
 
@@ -244,49 +263,85 @@ final class ProcessingViewModel {
             return
         }
 
-        state = .generatingFurigana
+        let recLang = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja"
+        let forceNonJa = WhisperSpeechRecognitionService.forcesNonJapaneseSegments(lang: recLang)
         var transcriptSegments: [TranscriptSegment] = []
-        for segment in recognitionSegments {
-            if Task.isCancelled {
-                if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
-                return
-            }
-            let baseTokens: [FuriganaToken]
-            if segment.isJapanese {
-                // 日语：正常生成带假名/罗马字/词性的 tokens，再挂上逐词时间戳
-                let tokens = await furiganaService.generateFurigana(for: segment.text)
-                baseTokens = Self.attachWordTimingsIfAvailable(
-                    tokens: tokens,
-                    text: segment.text,
-                    wordTimings: segment.wordTimings
-                )
-            } else if let wordTimings = segment.wordTimings, !wordTimings.isEmpty {
-                // 非日语：仅根据 word timings 生成简易 token，用于卡拉 OK 高亮
-                baseTokens = wordTimings.map {
-                    FuriganaToken(
-                        surface: $0.word,
-                        reading: "",
-                        romaji: "",
-                        isKanji: false,
-                        isKatakana: false,
-                        englishMeaning: nil,
-                        startTime: $0.start,
-                        endTime: $0.end,
-                        partOfSpeech: nil
-                    )
+        
+        if forceNonJa {
+            for segment in recognitionSegments {
+                if Task.isCancelled {
+                    if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+                    return
                 }
-            } else {
-                baseTokens = []
+                let baseTokens: [FuriganaToken]
+                if let wordTimings = segment.wordTimings, !wordTimings.isEmpty {
+                    baseTokens = wordTimings.map {
+                        FuriganaToken(
+                            surface: $0.word,
+                            reading: "",
+                            romaji: "",
+                            isKanji: false,
+                            isKatakana: false,
+                            englishMeaning: nil,
+                            startTime: $0.start,
+                            endTime: $0.end,
+                            partOfSpeech: nil
+                        )
+                    }
+                } else {
+                    baseTokens = []
+                }
+                transcriptSegments.append(TranscriptSegment(
+                    startTime: segment.startTime,
+                    endTime: segment.endTime,
+                    originalText: segment.text,
+                    tokens: baseTokens,
+                    confidence: segment.confidence,
+                    skipFurigana: true
+                ))
             }
-            
-            transcriptSegments.append(TranscriptSegment(
-                startTime: segment.startTime,
-                endTime: segment.endTime,
-                originalText: segment.text,
-                tokens: baseTokens,
-                confidence: segment.confidence,
-                skipFurigana: !segment.isJapanese
-            ))
+        } else {
+            state = .generatingFurigana
+            for segment in recognitionSegments {
+                if Task.isCancelled {
+                    if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+                    return
+                }
+                let baseTokens: [FuriganaToken]
+                if segment.isJapanese {
+                    let tokens = await furiganaService.generateFurigana(for: segment.text)
+                    baseTokens = Self.attachWordTimingsIfAvailable(
+                        tokens: tokens,
+                        text: segment.text,
+                        wordTimings: segment.wordTimings
+                    )
+                } else if let wordTimings = segment.wordTimings, !wordTimings.isEmpty {
+                    baseTokens = wordTimings.map {
+                        FuriganaToken(
+                            surface: $0.word,
+                            reading: "",
+                            romaji: "",
+                            isKanji: false,
+                            isKatakana: false,
+                            englishMeaning: nil,
+                            startTime: $0.start,
+                            endTime: $0.end,
+                            partOfSpeech: nil
+                        )
+                    }
+                } else {
+                    baseTokens = []
+                }
+                
+                transcriptSegments.append(TranscriptSegment(
+                    startTime: segment.startTime,
+                    endTime: segment.endTime,
+                    originalText: segment.text,
+                    tokens: baseTokens,
+                    confidence: segment.confidence,
+                    skipFurigana: !segment.isJapanese
+                ))
+            }
         }
 
         var finalSource: AudioSource
@@ -300,7 +355,12 @@ final class ProcessingViewModel {
 
         state = .translating
         let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
-        let doc = TranscriptDocument(source: finalSource, segments: segmentsToSave, folderId: finalSource.folderId)
+        let doc = TranscriptDocument(
+            source: finalSource,
+            segments: segmentsToSave,
+            folderId: finalSource.folderId,
+            isNonJapaneseRecognitionSource: forceNonJa ? true : nil
+        )
         document = doc
         state = .completed
         // 按音视频实际时长统计（与播放页显示、配额预检一致），不再用最后一条字幕的 endTime
