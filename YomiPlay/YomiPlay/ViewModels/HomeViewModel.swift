@@ -62,6 +62,13 @@ struct GroupedLibraryItem: Identifiable {
     }
 }
 
+/// 库内关键词搜索：匹配到的分组行
+struct LibrarySearchFolderMatch: Identifiable {
+    let id: String
+    let folderId: UUID?
+    let name: String
+}
+
 @Observable
 final class HomeViewModel {
     
@@ -103,8 +110,6 @@ final class HomeViewModel {
     /// 是否展示订阅墙（权限不足时弹出）
     var showPaywall: Bool = false
     
-    // 検索・フィルタリング
-    var searchText: String = ""
     /// 一覧の並び順
     var sortOrder: DocumentSortOrder = .dateNewestFirst
     private var allSavedDocuments: [TranscriptDocument] = []
@@ -146,9 +151,14 @@ final class HomeViewModel {
         allFolders = DocumentStore.shared.loadAllFolders()
     }
     
-    /// フォルダ＋未グループでグループ化した一覧（検索・並び順適用済み）
+    /// 多媒体库列表：全件＋並び順（顶部不再过滤搜索；搜索在底部 Sheet）
+    var libraryDocumentsSorted: [TranscriptDocument] {
+        allSavedDocuments.sorted(by: sortOrder.predicate)
+    }
+    
+    /// フォルダ＋未グループでグループ化した一覧（並び順適用済み）
     var groupedLibrary: [GroupedLibraryItem] {
-        let docs = filteredDocuments
+        let docs = libraryDocumentsSorted
         var result: [GroupedLibraryItem] = []
         for f in allFolders {
             let group = docs.filter { $0.folderId == f.id }
@@ -157,26 +167,6 @@ final class HomeViewModel {
         let uncategorized = docs.filter { $0.folderId == nil }
         if !uncategorized.isEmpty { result.append(GroupedLibraryItem(folder: nil, documents: uncategorized)) }
         return result
-    }
-    
-    /// 検索フィルタ（分组名 OR 记录标题/字幕）＋並び順適用済みのドキュメント一覧
-    var filteredDocuments: [TranscriptDocument] {
-        let query = searchText.trimmingCharacters(in: .whitespaces)
-        let list: [TranscriptDocument]
-        if query.isEmpty {
-            list = allSavedDocuments
-        } else {
-            list = allSavedDocuments.filter { doc in
-                let recordMatches = doc.source.title.localizedCaseInsensitiveContains(query)
-                    || doc.segments.contains { $0.originalText.localizedCaseInsensitiveContains(query) }
-                if recordMatches { return true }
-                if let fid = doc.folderId, let folder = allFolders.first(where: { $0.id == fid }) {
-                    return folder.name.localizedCaseInsensitiveContains(query)
-                }
-                return false
-            }
-        }
-        return list.sorted(by: sortOrder.predicate)
     }
     
     /// 保存済みが 0 件か（空状態ガイド表示用）
@@ -208,7 +198,32 @@ final class HomeViewModel {
     
     /// 指定フォルダ内のドキュメント一覧（folderId == nil で未分组）
     func documents(inFolderId folderId: UUID?) -> [TranscriptDocument] {
-        filteredDocuments.filter { $0.folderId == folderId }
+        libraryDocumentsSorted.filter { $0.folderId == folderId }
+    }
+    
+    /// 库内搜索：分组名匹配（含未分类分组名）
+    func librarySearchMatchingFolders(query: String) -> [LibrarySearchFolderMatch] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return [] }
+        var results: [LibrarySearchFolderMatch] = []
+        let uncategorized = String(localized: "uncategorized")
+        if uncategorized.localizedCaseInsensitiveContains(q) {
+            results.append(LibrarySearchFolderMatch(id: "uncategorized", folderId: nil, name: uncategorized))
+        }
+        for f in allFolders where f.name.localizedCaseInsensitiveContains(q) {
+            results.append(LibrarySearchFolderMatch(id: f.id.uuidString, folderId: f.id, name: f.name))
+        }
+        return results
+    }
+    
+    /// 库内搜索：标题或字幕匹配的记录
+    func librarySearchMatchingDocuments(query: String) -> [TranscriptDocument] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return [] }
+        return allSavedDocuments.filter { doc in
+            doc.source.title.localizedCaseInsensitiveContains(q)
+                || doc.segments.contains { $0.originalText.localizedCaseInsensitiveContains(q) }
+        }.sorted(by: sortOrder.predicate)
     }
     
     /// フォルダ ID からフォルダを取得

@@ -10,25 +10,29 @@ import SwiftUI
 struct LibraryView: View {
     @Bindable var viewModel: HomeViewModel
     @Binding var navigationPath: NavigationPath
-    @FocusState private var isSearchFocused: Bool
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
+    @State private var showLibrarySearchSheet = false
     
     var body: some View {
         VStack(spacing: 0) {
             headerSection
-            searchSection
             if viewModel.hasNoSavedDocuments {
                 emptyStateView
-            } else if viewModel.filteredDocuments.isEmpty {
-                noResultsView
             } else {
                 groupListView
             }
         }
         .background(Color(.systemBackground))
         .contentShape(Rectangle())
-        .onTapGesture { isSearchFocused = false }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !viewModel.hasNoSavedDocuments {
+                librarySearchBarButton
+            }
+        }
+        .sheet(isPresented: $showLibrarySearchSheet) {
+            LibrarySearchSheet(viewModel: viewModel, navigationPath: $navigationPath, isPresented: $showLibrarySearchSheet)
+        }
         .navigationTitle("saved_records")
         .toolbar {
             if !viewModel.hasNoSavedDocuments {
@@ -119,71 +123,46 @@ struct LibraryView: View {
         .padding(.bottom, 8)
     }
 
-    // MARK: - 搜索：卡片式，与导入页区块风格一致
-    private var searchSection: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .font(.body)
-                    .foregroundStyle(.tertiary)
-                TextField("search_placeholder", text: $viewModel.searchText)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .focused($isSearchFocused)
-                    .submitLabel(.search)
-                if !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Button {
-                        viewModel.searchText = ""
-                        isSearchFocused = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.body)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isSearchFocused ? Color.green.opacity(0.4) : Color.clear, lineWidth: 1.5)
-            )
-            if !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-                HStack(spacing: 8) {
-                    Text(searchResultSummary)
-                        .font(.caption)
+    /// 底部搜索入口（宽度随文案，类似 iPhone 主屏搜索按钮）
+    private var librarySearchBarButton: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Button {
+                HapticManager.shared.impact(style: .light)
+                showLibrarySearchSheet = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
-                    Spacer()
-                    Button {
-                        viewModel.searchText = ""
-                        isSearchFocused = false
-                    } label: {
-                        Text("clear_search")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.green)
-                    }
+                    Text("search_placeholder")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.top, 8)
+                .padding(.vertical, 9)
+                .padding(.horizontal, 14)
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color(.separator).opacity(0.35), lineWidth: 0.5)
+                )
             }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, 12)
-    }
-    
-    private var searchResultSummary: String {
-        let count = viewModel.filteredDocuments.count
-        let template = String(localized: "search_result_count")
-        return String(format: template, "\(count)")
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
     
     private var groupListView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                sectionLabel("default_group")
+                // 保留与原「默认分组」小标题行相当的高度，与 header 行距不变
+                Color.clear
+                    .frame(height: 20)
+                    .accessibilityHidden(true)
                 groupCard(
                     id: nil,
                     name: String(localized: "uncategorized"),
@@ -334,19 +313,179 @@ struct LibraryView: View {
         }
         .padding(.horizontal, 20)
     }
+}
+
+// MARK: - 库内搜索 Sheet（双 Section：分组 / 记录）
+
+private struct LibrarySearchSheet: View {
+    @Bindable var viewModel: HomeViewModel
+    @Binding var navigationPath: NavigationPath
+    @Binding var isPresented: Bool
+    @State private var query = ""
+    @FocusState private var searchFieldFocused: Bool
     
-    private var noResultsView: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary.opacity(0.6))
-            Text("no_matching_records")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespaces)
+    }
+    
+    private var matchingFolders: [LibrarySearchFolderMatch] {
+        viewModel.librarySearchMatchingFolders(query: query)
+    }
+    
+    private var matchingDocuments: [TranscriptDocument] {
+        viewModel.librarySearchMatchingDocuments(query: query)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.body)
+                        .foregroundStyle(.tertiary)
+                    TextField("search_placeholder", text: $query)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($searchFieldFocused)
+                        .submitLabel(.search)
+                    if !trimmedQuery.isEmpty {
+                        Button {
+                            query = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                
+                List {
+                    if trimmedQuery.isEmpty {
+                        Section {
+                            HStack(spacing: 10) {
+                                Image(systemName: "text.magnifyingglass")
+                                    .foregroundStyle(.tertiary)
+                                Text("library_search_hint")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                            .listRowBackground(Color.clear)
+                        }
+                    } else if matchingFolders.isEmpty && matchingDocuments.isEmpty {
+                        Section {
+                            HStack {
+                                Spacer()
+                                VStack(spacing: 10) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.tertiary)
+                                    Text("no_matching_records")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 28)
+                                Spacer()
+                            }
+                            .listRowBackground(Color.clear)
+                        }
+                    } else {
+                        if !matchingFolders.isEmpty {
+                            Section {
+                                ForEach(matchingFolders) { match in
+                                    Button {
+                                        openFolder(match.folderId)
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: "folder.fill")
+                                                .foregroundStyle(match.folderId == nil ? Color(.systemGray) : .yellow)
+                                            Text(match.name)
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                }
+                            } header: {
+                                Text("library_search_section_groups")
+                            }
+                        }
+                        if !matchingDocuments.isEmpty {
+                            Section {
+                                ForEach(matchingDocuments) { doc in
+                                    Button {
+                                        openPlayer(for: doc)
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: doc.source.videoPlaybackURL != nil ? "play.rectangle.fill" : "waveform")
+                                                .foregroundStyle(.secondary)
+                                                .frame(width: 28)
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(doc.source.title)
+                                                    .font(.headline)
+                                                    .foregroundStyle(.primary)
+                                                    .lineLimit(2)
+                                                Text(viewModel.folderDisplayName(for: doc.folderId))
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            Spacer(minLength: 0)
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption)
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                }
+                            } header: {
+                                Text("library_search_section_records")
+                            }
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+            .navigationTitle("search_placeholder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("cancel") {
+                        query = ""
+                        isPresented = false
+                    }
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    searchFieldFocused = true
+                }
+            }
         }
-        .padding(.horizontal, 20)
+    }
+    
+    private func openFolder(_ folderId: UUID?) {
+        isPresented = false
+        let id = folderId
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            navigationPath.append(AppDestination.folder(folderId: id))
+        }
+    }
+    
+    private func openPlayer(for doc: TranscriptDocument) {
+        isPresented = false
+        let folderDocs = viewModel.documents(inFolderId: doc.folderId)
+        let index = folderDocs.firstIndex(where: { $0.id == doc.id }) ?? 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            navigationPath.append(AppDestination.player(documents: folderDocs, currentIndex: index))
+        }
     }
 }
 
