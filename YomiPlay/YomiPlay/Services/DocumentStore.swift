@@ -100,19 +100,40 @@ final class DocumentStore: @unchecked Sendable {
     private func removeMediaFilesIfOwned(for document: TranscriptDocument) {
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         if let rel = document.source.relativeFilePath, !rel.isEmpty {
-            let url = docs.appendingPathComponent(rel)
-            if FileManager.default.fileExists(atPath: url.path) {
-                try? FileManager.default.removeItem(at: url)
-                print("DocumentStore: メディア削除 \(rel)")
-            }
+            removeFileIfUnreferenced(relativePath: rel, excludingDocumentId: document.id, docsRoot: docs, logPrefix: "メディア")
         }
         if let rel = document.source.videoRelativeFilePath, !rel.isEmpty {
-            let url = docs.appendingPathComponent(rel)
-            if FileManager.default.fileExists(atPath: url.path) {
-                try? FileManager.default.removeItem(at: url)
-                print("DocumentStore: 動画削除 \(rel)")
-            }
+            removeFileIfUnreferenced(relativePath: rel, excludingDocumentId: document.id, docsRoot: docs, logPrefix: "動画")
         }
+    }
+
+    /// 同一ファイルを複数ドキュメントが参照している場合、誤って削除しないための保護。
+    /// - Note: 例えば同名ファイルを複数回インポートすると `relativeFilePath` が同一になりやすい。
+    private func removeFileIfUnreferenced(
+        relativePath: String,
+        excludingDocumentId: UUID,
+        docsRoot: URL,
+        logPrefix: String
+    ) {
+        // 他のドキュメントが同じ相対パスを参照しているなら削除しない
+        if isRelativePathReferencedByOtherDocuments(relativePath, excludingDocumentId: excludingDocumentId) {
+            print("DocumentStore: \(logPrefix)保持（他ドキュメント参照あり） \(relativePath)")
+            return
+        }
+        let url = docsRoot.appendingPathComponent(relativePath)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.removeItem(at: url)
+            print("DocumentStore: \(logPrefix)削除 \(relativePath)")
+        }
+    }
+
+    private func isRelativePathReferencedByOtherDocuments(_ relativePath: String, excludingDocumentId: UUID) -> Bool {
+        let all = loadAll()
+        for doc in all where doc.id != excludingDocumentId {
+            if doc.source.relativeFilePath == relativePath { return true }
+            if doc.source.videoRelativeFilePath == relativePath { return true }
+        }
+        return false
     }
     
     /// 全ドキュメントを削除する

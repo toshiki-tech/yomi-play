@@ -22,6 +22,8 @@ struct PodcastEpisode: Identifiable {
     let title: String
     let pubDate: Date?
     let audioURL: URL
+    /// 单集时长（秒）。来自 RSS 的 itunes:duration（若有）。
+    let durationSeconds: Int?
 }
 
 enum PodcastSearchService {
@@ -96,6 +98,7 @@ private final class EpisodeParserDelegate: NSObject, XMLParserDelegate {
     private var currentTitle = ""
     private var currentDate: Date?
     private var currentEnclosureURL: URL?
+    private var currentDurationText = ""
     private var currentElement = ""
 
     private static let dateFormatter: DateFormatter = {
@@ -119,6 +122,7 @@ private final class EpisodeParserDelegate: NSObject, XMLParserDelegate {
             currentTitle = ""
             currentDate = nil
             currentEnclosureURL = nil
+            currentDurationText = ""
         }
         if inItem && elementName == "enclosure" {
             if let urlString = attributeDict["url"], let url = URL(string: urlString),
@@ -140,6 +144,9 @@ private final class EpisodeParserDelegate: NSObject, XMLParserDelegate {
                 currentDate = Self.dateFormatter.date(from: trimmed)
                     ?? Self.dateFormatterAlt.date(from: trimmed)
             }
+        case "itunes:duration", "duration":
+            // itunes:duration 常见格式：HH:MM:SS / MM:SS / 纯秒数
+            currentDurationText += trimmed
         default:
             break
         }
@@ -153,10 +160,26 @@ private final class EpisodeParserDelegate: NSObject, XMLParserDelegate {
                     id: id,
                     title: currentTitle.trimmingCharacters(in: .whitespacesAndNewlines),
                     pubDate: currentDate,
-                    audioURL: url
+                    audioURL: url,
+                    durationSeconds: Self.parseDurationSeconds(from: currentDurationText)
                 ))
             }
             inItem = false
+        }
+    }
+
+    private static func parseDurationSeconds(from raw: String) -> Int? {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if let seconds = Int(text) { return max(0, seconds) }
+        let parts = text.split(separator: ":").map { String($0) }
+        guard parts.count == 2 || parts.count == 3 else { return nil }
+        let nums = parts.compactMap { Int($0) }
+        guard nums.count == parts.count else { return nil }
+        if nums.count == 2 {
+            return max(0, nums[0] * 60 + nums[1])
+        } else {
+            return max(0, nums[0] * 3600 + nums[1] * 60 + nums[2])
         }
     }
 }

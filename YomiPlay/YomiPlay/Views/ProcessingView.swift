@@ -18,6 +18,7 @@ struct ProcessingView: View {
     @Binding var navigationPath: NavigationPath
     @State private var viewModel = ProcessingViewModel()
     @State private var recognitionElapsedSeconds: Int = 0
+    @State private var showCancelConfirm: Bool = false
     private let recognitionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -36,6 +37,22 @@ struct ProcessingView: View {
         .navigationTitle("processing")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(viewModel.state.isProcessing)
+        .toolbar {
+            if viewModel.state.isProcessing {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("cancel") { showCancelConfirm = true }
+                }
+            }
+        }
+        .confirmationDialog("cancel", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+            Button("cancel", role: .cancel) {}
+            Button("ok", role: .destructive) {
+                viewModel.cancelProcessing()
+                if !navigationPath.isEmpty {
+                    navigationPath.removeLast()
+                }
+            }
+        }
         .onReceive(recognitionTimer) { _ in
             if viewModel.state == .recognizing {
                 recognitionElapsedSeconds += 1
@@ -64,6 +81,13 @@ struct ProcessingView: View {
         let seconds = max(recognitionElapsedSeconds, 0)
         let minutesPart = seconds / 60
         let secondsPart = seconds % 60
+        return String(format: "%02d:%02d", minutesPart, secondsPart)
+    }
+
+    private func formatMMSS(_ seconds: Int) -> String {
+        let s = max(seconds, 0)
+        let minutesPart = s / 60
+        let secondsPart = s % 60
         return String(format: "%02d:%02d", minutesPart, secondsPart)
     }
     
@@ -126,9 +150,18 @@ struct ProcessingView: View {
             
             // 语音识别步骤耗时提示：显示简单计时，避免用户误以为卡死
             if viewModel.state == .recognizing, recognitionElapsedSeconds > 0 {
-                Text("⏱ \(formattedElapsedTime)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(spacing: 6) {
+                    Text("⏱ \(formattedElapsedTime)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if let total = viewModel.recognitionEstimatedTotalSeconds, total > 0 {
+                        let remaining = max(0, total - recognitionElapsedSeconds)
+                        Text("≈ \(formatMMSS(remaining)) / \(formatMMSS(total))")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
             }
             
             // エラー時の説明とボタン

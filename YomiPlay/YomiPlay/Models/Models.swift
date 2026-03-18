@@ -29,6 +29,8 @@ struct AudioSource: Identifiable, Codable, Hashable {
     var srtRelativeFilePath: String?
     /// 元の動画ファイルの Documents からの相対パス（動画インポート時に設定）
     var videoRelativeFilePath: String?
+    /// インポート時に紐付けたいフォルダID（nil = デフォルト分组）
+    var folderId: UUID?
     
     init(
         id: UUID = UUID(),
@@ -39,7 +41,8 @@ struct AudioSource: Identifiable, Codable, Hashable {
         title: String = "",
         duration: TimeInterval? = nil,
         srtRelativeFilePath: String? = nil,
-        videoRelativeFilePath: String? = nil
+        videoRelativeFilePath: String? = nil,
+        folderId: UUID? = nil
     ) {
         self.id = id
         self.type = type
@@ -50,6 +53,7 @@ struct AudioSource: Identifiable, Codable, Hashable {
         self.duration = duration
         self.srtRelativeFilePath = srtRelativeFilePath
         self.videoRelativeFilePath = videoRelativeFilePath
+        self.folderId = folderId
     }
     
     /// 再生用URLを返す（ローカルは相対パスから再構築を優先）

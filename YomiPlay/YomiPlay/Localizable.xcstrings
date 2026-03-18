@@ -35,7 +35,20 @@
     "•" : {
 
     },
+    "≈ %@ / %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "≈ %1$@ / %2$@"
+          }
+        }
+      }
+    },
     "⏱ %@" : {
+
+    },
+    "✨ 生成你的学习内容" : {
 
     },
     "about" : {
@@ -375,6 +388,7 @@
       }
     },
     "continue" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -429,6 +443,9 @@
           }
         }
       }
+    },
+    "Create Your Learning Content" : {
+
     },
     "date_newest_first" : {
       "localizations" : {
@@ -578,25 +595,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ items will be moved to Uncategorized. Delete group \"%2$@\"?"
+            "value" : "Delete group \"%2$@\" and all its records?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このグループ内の %1$@ 件は未分類へ移ります。「%2$@」を削除しますか？"
+            "value" : "グループ「%2$@」とその記録をすべて削除しますか？"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "其中 %1$@ 条记录将移回「未分组」。确定删除分组「%2$@」？"
+            "value" : "确定删除分组「%2$@」及其中的所有记录吗？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "其中 %1$@ 條記錄將移回「未分組」。確定刪除分組「%2$@」？"
+            "value" : "確定刪除分組「%2$@」及其中的所有記錄嗎？"
           }
         }
       }
@@ -1364,6 +1381,7 @@
       }
     },
     "free_no_export" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1392,6 +1410,7 @@
       }
     },
     "free_no_zip" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2802,6 +2821,7 @@
       }
     },
     "Language Learning with AI Subtitles" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2858,6 +2878,7 @@
       }
     },
     "library_header_subtitle" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2914,7 +2935,6 @@
       }
     },
     "library_subtitle" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3573,25 +3593,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paste audio/video or podcast URL"
+            "value" : "Paste audio/video URL"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声・動画または播客のURLを貼り付け"
+            "value" : "音声・動画のURLを貼り付け"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粘贴音视频或播客链接"
+            "value" : "粘贴音视频链接"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "貼上音訊/影片或播客連結"
+            "value" : "貼上音訊/影片連結"
           }
         }
       }
@@ -4301,6 +4321,7 @@
       }
     },
     "podcast_search_section_title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4329,6 +4350,7 @@
       }
     },
     "podcast_searching" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4385,6 +4407,7 @@
       }
     },
     "podcast_url_import_network_message" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4413,6 +4436,7 @@
       }
     },
     "podcast_url_import_network_title" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4528,6 +4552,34 @@
     },
     "Pro" : {
 
+    },
+    "pro_exclusive" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro exclusive"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro専用"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro专属"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro 專屬"
+          }
+        }
+      }
     },
     "pro_export_srt_yomi_media" : {
       "localizations" : {
@@ -4646,25 +4698,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Group ZIP export"
+            "value" : "Group ZIP import"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "グループZIP出力"
+            "value" : "グループZIP取り込み"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持分组 ZIP 导出"
+            "value" : "支持分组 ZIP 导入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支援分組 ZIP 導出"
+            "value" : "支援分組 ZIP 導入"
           }
         }
       }
@@ -6225,19 +6277,19 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI音声認識 · 日本語字幕 · シャドーイング · 学習リソース"
+            "value" : "AI音声認識 · シャドーイング · 学習リソース共有"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI语音识别 · 日语字幕 · 影子跟读 · 学习资源分享"
+            "value" : "AI语音识别 · 影子跟读 · 学习资源分享"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI語音識別 · 日語字幕 · 影子跟讀 · 學習資源分享"
+            "value" : "AI語音識別 · 影子跟讀 · 學習資源分享"
           }
         }
       }
@@ -7614,25 +7666,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ZIP export"
+            "value" : "ZIP import"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ZIP エクスポート"
+            "value" : "ZIP インポート"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "分组 ZIP 导出"
+            "value" : "分组 ZIP 导入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "分組 ZIP 導出"
+            "value" : "分組 ZIP 導入"
           }
         }
       }
@@ -7725,6 +7777,9 @@
 
     },
     "模拟 Pro 用户" : {
+
+    },
+    "自分だけの学習素材を作る" : {
 
     }
   },

@@ -22,12 +22,17 @@ final class ProcessingViewModel {
     
     /// 処理完了フラグ
     var isCompleted: Bool = false
+
+    /// 语音识别预估总耗时（秒）。仅用于 UI 展示，非精确倒计时。
+    var recognitionEstimatedTotalSeconds: Int?
     
     // MARK: - サービス
     
     private let speechService: SpeechRecognitionServiceProtocol
     private let furiganaService: FuriganaServiceProtocol
     private let translationService = TranslationService.shared
+
+    private var processingTask: Task<Void, Never>?
     
     // MARK: - 初期化
     
@@ -44,9 +49,18 @@ final class ProcessingViewModel {
     
     /// 音声ソースの処理を開始する
     func startProcessing(source: AudioSource) {
-        Task {
-            await process(source: source)
+        processingTask?.cancel()
+        processingTask = Task { [weak self] in
+            guard let self else { return }
+            await self.process(source: source)
         }
+    }
+
+    func cancelProcessing() {
+        processingTask?.cancel()
+        processingTask = nil
+        recognitionEstimatedTotalSeconds = nil
+        state = .idle
     }
     
     /// SRT が提供されているかどうか（ProcessingView の UI 表示に使う）
@@ -55,6 +69,7 @@ final class ProcessingViewModel {
     /// 音声認識→振り仮名生成の処理フロー
     @MainActor
     private func process(source: AudioSource) async {
+        if Task.isCancelled { return }
         hasSRT = source.srtURL != nil
         
         if let srtURL = source.srtURL {
@@ -72,12 +87,14 @@ final class ProcessingViewModel {
     @MainActor
     private func processRemoteThenSRT(source: AudioSource, srtURL: URL) async {
         let loc = AppLocale.current
+        if Task.isCancelled { return }
         guard source.type == .remote, let remoteURL = source.playbackURL else {
             state = .error(String(localized: LocalizedStringResource("audio_url_not_found", locale: loc)))
             return
         }
         state = .resolvingRemoteSource
         let resolved = await RemoteMediaResolver.resolve(originalURL: remoteURL)
+        if Task.isCancelled { return }
         guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
             state = .error(String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: loc)))
             return
@@ -87,11 +104,15 @@ final class ProcessingViewModel {
         do {
             localAudioURL = try await RemoteAudioFetcher.download(url: audioURL)
         } catch {
+            if Task.isCancelled { return }
             state = .error(Self.userFacingMessage(for: error))
             return
         }
         defer { try? FileManager.default.removeItem(at: localAudioURL) }
+        if Task.isCancelled { return }
         var localSource = Self.persistDownloadedMedia(from: localAudioURL, title: source.title)
+        // 保持来源分组信息
+        localSource.folderId = source.folderId
         localSource.srtRelativeFilePath = source.srtRelativeFilePath
         await processWithSRT(source: localSource, srtURL: srtURL)
     }
@@ -100,6 +121,7 @@ final class ProcessingViewModel {
     @MainActor
     private func processWithSRT(source: AudioSource, srtURL: URL) async {
         do {
+            if Task.isCancelled { return }
             state = .parsingSRT
             
             let srtSegments = try SubtitleImportService.parseSRT(from: srtURL)
@@ -114,6 +136,7 @@ final class ProcessingViewModel {
             var transcriptSegments: [TranscriptSegment] = []
             
             for seg in srtSegments {
+                if Task.isCancelled { return }
                 let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
                 let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
                 transcriptSegments.append(TranscriptSegment(
@@ -129,7 +152,7 @@ final class ProcessingViewModel {
 
             state = .translating
             let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
-            let doc = TranscriptDocument(source: source, segments: segmentsToSave)
+            let doc = TranscriptDocument(source: source, segments: segmentsToSave, folderId: source.folderId)
             document = doc
             state = .completed
 
@@ -143,6 +166,7 @@ final class ProcessingViewModel {
             isCompleted = true
 
         } catch {
+            if Task.isCancelled { return }
             print("ProcessingViewModel: SRT エラー: \(error)")
             state = .error(String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
         }
@@ -151,6 +175,7 @@ final class ProcessingViewModel {
     /// 流程：远程则 解析链接 → 下载到本地 → Whisper 识别 → 假名；本地则直接识别。
     @MainActor
     private func processWithRecognition(source: AudioSource) async {
+        if Task.isCancelled { return }
         let authorized = await speechService.requestAuthorization()
         guard authorized else {
             state = .error(String(localized: LocalizedStringResource("speech_recognition_permission_denied_please_enable_it_in_settings", locale: AppLocale.current)))
@@ -167,6 +192,7 @@ final class ProcessingViewModel {
         if source.type == .remote {
             state = .resolvingRemoteSource
             let resolved = await RemoteMediaResolver.resolve(originalURL: url)
+            if Task.isCancelled { return }
             guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
                 state = .error(String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current)))
                 return
@@ -177,22 +203,31 @@ final class ProcessingViewModel {
                 localAudioURL = try await RemoteAudioFetcher.download(url: audioURL)
                 tempDownloadURL = localAudioURL
             } catch {
+                if Task.isCancelled { return }
                 state = .error(Self.userFacingMessage(for: error))
                 return
             }
             state = .loadingAudio
-            state = .recognizing
         } else {
             state = .loadingAudio
             localAudioURL = url
-            state = .recognizing
         }
+
+        if Task.isCancelled {
+            if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+            return
+        }
+
+        // 进入识别前估算耗时（仅作 UI 参考）
+        recognitionEstimatedTotalSeconds = await estimateRecognitionSeconds(for: localAudioURL)
+        state = .recognizing
 
         var recognitionSegments: [RecognitionSegment]
         do {
             recognitionSegments = try await speechService.recognize(audioURL: localAudioURL)
         } catch {
             if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+            if Task.isCancelled { return }
             state = .error(Self.userFacingMessage(for: error))
             return
         }
@@ -204,9 +239,18 @@ final class ProcessingViewModel {
             return
         }
 
+        if Task.isCancelled {
+            if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+            return
+        }
+
         state = .generatingFurigana
         var transcriptSegments: [TranscriptSegment] = []
         for segment in recognitionSegments {
+            if Task.isCancelled {
+                if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
+                return
+            }
             let baseTokens: [FuriganaToken]
             if segment.isJapanese {
                 // 日语：正常生成带假名/罗马字/词性的 tokens，再挂上逐词时间戳
@@ -245,16 +289,18 @@ final class ProcessingViewModel {
             ))
         }
 
-        let finalSource: AudioSource
+        var finalSource: AudioSource
         if let temp = tempDownloadURL {
             finalSource = Self.persistDownloadedMedia(from: temp, title: source.title)
+            // 远程下载后也沿用原始分组信息
+            finalSource.folderId = source.folderId
         } else {
             finalSource = source
         }
 
         state = .translating
         let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
-        let doc = TranscriptDocument(source: finalSource, segments: segmentsToSave)
+        let doc = TranscriptDocument(source: finalSource, segments: segmentsToSave, folderId: finalSource.folderId)
         document = doc
         state = .completed
         // 按音视频实际时长统计（与播放页显示、配额预检一致），不再用最后一条字幕的 endTime
@@ -272,6 +318,26 @@ final class ProcessingViewModel {
         }
         try? await Task.sleep(nanoseconds: 500_000_000)
         isCompleted = true
+    }
+
+    private func estimateRecognitionSeconds(for audioURL: URL) async -> Int? {
+        guard audioURL.isFileURL else { return nil }
+        let duration = await SubscriptionManager.durationSeconds(of: audioURL)
+        guard duration > 0 else { return nil }
+        let raw = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey)
+            ?? WhisperSpeechRecognitionService.recommendedModeForDevice.rawValue
+        let mode = WhisperSpeechRecognitionService.RecognitionMode(rawValue: raw) ?? .small
+        // 经验系数：仅供“预估”，不承诺准确。系数越大代表越慢。
+        let factor: Double = switch mode {
+        case .tiny: 0.18
+        case .base: 0.25
+        case .small: 0.40
+        case .medium: 0.65
+        case .large: 0.95
+        }
+        // 给一点启动/IO 开销
+        let estimated = Int(Double(duration) * factor + 8.0)
+        return max(10, estimated)
     }
 
     /// 播客下载的临时文件移动到 Documents/Media，返回本地 AudioSource，便于播放时直接读文件。

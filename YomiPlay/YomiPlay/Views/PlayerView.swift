@@ -547,16 +547,6 @@ struct SettingsSheetView: View {
     
     private var generalSettings: some View {
         VStack(spacing: 0) {
-            // 播放器外观：浅色 / 深色 / 跟随系统
-            settingsRow(icon: "paintbrush.fill", title: "interface_theme_label", color: Color(hue: 0.46, saturation: 0.42, brightness: 0.62)) {
-                Picker("", selection: $playerTheme) {
-                    Text("interface_theme_system").tag("system")
-                    Text("interface_theme_light").tag("light")
-                    Text("interface_theme_dark").tag("dark")
-                }
-                .pickerStyle(.menu)
-            }
-            Divider().padding(.leading, 52)
             settingsRow(icon: "textformat.size", title: "font_size", color: .green) {
                 HStack(spacing: 12) {
                     Button { viewModel.adjustFontSize(by: -2) } label: {

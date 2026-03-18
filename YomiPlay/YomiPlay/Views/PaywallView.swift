@@ -141,16 +141,14 @@ struct PaywallView: View {
                     free: "free_audio_only",
                     pro: "pro_video_supported"
                 )
-                comparisonCard(
+                proOnlyCard(
                     title: "export_share",
-                    freeIcon: "square.and.arrow.up",
-                    free: "free_no_export",
+                    icon: "square.and.arrow.up",
                     pro: "pro_export_srt_yomi_media"
                 )
-                comparisonCard(
+                proOnlyCard(
                     title: "zip_export",
-                    freeIcon: "doc.zipper",
-                    free: "free_no_zip",
+                    icon: "doc.zipper",
                     pro: "pro_zip_export"
                 )
             }
@@ -303,6 +301,48 @@ struct PaywallView: View {
                 )
                 .shadow(color: Color.orange.opacity(0.15), radius: 8, x: 0, y: 3)
             }
+        }
+        .padding(16)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func proOnlyCard(
+        title: LocalizedStringKey,
+        icon: String,
+        pro: LocalizedStringKey
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.subheadline)
+                        .foregroundStyle(Self.crownGradient)
+                    Text("pro_exclusive")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                }
+                Text(pro)
+                    .font(.caption)
+                    .foregroundStyle(Self.proTextColor)
+                    .fontWeight(.medium)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(Self.proGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Self.proGlowGradient, lineWidth: 1.2)
+            )
+            .shadow(color: Color.orange.opacity(0.15), radius: 8, x: 0, y: 3)
         }
         .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))

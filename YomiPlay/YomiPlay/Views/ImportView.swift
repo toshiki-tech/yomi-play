@@ -436,6 +436,7 @@ struct ImportView: View {
         let onDismiss: () -> Void
         @State private var urlInputText = ""
         @State private var urlImportError: String?
+        @State private var isUrlSectionExpanded: Bool = false
         @State private var searchText = ""
         @State private var isSearching = false
         @State private var searchResults: [PodcastSearchResult] = []
@@ -481,74 +482,159 @@ struct ImportView: View {
         private var mainInputView: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // URL 输入区
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("paste_url_section_title", systemImage: "link")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        TextEditor(text: $urlInputText)
-                            .frame(minHeight: 80, maxHeight: 120)
-                            .padding(10)
-                            .scrollContentBackground(.hidden)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.secondarySystemBackground)))
-                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(isUrlFieldFocused ? Color.green : Color.clear, lineWidth: 2))
-                            .focused($isUrlFieldFocused)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                        if let err = urlImportError {
-                            Text(err).font(.caption).foregroundStyle(.red)
-                        }
-                        Button {
-                            importFromPastedURL()
-                        } label: {
-                            Label("import_from_link", systemImage: "arrow.down.circle.fill")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
-                        .disabled(urlInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                    .padding(16)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground).opacity(0.6)))
-
-                    Divider()
-                        .padding(.vertical, 4)
-
                     // 搜索播客节目
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("podcast_search_section_title")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                         searchViewContent
                     }
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
             }
+            // URL 小抽屉：默认贴边缩成一个图标，需要时横向展开
+            .overlay(alignment: .topTrailing) {
+                urlDrawer
+                    // 下移到提示文案下方，避免挡住搜索区
+                    .padding(.top, 88)
+                    .padding(.trailing, 2)
+            }
+        }
+
+        private var urlDrawer: some View {
+            let collapsedWidth: CGFloat = 46
+            let expandedWidth: CGFloat = 340
+            let collapsedHeight: CGFloat = 46
+            let expandedMaxHeight: CGFloat = 260
+            return ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+                    // 关键：固定抽屉高度，避免背景拉满整屏导致“高条”观感
+                    .frame(
+                        width: isUrlSectionExpanded ? expandedWidth : collapsedWidth,
+                        height: isUrlSectionExpanded ? nil : collapsedHeight,
+                        alignment: .topTrailing
+                    )
+                    .frame(maxHeight: isUrlSectionExpanded ? expandedMaxHeight : collapsedHeight, alignment: .topTrailing)
+                    .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 6)
+
+                if isUrlSectionExpanded {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "captions.bubble.fill")
+                                .foregroundStyle(.secondary)
+                            Text("paste_url_section_title")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Button {
+                                withAnimation(.spring(duration: 0.28)) {
+                                    isUrlSectionExpanded = false
+                                }
+                                isUrlFieldFocused = false
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        TextEditor(text: $urlInputText)
+                            .frame(minHeight: 68, maxHeight: 110)
+                            .padding(10)
+                            .scrollContentBackground(.hidden)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isUrlFieldFocused ? Color.green : Color.clear, lineWidth: 2))
+                            .focused($isUrlFieldFocused)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+
+                        if let err = urlImportError {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+
+                        Button {
+                            importFromPastedURL()
+                        } label: {
+                            Label("import_from_link", systemImage: "arrow.down.circle.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .disabled(urlInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding(14)
+                    .frame(maxWidth: expandedWidth, alignment: .topLeading)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                } else {
+                    Button {
+                        withAnimation(.spring(duration: 0.28)) {
+                            isUrlSectionExpanded = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            isUrlFieldFocused = true
+                        }
+                    } label: {
+                        Image(systemName: "captions.bubble.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: collapsedWidth, height: collapsedHeight)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("paste_url_section_title"))
+                }
+            }
+            .frame(maxHeight: isUrlSectionExpanded ? expandedMaxHeight : collapsedHeight, alignment: .topTrailing)
         }
 
         private var searchViewContent: some View {
-            VStack(spacing: 16) {
-                HStack(spacing: 12) {
+            VStack(spacing: 10) {
+                // 放大搜索框：整行卡片样式，更类似首页搜索
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
                     TextField("podcast_search_placeholder", text: $searchText)
-                        .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
                         .onSubmit { runSearch() }
                         .focused($isSearchFocused)
+                    if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button {
+                            searchText = ""
+                            searchResults = []
+                            searchError = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     Button {
                         runSearch()
                     } label: {
                         if isSearching {
                             ProgressView()
-                                .scaleEffect(0.9)
+                                .scaleEffect(0.8)
                         } else {
-                            Image(systemName: "magnifyingglass")
+                            Image(systemName: "arrow.forward.circle.fill")
                         }
                     }
+                    .buttonStyle(.plain)
                     .disabled(searchText.trimmingCharacters(in: .whitespaces).isEmpty || isSearching)
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color(.secondarySystemBackground))
+                )
                 .padding(.horizontal)
 
                 if let err = searchError {
@@ -560,15 +646,17 @@ struct ImportView: View {
 
                 if isSearching && searchResults.isEmpty {
                     ProgressView()
-                    Text("podcast_searching").font(.subheadline).foregroundStyle(.secondary)
                         .padding(.vertical, 20)
                 } else if searchResults.isEmpty && !searchText.isEmpty && !isSearching {
                     Text("podcast_no_results").font(.subheadline).foregroundStyle(.secondary)
                         .padding(.vertical, 20)
                 } else if searchResults.isEmpty {
-                    Text("podcast_search_hint").font(.subheadline).foregroundStyle(.secondary)
+                    Text("podcast_search_hint")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.vertical, 20)
+                        .padding(.top, 8)
+                        .padding(.horizontal)
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(searchResults) { podcast in
@@ -650,10 +738,19 @@ struct ImportView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ep.title).font(.subheadline).lineLimit(2)
-                                if let date = ep.pubDate {
-                                    Text(date, style: .date)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
+                                HStack(spacing: 8) {
+                                    if let date = ep.pubDate {
+                                        Text(date, style: .date)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 0)
+                                    if let seconds = ep.durationSeconds, seconds > 0 {
+                                        Text(formatDuration(seconds))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .monospacedDigit()
+                                    }
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -662,6 +759,18 @@ struct ImportView: View {
                     }
                     .listStyle(.plain)
                 }
+            }
+        }
+
+        private func formatDuration(_ totalSeconds: Int) -> String {
+            let s = max(0, totalSeconds)
+            let h = s / 3600
+            let m = (s % 3600) / 60
+            let sec = s % 60
+            if h > 0 {
+                return String(format: "%d:%02d:%02d", h, m, sec)
+            } else {
+                return String(format: "%d:%02d", m, sec)
             }
         }
 
@@ -715,28 +824,44 @@ struct ImportView: View {
     )
 
     private var headerSection: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "waveform.circle.fill")
-                .font(.system(size: 80))
-                .foregroundStyle(.linearGradient(colors: [.green, .green.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .symbolRenderingMode(.hierarchical)
+        VStack(spacing: 14) {
+            // 更贴近“学习内容”语义的图标：书本 + 波形
+            ZStack {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.1))
+                    .frame(width: 96, height: 56)
+                HStack(spacing: 6) {
+                    // Image(systemName: "book.closed.fill")
+                    //     .font(.system(size: 26, weight: .semibold))
+                    //     .foregroundStyle(Color.accentColor)
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 36, weight: .regular))
+                        .foregroundStyle(.linearGradient(colors: [.green, .green.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+            }
 
-            VStack(spacing: 4) {
-                HStack(spacing: 8) {
-                    Text("YomiPlay")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    if subscription.isProUser {
-                        Image(systemName: "crown.fill")
-                            .font(.title2)
-                            .foregroundStyle(Self.crownGradient)
+            VStack(spacing: 6) {
+                Text("YomiPlay")
+                    .font(.title)
+                    .fontWeight(.bold)
+
+                // 根据界面语言切换副标题
+                Group {
+                    switch locale.identifier {
+                    case let id where id.hasPrefix("zh"):
+                        Text("✨ 生成你的学习内容")
+                    case let id where id.hasPrefix("ja"):
+                        Text("自分だけの学習素材を作る")
+                    default:
+                        Text("Create Your Learning Content")
                     }
                 }
-                Text("Language Learning with AI Subtitles")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
             }
         }
-        .padding(.top, 20)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
     }
 }

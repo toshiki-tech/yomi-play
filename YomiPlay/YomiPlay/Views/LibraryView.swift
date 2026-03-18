@@ -88,21 +88,34 @@ struct LibraryView: View {
     
     // MARK: - 头部：与导入页风格统一（标题 + 副标题）
     private var headerSection: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "clock.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(.linearGradient(colors: [.green, .green.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .symbolRenderingMode(.hierarchical)
+        VStack(spacing: 10) {
+            // 与导入页呼应：学习内容 + 媒体的组合图标
+            ZStack {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.08))
+                    .frame(width: 82, height: 44)
+                HStack(spacing: 6) {
+                    Image(systemName: "books.vertical.fill")
+                        .font(.system(size: 36, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                    // Image(systemName: "waveform")
+                    //     .font(.system(size: 18, weight: .medium))
+                    //     .foregroundStyle(.secondary)
+                }
+            }
+
             Text("library_header_title")
                 .font(.title2)
                 .fontWeight(.bold)
-            Text("library_header_subtitle")
+
+            // 副标题使用现有本地化 key（多媒体记录页的说明）
+            Text("library_subtitle")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 20)
-        .padding(.bottom, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
     }
 
     // MARK: - 搜索：卡片式，与导入页区块风格一致
@@ -344,6 +357,7 @@ struct FolderContentView: View {
     @State private var documentToMove: TranscriptDocument?
     /// 进入分组后短时内不响应行点击，避免列表未完全呈现时的二次点击误进播放页
     @State private var allowRowTap: Bool = false
+    @State private var searchText: String = ""
     
     private var folderName: String {
         viewModel.folderDisplayName(for: folderId)
@@ -352,6 +366,14 @@ struct FolderContentView: View {
     private var documents: [TranscriptDocument] {
         viewModel.documents(inFolderId: folderId)
     }
+
+    private var filteredDocuments: [TranscriptDocument] {
+        let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !keyword.isEmpty else { return documents }
+        return documents.filter { doc in
+            doc.source.title.localizedCaseInsensitiveContains(keyword)
+        }
+    }
     
     var body: some View {
         Group {
@@ -359,8 +381,52 @@ struct FolderContentView: View {
                 emptyFolderView
             } else {
                 List {
-                    ForEach(documents) { doc in
-                        documentRow(doc)
+                    // 分组内搜索框
+                    Section {
+                        HStack(spacing: 10) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.body)
+                                    .foregroundStyle(.tertiary)
+                                TextField("search_placeholder", text: $searchText)
+                                    .textFieldStyle(.plain)
+                                    .autocorrectionDisabled()
+                                    .textInputAutocapitalization(.never)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.secondarySystemBackground))
+                            )
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    }
+                    
+                    Section {
+                        ForEach(filteredDocuments) { doc in
+                            documentRow(doc)
+                        }
+                        
+                        // 分组底部导入按钮：跳转到导入页，导入到当前分组
+                        Button {
+                            // 先关闭当前分组页面（返回到分组列表）
+                            if !navigationPath.isEmpty {
+                                navigationPath.removeLast()
+                            }
+                            // 记录目标分组 ID，并请求切换到导入 Tab
+                            viewModel.currentImportFolderId = folderId
+                            viewModel.requestSwitchToImportTab = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Image(systemName: "square.and.arrow.down")
+                                Text("import")
+                                Spacer()
+                            }
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)

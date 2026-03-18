@@ -107,6 +107,12 @@ struct HomeView: View {
                 zipImportOverlay
             }
         }
+        .onChange(of: viewModel.requestSwitchToImportTab) { _, shouldSwitch in
+            if shouldSwitch {
+                selectedTab = .importTab
+                viewModel.requestSwitchToImportTab = false
+            }
+        }
         .onChange(of: viewModel.requestSwitchToLibraryTab) { _, shouldSwitch in
             if shouldSwitch {
                 selectedTab = .library

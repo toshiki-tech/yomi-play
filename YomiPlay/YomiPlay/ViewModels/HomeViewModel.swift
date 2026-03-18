@@ -90,6 +90,11 @@ final class HomeViewModel {
     var requestSwitchToLibraryTab: Bool = false
     /// 成功后跳转到指定フォルダ
     var zipImportNavigateToFolderId: UUID?
+
+    /// 从分组内触发导入时，期望写入的目标分组 ID（nil = 默认分组）
+    var currentImportFolderId: UUID?
+    /// 请求切换到导入 Tab（例如在分组内点“导入到本分组”时）
+    var requestSwitchToImportTab: Bool = false
     
     /// 分组导出为 ZIP 分享：生成的临时 ZIP URL，分享结束后需清理
     var exportedZipURL: URL?
@@ -183,12 +188,12 @@ final class HomeViewModel {
         showDeleteFolderConfirmation = true
     }
     
-    /// フォルダを削除する（配下のドキュメントは未グループに移す）
+    /// フォルダを削除する（配下のドキュメントもまとめて削除する）
     func deleteFolder(_ folder: TranscriptFolder) {
-        var updated = allSavedDocuments
-        for i in updated.indices where updated[i].folderId == folder.id {
-            updated[i].folderId = nil
-            try? DocumentStore.shared.save(updated[i])
+        // 先に该分组下的所有记录整体删除（包括其关联的媒体文件）
+        let docsInFolder = allSavedDocuments.filter { $0.folderId == folder.id }
+        for doc in docsInFolder {
+            try? DocumentStore.shared.delete(id: doc.id)
         }
         try? DocumentStore.shared.deleteFolder(id: folder.id)
         folderToDelete = nil
@@ -359,7 +364,8 @@ final class HomeViewModel {
                         type: .local,
                         localURL: destinationURL,
                         relativeFilePath: destinationURL.lastPathComponent,
-                        title: url.deletingPathExtension().lastPathComponent
+                        title: url.deletingPathExtension().lastPathComponent,
+                        folderId: currentImportFolderId
                     ))
                 }
             } catch {
@@ -393,7 +399,8 @@ final class HomeViewModel {
                             type: .local,
                             localURL: videoData.url,
                             relativeFilePath: videoData.url.lastPathComponent,
-                            title: videoTitle
+                            title: videoTitle,
+                            folderId: currentImportFolderId
                         ))
                     }
                 }
@@ -411,12 +418,12 @@ final class HomeViewModel {
     
     /// 从指定 URL 开始导入（用于手动输入 URL），弹出 SRT 选项后进入处理
     func startImportFromURL(_ url: URL, title: String) {
-        promptSRTOption(for: AudioSource(type: .remote, remoteURL: url, title: title))
+        promptSRTOption(for: AudioSource(type: .remote, remoteURL: url, title: title, folderId: currentImportFolderId))
     }
 
     /// 直接开始处理（不弹字幕选项），用于播客导入等场景，一律走 AI 语音识别
     func startImportFromURLDirect(_ url: URL, title: String) {
-        let source = AudioSource(type: .remote, remoteURL: url, title: title)
+        let source = AudioSource(type: .remote, remoteURL: url, title: title, folderId: currentImportFolderId)
         selectedAudioSource = source
         navigateToProcessing = true
     }
@@ -516,13 +523,14 @@ final class HomeViewModel {
                         localURL: outputURL,
                         relativeFilePath: outputURL.lastPathComponent,
                         title: title,
-                        videoRelativeFilePath: sourceURL.lastPathComponent
+                        videoRelativeFilePath: sourceURL.lastPathComponent,
+                        folderId: currentImportFolderId
                     ))
                 }
             } catch {
                 await MainActor.run {
                     isLoadingVideo = false
-                    promptSRTOption(for: AudioSource(type: .local, localURL: sourceURL, title: title))
+                    promptSRTOption(for: AudioSource(type: .local, localURL: sourceURL, title: title, folderId: currentImportFolderId))
                 }
             }
         }
