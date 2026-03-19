@@ -2348,26 +2348,26 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "English"
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "English"
+            "state" : "needs_review",
+            "value" : "英語"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "English"
+            "value" : "英语"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "English"
+            "value" : "英語"
           }
         }
       }
@@ -6358,7 +6358,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI speech recognition · Japanese subtitles · Shadowing · Learning resources"
+            "value" : "AI speech recognition · Shadowing · Learning resources"
           }
         },
         "ja" : {

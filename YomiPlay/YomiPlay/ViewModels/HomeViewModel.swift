@@ -24,13 +24,15 @@ enum DocumentSortOrder: String, CaseIterable, Hashable {
     case titleDescending
     case segmentCountDescending
     
+    /// 按应用内界面语言显示，避免系统语言为中文时仍显示「日期（从新到旧）」等
     var displayName: String {
+        let loc = AppLocale.current
         switch self {
-        case .dateNewestFirst: return String(localized: "date_newest_first")
-        case .dateOldestFirst: return String(localized: "date_oldest_first")
-        case .titleAscending: return String(localized: "name_a_z")
-        case .titleDescending: return String(localized: "name_z_a")
-        case .segmentCountDescending: return String(localized: "segments_most_first")
+        case .dateNewestFirst: return String(localized: LocalizedStringResource("date_newest_first", locale: loc))
+        case .dateOldestFirst: return String(localized: LocalizedStringResource("date_oldest_first", locale: loc))
+        case .titleAscending: return String(localized: LocalizedStringResource("name_a_z", locale: loc))
+        case .titleDescending: return String(localized: LocalizedStringResource("name_z_a", locale: loc))
+        case .segmentCountDescending: return String(localized: LocalizedStringResource("segments_most_first", locale: loc))
         }
     }
     

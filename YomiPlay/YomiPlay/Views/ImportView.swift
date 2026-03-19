@@ -393,39 +393,62 @@ struct ImportView: View {
     }
     
     private var photoLibrarySection: some View {
-        PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.purple.opacity(0.1))
-                    Image(systemName: "video.fill")
-                        .font(.title2)
-                        .foregroundStyle(.purple)
+        Group {
+            if subscription.isProUser {
+                PhotosPicker(selection: $selectedVideoItem, matching: .videos) {
+                    photoLibraryRowContent
                 }
-                .frame(width: 50, height: 50)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("select_from_photo_library").font(.headline)
-                        Image(systemName: "crown.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.yellow)
-                        if !subscription.isProUser {
-                            Text("Pro").font(.caption2).fontWeight(.semibold)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.orange))
-                        }
-                    }
-                    Text("video_files_from_camera_roll").font(.caption).foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    viewModel.showPaywall = true
+                } label: {
+                    photoLibraryRowContent
                 }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                .buttonStyle(.plain)
             }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
         }
-        .buttonStyle(.plain)
+    }
+    
+    /// 从相册选择视频的行内容（Pro / 非 Pro 共用 UI）
+    private var photoLibraryRowContent: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.purple.opacity(0.1))
+                Image(systemName: "video.fill")
+                    .font(.title2)
+                    .foregroundStyle(.purple)
+            }
+            .frame(width: 50, height: 50)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("select_from_photo_library").font(.headline)
+                    Image(systemName: "crown.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.yellow)
+                    if !subscription.isProUser {
+                        Text("Pro").font(.caption2).fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.orange))
+                    }
+                }
+                Text("video_files_from_camera_roll")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
     
     // MARK: - 播客或URL导入（搜索播客 + 直接粘贴链接）

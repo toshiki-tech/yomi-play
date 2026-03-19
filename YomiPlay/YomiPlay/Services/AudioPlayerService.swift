@@ -53,12 +53,14 @@ final class AudioPlayerService {
     private var statusObserver: NSKeyValueObservation?
     private var durationObserver: NSKeyValueObservation?
     private var endPlaybackObserver: (any NSObjectProtocol)?
+    private var interruptionObserver: (any NSObjectProtocol)?
     private var downloadTask: URLSessionDownloadTask?
     
     // MARK: - 初期化
     
     init() {
         setupAudioSession()
+        setupInterruptionObserver()
     }
     
     deinit {
@@ -66,6 +68,9 @@ final class AudioPlayerService {
         statusObserver?.invalidate()
         durationObserver?.invalidate()
         if let obs = endPlaybackObserver {
+            NotificationCenter.default.removeObserver(obs)
+        }
+        if let obs = interruptionObserver {
             NotificationCenter.default.removeObserver(obs)
         }
         downloadTask?.cancel()
@@ -77,11 +82,47 @@ final class AudioPlayerService {
     private func setupAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .spokenAudio)
+            try session.setCategory(.playback, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
             try session.setActive(true)
             print("AudioPlayerService: セッション設定成功")
         } catch {
             print("AudioPlayerService: セッション設定エラー: \(error)")
+        }
+    }
+    
+    /// 来电、短信等系统声音打断时暂停并同步 UI 状态（显示暂停按钮）
+    private func setupInterruptionObserver() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            guard let userInfo = notification.userInfo,
+                  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+            switch type {
+            case .began:
+                self.player?.pause()
+                self.isPlaying = false
+                print("AudioPlayerService: 音声割り込み開始 → 一時停止・UI同期")
+            case .ended:
+                guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    if self.isAudioReady, self.player != nil {
+                        do {
+                            try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+                        } catch {}
+                        self.player?.play()
+                        self.player?.rate = self.playbackRate
+                        self.isPlaying = true
+                        print("AudioPlayerService: 割り込み終了 → 再生再開")
+                    }
+                }
+            @unknown default:
+                break
+            }
         }
     }
     

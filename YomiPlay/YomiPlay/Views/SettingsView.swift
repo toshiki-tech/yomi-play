@@ -272,14 +272,15 @@ struct SettingsView: View {
         }
     }
 
+    /// 按当前界面语言显示推荐模型名称，避免界面为英文时仍显示「标准」等中文
     private var recommendedModeDisplayName: String {
         let mode = WhisperSpeechRecognitionService.recommendedModeForDevice
         switch mode {
-        case .tiny: return String(localized: "recognition_mode_tiny")
-        case .base: return String(localized: "recognition_mode_base")
-        case .small: return String(localized: "recognition_mode_small")
-        case .medium: return String(localized: "recognition_mode_medium")
-        case .large: return String(localized: "recognition_mode_large")
+        case .tiny: return String(localized: LocalizedStringResource("recognition_mode_tiny", locale: locale))
+        case .base: return String(localized: LocalizedStringResource("recognition_mode_base", locale: locale))
+        case .small: return String(localized: LocalizedStringResource("recognition_mode_small", locale: locale))
+        case .medium: return String(localized: LocalizedStringResource("recognition_mode_medium", locale: locale))
+        case .large: return String(localized: LocalizedStringResource("recognition_mode_large", locale: locale))
         }
     }
 

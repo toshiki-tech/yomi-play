@@ -110,11 +110,17 @@ final class ProcessingViewModel {
         }
         defer { try? FileManager.default.removeItem(at: localAudioURL) }
         if Task.isCancelled { return }
-        var localSource = Self.persistDownloadedMedia(from: localAudioURL, title: source.title)
-        // 保持来源分组信息
-        localSource.folderId = source.folderId
-        localSource.srtRelativeFilePath = source.srtRelativeFilePath
-        await processWithSRT(source: localSource, srtURL: srtURL)
+        let localSource: AudioSource
+        do {
+            localSource = try Self.persistDownloadedMedia(from: localAudioURL, title: source.title)
+        } catch {
+            state = .error(Self.userFacingMessage(for: error))
+            return
+        }
+        var sourceForSRT = localSource
+        sourceForSRT.folderId = source.folderId
+        sourceForSRT.srtRelativeFilePath = source.srtRelativeFilePath
+        await processWithSRT(source: sourceForSRT, srtURL: srtURL)
     }
     
     /// SRT 付き：語音識別をスキップし、SRT を解析して振り仮名を生成する
@@ -346,8 +352,13 @@ final class ProcessingViewModel {
 
         var finalSource: AudioSource
         if let temp = tempDownloadURL {
-            finalSource = Self.persistDownloadedMedia(from: temp, title: source.title)
-            // 远程下载后也沿用原始分组信息
+            do {
+                finalSource = try Self.persistDownloadedMedia(from: temp, title: source.title)
+            } catch {
+                try? FileManager.default.removeItem(at: temp)
+                state = .error(Self.userFacingMessage(for: error))
+                return
+            }
             finalSource.folderId = source.folderId
         } else {
             finalSource = source
@@ -400,17 +411,17 @@ final class ProcessingViewModel {
         return max(10, estimated)
     }
 
-    /// 播客下载的临时文件移动到 Documents/Media，返回本地 AudioSource，便于播放时直接读文件。
-    private static func persistDownloadedMedia(from tempURL: URL, title: String) -> AudioSource {
+    /// 播客下载的临时文件移动到 Documents/Media，返回本地 AudioSource。移动失败时抛出，避免保存「有字幕无音频」的文档。
+    private static func persistDownloadedMedia(from tempURL: URL, title: String) throws -> AudioSource {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let mediaDir = docs.appendingPathComponent("Media", isDirectory: true)
         if !FileManager.default.fileExists(atPath: mediaDir.path) {
-            try? FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
         }
         let ext = tempURL.pathExtension.isEmpty ? "mp3" : tempURL.pathExtension
         let fileName = UUID().uuidString + "." + ext
         let destURL = mediaDir.appendingPathComponent(fileName)
-        try? FileManager.default.moveItem(at: tempURL, to: destURL)
+        try FileManager.default.moveItem(at: tempURL, to: destURL)
         let relativePath = "Media/" + fileName
         return AudioSource(
             type: .local,
