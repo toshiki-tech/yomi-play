@@ -8,7 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		000584392F5D712600A32ED1 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA110001AA110001AA110001 /* WhisperKit */; };
-		BB000002BB000002BB000002 /* WhisperModels in Resources */ = {isa = PBXBuildFile; fileRef = BB000001BB000001BB000001 /* WhisperModels */; };
+		CC000021CC000021CC000021 /* openai_whisper-tiny in Resources */ = {isa = PBXBuildFile; fileRef = CC000011CC000011CC000011 /* openai_whisper-tiny */; };
+		CC000022CC000022CC000022 /* openai_whisper-base in Resources */ = {isa = PBXBuildFile; fileRef = CC000012CC000012CC000012 /* openai_whisper-base */; };
+		CC000023CC000023CC000023 /* openai_whisper-medium in Resources */ = {isa = PBXBuildFile; fileRef = CC000013CC000013CC000013 /* openai_whisper-medium */; };
 		BB110003BB110003BB110003 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = BB110001BB110001BB110001 /* ZIPFoundation */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +36,9 @@
 		00E708672F5C63B1000FB47F /* YomiPlayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YomiPlayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E708712F5C63B1000FB47F /* YomiPlayUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YomiPlayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB000001BB000001BB000001 /* WhisperModels */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WhisperModels; sourceTree = "<group>"; };
+		CC000011CC000011CC000011 /* openai_whisper-tiny */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WhisperModels/openai_whisper-tiny; sourceTree = "<group>"; };
+		CC000012CC000012CC000012 /* openai_whisper-base */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WhisperModels/openai_whisper-base; sourceTree = "<group>"; };
+		CC000013CC000013CC000013 /* openai_whisper-medium */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WhisperModels/openai_whisper-medium; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,7 +90,6 @@
 			isa = PBXGroup;
 			children = (
 				00E7085C2F5C63AF000FB47F /* YomiPlay */,
-				BB000001BB000001BB000001 /* WhisperModels */,
 				00E7086A2F5C63B1000FB47F /* YomiPlayTests */,
 				00E708742F5C63B1000FB47F /* YomiPlayUITests */,
 				00E7085B2F5C63AF000FB47F /* Products */,
@@ -231,7 +235,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB000002BB000002BB000002 /* WhisperModels in Resources */,
+				CC000021CC000021CC000021 /* openai_whisper-tiny in Resources */,
+				CC000022CC000022CC000022 /* openai_whisper-base in Resources */,
+				CC000023CC000023CC000023 /* openai_whisper-medium in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
