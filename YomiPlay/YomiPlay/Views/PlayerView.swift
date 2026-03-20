@@ -43,6 +43,7 @@ struct PlayerView: View {
     @State private var pinchScale: CGFloat = 1.0
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
     @AppStorage(PlayerTheme.playerThemeStorageKey) private var playerTheme: String = "system"
     
@@ -125,7 +126,7 @@ struct PlayerView: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsSheetView(viewModel: viewModel)
-                .presentationDetents([.medium])
+                .presentationDetents(settingsSheetDetents)
                 .presentationDragIndicator(.visible)
         }
         .onDisappear {
@@ -232,6 +233,11 @@ struct PlayerView: View {
             onToggleLoop: { viewModel.toggleCurrentLoop() }
         )
     }
+
+    private var settingsSheetDetents: Set<PresentationDetent> {
+        // iPad 的默认 sheet 容易卡在 medium，导致内容高度“够但没展开”
+        horizontalSizeClass == .regular ? Set([.large, .medium]) : Set([.medium])
+    }
     
     // MARK: - プレイリスト制御
     
@@ -280,6 +286,7 @@ private struct ExportShareItem: Identifiable {
 
 struct SettingsSheetView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Bindable var viewModel: PlayerViewModel
     @AppStorage(PlayerTheme.playerThemeStorageKey) private var playerTheme: String = "system"
     @State private var selectedTab = 0
@@ -319,7 +326,9 @@ struct SettingsSheetView: View {
                     .padding(.vertical, 16)
                 }
             } else {
-                learningSettings
+                ScrollView {
+                    learningSettings
+                }
             }
             
             Spacer()
@@ -362,7 +371,14 @@ struct SettingsSheetView: View {
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView(onDismiss: { showPaywall = false })
+                .presentationDetents(paywallSheetDetents)
+                .presentationDragIndicator(.visible)
         }
+    }
+
+    private var paywallSheetDetents: Set<PresentationDetent> {
+        // iPad 上该 paywall 需要直接停在 large，否则会“看起来很局促”
+        horizontalSizeClass == .regular ? Set([.large]) : Set([.medium])
     }
     
     /// 统一导出分享弹窗：根据导出类型显示对应标题、图标与「分享」按钮文案
@@ -555,7 +571,12 @@ struct SettingsSheetView: View {
                     }.disabled(viewModel.fontSize <= 12)
                     
                     Text("\(Int(viewModel.fontSize))")
-                        .font(.subheadline).monospacedDigit().frame(width: 32)
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        // 两位数时避免在 iPad 上换行（32 宽度不够）
+                        .frame(width: 46, alignment: .center)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                     
                     Button { viewModel.adjustFontSize(by: 2) } label: {
                         Image(systemName: "plus.circle.fill")

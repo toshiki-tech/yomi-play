@@ -504,9 +504,6 @@
         }
       }
     },
-    "Debug" : {
-
-    },
     "default_group" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7859,12 +7856,6 @@
           }
         }
       }
-    },
-    "开启后全应用显示 Pro 状态，用于测试导入页/设置页等 Pro 界面。仅 Debug 构建有效。" : {
-
-    },
-    "模拟 Pro 用户" : {
-
     },
     "自分だけの学習素材を作る" : {
 

@@ -208,7 +208,9 @@ final class HomeViewModel {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return [] }
         var results: [LibrarySearchFolderMatch] = []
-        let uncategorized = String(localized: "uncategorized")
+        // 使用应用内界面语言，而不是系统语言
+        let loc = AppLocale.current
+        let uncategorized = String(localized: LocalizedStringResource("uncategorized", locale: loc))
         if uncategorized.localizedCaseInsensitiveContains(q) {
             results.append(LibrarySearchFolderMatch(id: "uncategorized", folderId: nil, name: uncategorized))
         }
@@ -235,7 +237,11 @@ final class HomeViewModel {
     
     /// フォルダ表示名（nil = 未分组）
     func folderDisplayName(for folderId: UUID?) -> String {
-        guard let id = folderId, let f = folder(byId: id) else { return String(localized: "uncategorized") }
+        // 使用应用内界面语言，而不是系统语言
+        let loc = AppLocale.current
+        guard let id = folderId, let f = folder(byId: id) else {
+            return String(localized: LocalizedStringResource("uncategorized", locale: loc))
+        }
         return f.name
     }
     

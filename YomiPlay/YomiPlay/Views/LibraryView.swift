@@ -165,7 +165,7 @@ struct LibraryView: View {
                     .accessibilityHidden(true)
                 groupCard(
                     id: nil,
-                    name: String(localized: "uncategorized"),
+                    name: String(localized: LocalizedStringResource("uncategorized", locale: AppLocale.current)),
                     count: viewModel.documents(inFolderId: nil).count,
                     isDefault: true,
                     onExport: viewModel.documents(inFolderId: nil).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: nil) }
@@ -705,7 +705,7 @@ struct MoveToFolderSheet: View {
                     HStack {
                         Image(systemName: "folder.fill")
                             .foregroundStyle(.gray)
-                        Text("uncategorized")
+                        Text(String(localized: LocalizedStringResource("uncategorized", locale: AppLocale.current)))
                         if currentFolderId == nil {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(.green)
