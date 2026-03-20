@@ -3,116 +3,260 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>YomiPlay 隐私政策</title>
+  <title>YomiPlay Privacy Policy</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; line-height: 1.7; margin: 28px auto; max-width: 920px; padding: 0 16px; color: #111; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; line-height: 1.7; margin: 28px auto; max-width: 980px; padding: 0 16px; color: #111; }
     h1 { font-size: 28px; margin: 0 0 8px; }
     .muted { color: #555; font-size: 14px; margin-bottom: 18px; }
-    h2 { font-size: 18px; margin-top: 28px; }
+    h2 { font-size: 18px; margin-top: 26px; }
     .card { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 14px 16px; }
     ul { padding-left: 18px; }
     a { color: #0a66c2; }
-    .lang-block { border-left: 4px solid #e5e7eb; padding-left: 14px; margin-top: 10px; }
+    .langbar { margin: 14px 0 18px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .langbar button { border: 1px solid #e5e7eb; background: #fff; padding: 8px 12px; border-radius: 999px; cursor: pointer; }
+    .langbar button.active { border-color: #0a66c2; color: #0a66c2; }
+    .lang-block { display: none; }
+    .lang-block.active { display: block; }
     footer { margin-top: 28px; color: #666; font-size: 13px; }
   </style>
+  <script>
+    function setLang(lang) {
+      var blocks = document.querySelectorAll('.lang-block');
+      blocks.forEach(function(b) {
+        if (b.dataset.lang === lang) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      var buttons = document.querySelectorAll('.langbar button');
+      buttons.forEach(function(btn) {
+        if (btn.dataset.lang === lang) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+    }
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var lang = params.get('lang');
+      if (!lang) return;
+      // 支持：zh-Hans / zh-Hant / ja / en
+      if (['zh-Hans','zh-Hant','ja','en'].indexOf(lang) !== -1) setLang(lang);
+    })();
+  </script>
 </head>
 <body>
-  <h1>YomiPlay 隐私政策</h1>
+  <h1>YomiPlay 隐私政策 / Privacy Policy</h1>
   <div class="muted">
     生效日期：<strong>2026-03-20</strong> &nbsp;|&nbsp; 最后更新：<strong>2026-03-20</strong>
   </div>
 
-  <div class="card">
-    <strong>概述（中文）</strong><br/>
-    YomiPlay（“我们”）是一款将音频/视频转换为字幕，并可提供翻译与导出功能的移动应用。我们努力将用户内容的处理尽量保持在设备本地。本隐私政策说明我们在你使用应用时可能如何处理信息。
+  <div class="langbar" aria-label="Language selector">
+    <button type="button" class="active" data-lang="zh-Hans" onclick="setLang('zh-Hans')">简体中文</button>
+    <button type="button" data-lang="zh-Hant" onclick="setLang('zh-Hant')">繁體中文</button>
+    <button type="button" data-lang="ja" onclick="setLang('ja')">日本語</button>
+    <button type="button" data-lang="en" onclick="setLang('en')">English</button>
   </div>
 
-  <div class="lang-block">
-    <strong>Overview (English)</strong><br/>
-    YomiPlay (“we”) is a mobile app that converts audio/video into subtitles and can provide translation and export features. We aim to keep user content processing on your device. This Privacy Policy explains how we may handle information when you use the app.
+  <!-- 简体中文 -->
+  <div class="lang-block active" data-lang="zh-Hans">
+    <div class="card">
+      <strong>概述</strong><br/>
+      YomiPlay（“我们”）是一款将音频/视频转换为字幕，并可提供翻译与导出功能的移动应用。我们努力将用户内容的处理尽量保持在设备本地。本隐私政策说明我们在你使用应用时可能如何处理信息。
+    </div>
+
+    <h2>1. 我们处理哪些信息</h2>
+    <p>
+      当你使用转写、翻译与编辑功能时，我们会处理你导入的音频/视频内容，以生成字幕（文本与时间信息）并在应用中展示。你的内容主要用于完成应用功能。
+    </p>
+
+    <h2>2. 转写（Speech Recognition / Transcription）</h2>
+    <p>
+      YomiPlay 主要使用设备上的语音识别模型进行转写（离线/无需把音频上传到我们的服务器）。生成的转写结果用于字幕展示。
+    </p>
+
+    <h2>3. 翻译（Translation）</h2>
+    <p>
+      翻译功能基于 Apple 的 Translation 框架实现。翻译可能需要下载语言包（例如当对应语言包尚未安装时）。
+      如需要语言包下载，应用会通过你的网络连接发起下载；你可以在系统设置中控制应用是否允许使用蜂窝数据和 Wi‑Fi。
+    </p>
+
+    <h2>4. 网络导入与媒体下载</h2>
+    <p>
+      当你使用“播客搜索/播客源获取”或从 URL 导入媒体时，应用会向外部服务发起网络请求，以获取元数据或媒体资源。
+    </p>
+    <ul>
+      <li>播客搜索：应用会向 iTunes Search API 发起搜索请求（会包含你的搜索关键词）。</li>
+      <li>播客源：应用会解析 RSS/网页内容以获得音频地址。</li>
+      <li>媒体下载：在你进行转写/播放时，应用会把对应音频/媒体下载到设备上的临时位置用于处理。</li>
+    </ul>
+
+    <h2>5. 你的数据如何存储</h2>
+    <p>
+      生成的字幕与导出的文件主要保存在你的设备上。应用在处理过程中可能会使用临时文件（例如下载的音频或媒体切片），用于完成识别/播放/导出；通常在任务完成后会被清理。
+    </p>
+
+    <h2>6. 订阅与购买（IAP）</h2>
+    <p>
+      若你购买订阅或一次性购买项目，交易由 Apple 处理。我们不会收集你的支付/卡信息。
+      我们仅通过 StoreKit/Apple 提供的订阅状态来识别你在应用内的权限。
+    </p>
+
+    <h2>7. 联系我们</h2>
+    <p>
+      你可以通过 GitHub Issues 联系我们：<br/>
+      <a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a>
+    </p>
   </div>
 
-  <h2>1. 我们处理哪些信息（Information We Process）</h2>
-  <p>
-    当你使用转写、翻译与编辑功能时，我们会处理你导入的音频/视频内容，以生成字幕（文本与时间信息）并在应用中展示。你的内容主要用于完成应用功能。
-  </p>
-  <p>
-    When you use transcription, translation, and editing features, we process the audio/video you provide to generate subtitles (text and timing information) for display in the app.
-  </p>
+  <!-- 繁體中文 -->
+  <div class="lang-block" data-lang="zh-Hant">
+    <div class="card">
+      <strong>概述</strong><br/>
+      YomiPlay（「我們」）是一款將音訊/影片轉換為字幕，並可提供翻譯與匯出功能的行動應用。我們會盡量將使用者內容的處理保留在你的裝置本地。本隱私政策說明我們在你使用應用程式時可能如何處理資訊。
+    </div>
 
-  <h2>2. 转写（Speech Recognition / Transcription）</h2>
-  <p>
-    YomiPlay 主要使用设备上的语音识别模型进行转写（离线/无需把音频上传到我们的服务器）。生成的转写结果用于字幕展示。
-  </p>
-  <p>
-    YomiPlay primarily performs transcription using on-device speech recognition models (offline; audio is not uploaded to our servers). Transcription results are used for subtitle display.
-  </p>
+    <h2>1. 我們處理哪些資訊</h2>
+    <p>
+      當你使用逐字轉寫、翻譯與編輯功能時，我們會處理你匯入的音訊/影片內容，以產生字幕（文字與時間資訊）並在應用程式中顯示。你的內容主要用於完成應用程式功能。
+    </p>
 
-  <h2>3. 翻译（Translation）</h2>
-  <p>
-    翻译功能基于 Apple 的 Translation 框架实现。翻译可能需要下载语言包（例如当对应语言包尚未安装时）。
-    如需要语言包下载，应用会通过你的网络连接发起下载；你可以在系统设置中控制应用是否允许使用蜂窝数据和 Wi‑Fi。
-  </p>
-  <p>
-    The translation feature uses Apple’s Translation framework. Translation may require downloading language packs (e.g., when the target language pack is not installed yet).
-    If downloads are needed, the app will download over your network connection; you can control cellular/Wi‑Fi permissions in iOS Settings.
-  </p>
+    <h2>2. 逐字轉寫</h2>
+    <p>
+      YomiPlay 主要使用裝置上的語音辨識模型進行轉寫（離線/不會將音訊上傳到我們的伺服器）。轉寫結果用於字幕顯示。
+    </p>
 
-  <h2>4. 网络导入与播放（Network Import & Media Download）</h2>
-  <p>
-    当你使用“播客搜索/播客源获取”或从 URL 导入媒体时，应用会向外部服务发起网络请求，以获取元数据或媒体资源。
-  </p>
-  <ul>
-    <li>播客搜索：应用会向 iTunes Search API 发起搜索请求（会包含你的搜索关键词）。</li>
-    <li>播客源：应用会解析 RSS/网页内容以获得音频地址。</li>
-    <li>媒体下载：在你进行转写/播放时，应用会把对应音频/媒体下载到设备上的临时位置用于处理。</li>
-  </ul>
-  <p>
-    The app may make network requests to external services to obtain metadata or media resources when you search podcasts or import media via a URL.
-  </p>
+    <h2>3. 翻譯</h2>
+    <p>
+      翻譯功能基於 Apple 的 Translation 架構。翻譯可能需要下載語言套件（例如目標語言套件尚未安裝時）。
+      如需下載，應用程式會透過你的網路連線發起下載；你可以在 iOS「設定」中控制應用程式是否允許使用行動網路與 Wi‑Fi。
+    </p>
 
-  <h2>5. 你的数据如何存储（Data Storage）</h2>
-  <p>
-    生成的字幕与导出的文件主要保存在你的设备上（例如应用导出的文件/文档）。
-    应用在处理过程中可能会使用临时文件（例如下载的音频或媒体切片），用于完成识别/播放/导出；通常在任务完成后会被清理。
-  </p>
-  <p>
-    Generated subtitles and exported files are mainly stored on your device. The app may use temporary files during processing (e.g., downloaded media or chunks) to complete transcription/playback/export, and these are typically cleaned up after use.
-  </p>
+    <h2>4. 網路匯入與媒體下載</h2>
+    <p>
+      當你使用「播客搜尋/播客來源」或從 URL 匯入媒體時，應用程式會向外部服務發起網路請求，以取得中繼資料或媒體資源。
+    </p>
+    <ul>
+      <li>播客搜尋：應用程式會向 iTunes Search API 發起搜尋請求（會包含你的搜尋關鍵字）。</li>
+      <li>播客來源：應用程式會解析 RSS/網頁內容以取得音訊位址。</li>
+      <li>媒體下載：在你進行轉寫/播放時，應用程式會將對應的音訊/媒體下載到裝置的暫存位置進行處理。</li>
+    </ul>
 
-  <h2>6. 订阅与购买（Subscriptions & In‑App Purchases）</h2>
-  <p>
-    若你购买订阅或一次性购买项目，交易由 Apple 处理。我们不会收集你的支付/卡信息。
-    我们仅通过 StoreKit/Apple 提供的订阅状态来识别你在应用内的权限。
-  </p>
-  <p>
-    If you purchase subscriptions or in-app items, the transaction is handled by Apple. We do not collect payment/card information. We rely on StoreKit/Apple subscription status to determine your in-app entitlements.
-  </p>
+    <h2>5. 資料儲存</h2>
+    <p>
+      產生的字幕與匯出的檔案主要保存在你的裝置。處理過程中可能會使用暫存檔案（例如下載的音訊或媒體片段）以完成辨識/播放/匯出，通常會在任務完成後清除。
+    </p>
 
-  <h2>7. 广告与追踪（Ads & Tracking）</h2>
-  <p>
-    我们不以广告投放或行为追踪为目的收集你的个人数据（请以你在提交审核的实际配置与功能为准）。
-  </p>
-  <p>
-    We do not collect personal data for advertising or behavior tracking purposes (please also refer to the actual configurations and features in your App Store submission).
-  </p>
+    <h2>6. 訂閱與購買（IAP）</h2>
+    <p>
+      若你購買訂閱或一次性購買項目，交易由 Apple 處理。我們不會收集你的付款/卡資訊。我們僅透過 StoreKit/Apple 提供的訂閱狀態來判斷你在應用程式內的權益。
+    </p>
 
-  <h2>8. 儿童隐私（Children’s Privacy）</h2>
-  <p>
-    我们不会有意收集儿童的个人信息。若你认为可能涉及儿童信息，请通过联系方式联系我们。
-  </p>
-  <p>
-    We do not knowingly collect personal data from children. If you believe a child’s information is involved, please contact us using the method below.
-  </p>
+    <h2>7. 聯絡我們</h2>
+    <p>
+      你可以透過 GitHub Issues 聯絡我們：<br/>
+      <a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a>
+    </p>
+  </div>
 
-  <h2>9. 联系我们（Contact Us）</h2>
-  <p>
-    你可以通过 GitHub Issues 联系我们：<br/>
-    <a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a>
-  </p>
+  <!-- 日本語 -->
+  <div class="lang-block" data-lang="ja">
+    <div class="card">
+      <strong>概要</strong><br/>
+      YomiPlay（「開発者」）は、音声/動画を字幕に変換し、翻訳や書き出し機能も提供するモバイルアプリです。開発者は、ユーザー内容の処理を可能な限り端末内で行うよう努めています。本プライバシーポリシーでは、アプリの利用時に開発者が情報をどのように取り扱う可能性があるかを説明します。
+    </div>
+
+    <h2>1. 開発者が取り扱う情報</h2>
+    <p>
+      文字起こし、翻訳、編集機能を利用する際、ユーザーが取り込む音声/動画を処理して、字幕（テキストおよび時間情報）を生成し、アプリ上に表示します。これらの内容は、アプリ機能を提供する目的で利用されます。
+    </p>
+
+    <h2>2. 文字起こし（Speech Recognition / Transcription）</h2>
+    <p>
+      YomiPlay は主に端末内の音声認識モデルを使用して文字起こしを行います（オフライン/開発者のサーバーへ音声をアップロードしません）。生成された文字起こし結果は字幕表示に使用されます。
+    </p>
+
+    <h2>3. 翻訳（Translation）</h2>
+    <p>
+      翻訳機能は Apple の Translation フレームワークに基づいています。翻訳には言語パックのダウンロードが必要になる場合があります（対象の言語パックが未インストールの場合など）。
+      ダウンロードが必要な場合、アプリはあなたのネットワーク経由でダウンロードを行います。セルラーデータと Wi‑Fi の利用可否は iOS の設定で管理できます。
+    </p>
+
+    <h2>4. ネットワーク経由の取り込み・メディアダウンロード</h2>
+    <p>
+      「ポッドキャスト検索/ポッドキャストソース取得」や、URL からメディアを取り込む場合、アプリは外部サービスへネットワーク要求を行い、メタデータまたはメディアリソースを取得します。
+    </p>
+    <ul>
+      <li>ポッドキャスト検索：iTunes Search API へ検索要求（検索キーワードを含む）を送信します。</li>
+      <li>ポッドキャストソース：RSS/ウェブ内容を解析し、音声のアドレスを取得します。</li>
+      <li>メディアダウンロード：文字起こし/再生時に、対応する音声/メディアを端末の一時領域へダウンロードして処理します。</li>
+    </ul>
+
+    <h2>5. データの保存</h2>
+    <p>
+      生成された字幕と書き出しファイルは主に端末に保存されます。処理中、一時ファイル（ダウンロードした音声やメディアの断片など）を使用する場合があります。通常、タスク完了後に削除されます。
+    </p>
+
+    <h2>6. 定期購読と購入（IAP）</h2>
+    <p>
+      定期購読または一回限りの購入を行う場合、取引は Apple によって処理されます。開発者はお支払い/カード情報を収集しません。開発者は StoreKit/Apple が提供する購読ステータスに基づいて、アプリ内の権限を判断します。
+    </p>
+
+    <h2>7. お問い合わせ</h2>
+    <p>
+      GitHub Issues でお問い合わせください：<br/>
+      <a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a>
+    </p>
+  </div>
+
+  <!-- English -->
+  <div class="lang-block" data-lang="en">
+    <div class="card">
+      <strong>Overview</strong><br/>
+      YomiPlay (“we”) is a mobile app that converts audio/video into subtitles and can provide translation and export features. We aim to keep user content processing on your device. This Privacy Policy explains how we may handle information when you use the app.
+    </div>
+
+    <h2>1. Information We Process</h2>
+    <p>
+      When you use transcription, translation, and editing features, we process the audio/video you provide to generate subtitles (text and timing information) for display in the app. Your content is used to deliver the app’s functionality.
+    </p>
+
+    <h2>2. Transcription (Speech Recognition / Transcription)</h2>
+    <p>
+      YomiPlay primarily performs transcription using on-device speech recognition models (offline; audio is not uploaded to our servers). Transcription results are used for subtitle display.
+    </p>
+
+    <h2>3. Translation</h2>
+    <p>
+      Translation uses Apple’s Translation framework. Translation may require downloading language packs (e.g., when the target language pack is not installed yet).
+      If downloads are needed, the app will download over your network connection. You can control cellular/Wi‑Fi permissions in iOS Settings.
+    </p>
+
+    <h2>4. Network Import & Media Download</h2>
+    <p>
+      When you search podcasts, fetch podcast sources, or import media via a URL, the app may make network requests to external services to obtain metadata or media resources.
+    </p>
+    <ul>
+      <li>Podcast search: requests are sent to the iTunes Search API (including your search terms).</li>
+      <li>Podcast sources: RSS/web content is parsed to obtain audio addresses.</li>
+      <li>Media download: during transcription/playback, the app downloads audio/media to temporary locations on your device for processing.</li>
+    </ul>
+
+    <h2>5. Data Storage</h2>
+    <p>
+      Generated subtitles and exported files are mainly stored on your device. The app may use temporary files during processing (e.g., downloaded media or chunks) to complete transcription/playback/export, and these are typically cleaned up after use.
+    </p>
+
+    <h2>6. Subscriptions & In‑App Purchases (IAP)</h2>
+    <p>
+      If you purchase subscriptions or in-app items, the transaction is handled by Apple. We do not collect payment/card information. We rely on StoreKit/Apple subscription status to determine your in-app entitlements.
+    </p>
+
+    <h2>7. Contact Us</h2>
+    <p>
+      You can contact us via GitHub Issues:<br/>
+      <a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a>
+    </p>
+  </div>
 
   <footer>
-    说明：本页面用于 App Store Connect 的隐私政策声明。若你对隐私内容有进一步的业务调整，请同步更新本页面。
+    Note: This page is provided for App Store Connect privacy policy requirements. If your app’s actual data handling changes, please update this page accordingly.
   </footer>
 </body>
 </html>

@@ -3,42 +3,111 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>YomiPlay 技术支持</title>
+  <title>YomiPlay Support</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; line-height: 1.7; margin: 28px auto; max-width: 920px; padding: 0 16px; color: #111; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; line-height: 1.7; margin: 28px auto; max-width: 980px; padding: 0 16px; color: #111; }
     h1 { font-size: 28px; margin: 0 0 8px; }
     .muted { color: #555; font-size: 14px; margin-bottom: 18px; }
     .card { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 14px 16px; }
     h2 { font-size: 18px; margin-top: 26px; }
     ul { padding-left: 18px; }
     a { color: #0a66c2; }
+    .langbar { margin: 14px 0 18px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .langbar button { border: 1px solid #e5e7eb; background: #fff; padding: 8px 12px; border-radius: 999px; cursor: pointer; }
+    .langbar button.active { border-color: #0a66c2; color: #0a66c2; }
+    .lang-block { display: none; }
+    .lang-block.active { display: block; }
     footer { margin-top: 28px; color: #666; font-size: 13px; }
   </style>
+  <script>
+    function setLang(lang) {
+      var blocks = document.querySelectorAll('.lang-block');
+      blocks.forEach(function(b) {
+        if (b.dataset.lang === lang) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      var buttons = document.querySelectorAll('.langbar button');
+      buttons.forEach(function(btn) {
+        if (btn.dataset.lang === lang) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+    }
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var lang = params.get('lang');
+      if (!lang) return;
+      if (['zh-Hans','zh-Hant','ja','en'].indexOf(lang) !== -1) setLang(lang);
+    })();
+  </script>
 </head>
 
 <body>
-  <h1>YomiPlay 技术支持</h1>
+  <h1>YomiPlay 技术支持 / Support</h1>
   <div class="muted">
     生效日期：<strong>2026-03-20</strong>
   </div>
 
-  <div class="card">
-    <strong>联系我们（中文）</strong><br/>
-    你可以通过 GitHub 提交问题来获得技术支持或反馈。为了更快定位问题，建议在提交时附上你的设备型号、iOS 版本以及应用版本号（设置页可查看）。
+  <div class="langbar" aria-label="Language selector">
+    <button type="button" class="active" data-lang="zh-Hans" onclick="setLang('zh-Hans')">简体中文</button>
+    <button type="button" data-lang="zh-Hant" onclick="setLang('zh-Hant')">繁體中文</button>
+    <button type="button" data-lang="ja" onclick="setLang('ja')">日本語</button>
+    <button type="button" data-lang="en" onclick="setLang('en')">English</button>
   </div>
 
-  <h2>支持方式（Support Methods）</h2>
-  <ul>
-    <li>GitHub Issues：<a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a></li>
-  </ul>
+  <!-- 简体中文 -->
+  <div class="lang-block active" data-lang="zh-Hans">
+    <div class="card">
+      <strong>联系我们</strong><br/>
+      你可以通过 GitHub 提交问题来获得技术支持或反馈。为了更快定位问题，建议在提交时附上你的设备型号、iOS 版本以及应用版本号（设置页可查看）。
+    </div>
 
-  <div class="card" style="margin-top:14px;">
-    <strong>Contact Us (English)</strong><br/>
-    You can request technical support or report issues via GitHub Issues. For faster troubleshooting, include your device model, iOS version, and your app version (from the Settings page).
+    <h2>支持方式</h2>
+    <ul>
+      <li>GitHub Issues：<a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a></li>
+    </ul>
+  </div>
+
+  <!-- 繁體中文 -->
+  <div class="lang-block" data-lang="zh-Hant">
+    <div class="card">
+      <strong>聯絡我們</strong><br/>
+      你可以透過 GitHub 提交問題以獲得技術支援或提供回饋。為了更快定位問題，建議在提交時附上你的裝置型號、iOS 版本與應用程式版本號（可在設定頁查看）。
+    </div>
+
+    <h2>支援方式</h2>
+    <ul>
+      <li>GitHub Issues：<a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a></li>
+    </ul>
+  </div>
+
+  <!-- 日本語 -->
+  <div class="lang-block" data-lang="ja">
+    <div class="card">
+      <strong>お問い合わせ</strong><br/>
+      GitHub Issues から技術サポートの依頼や不具合の報告ができます。スムーズに調査するため、送信時に端末の機種名、iOS バージョン、アプリのバージョン（設定画面で確認できます）をご記載ください。
+    </div>
+
+    <h2>サポート方法</h2>
+    <ul>
+      <li>GitHub Issues：<a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a></li>
+    </ul>
+  </div>
+
+  <!-- English -->
+  <div class="lang-block" data-lang="en">
+    <div class="card">
+      <strong>Contact Us</strong><br/>
+      You can request technical support or report issues via GitHub Issues. For faster troubleshooting, include your device model, iOS version, and your app version (from the Settings page).
+    </div>
+
+    <h2>Support Methods</h2>
+    <ul>
+      <li>GitHub Issues：<a href="https://github.com/toshiki-tech/yomi-play/issues" target="_blank" rel="noopener">https://github.com/toshiki-tech/yomi-play/issues</a></li>
+    </ul>
   </div>
 
   <footer>
-    说明：本页面用于 App Store Connect “技术支持网址”配置。
+    Note: This page is for the App Store Connect “Technical Support URL” requirement.
   </footer>
 </body>
 </html>
