@@ -9,9 +9,9 @@ import SwiftUI
 import StoreKit
 
 /// 产品 ID（与 App Store Connect 一致）
-private let monthlyProductId = "com.dogiant.yomimark.monthly"
-private let yearlyProductId = "com.dogiant.yomimark.yearly"
-private let lifetimeProductId = "com.dogiant.yomimark.lifetime"
+private let monthlyProductId = "com.dogiant.yomiplay.monthly"
+private let yearlyProductId = "com.dogiant.yomiplay.yearly"
+private let lifetimeProductId = "com.dogiant.yomiplay.lifetime"
 
 struct PaywallView: View {
     @Environment(\.locale) private var locale

@@ -72,9 +72,9 @@ final class SubscriptionManager {
     // MARK: - StoreKit 2 订阅状态
 
     private static let productIds: Set<String> = [
-        "com.dogiant.yomimark.monthly",
-        "com.dogiant.yomimark.yearly",
-        "com.dogiant.yomimark.lifetime"
+        "com.dogiant.yomiplay.monthly",
+        "com.dogiant.yomiplay.yearly",
+        "com.dogiant.yomiplay.lifetime"
     ]
 
     func updateSubscriptionStatus() async {
@@ -83,7 +83,7 @@ final class SubscriptionManager {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let tx) = result else { continue }
             if Self.productIds.contains(tx.productID) {
-                if tx.productID == "com.dogiant.yomimark.lifetime" {
+                if tx.productID == "com.dogiant.yomiplay.lifetime" {
                     hasValidEntitlement = true
                     latestExpiration = nil
                     break
