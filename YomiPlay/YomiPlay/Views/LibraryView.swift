@@ -99,12 +99,12 @@ struct LibraryView: View {
                     .fill(Color.accentColor.opacity(0.08))
                     .frame(width: 96, height: 56)
                 HStack(spacing: 8) {
-                    Image(systemName: "books.vertical.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
                     Image(systemName: "waveform")
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(.secondary)
+                    Image(systemName: "books.vertical.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
                 }
             }
 

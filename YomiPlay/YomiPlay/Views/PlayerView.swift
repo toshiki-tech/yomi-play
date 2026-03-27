@@ -145,7 +145,7 @@ struct PlayerView: View {
         .onAppear {
             // 再生完了時に次の記録へ進む
             viewModel.playerService.onPlaybackEnded = {
-                if viewModel.isLooping {
+                if viewModel.repeatMode == .wholeTrack {
                     viewModel.playerService.seek(to: 0)
                     viewModel.playerService.play()
                 } else {
@@ -224,13 +224,14 @@ struct PlayerView: View {
             currentTime: service.currentTime,
             duration: service.duration,
             playbackRateText: viewModel.playbackRateText,
-            isLooping: viewModel.isLooping,
+            repeatMode: viewModel.repeatMode,
             onTogglePlayPause: { viewModel.togglePlayPause() },
             onSkipBackward: { viewModel.skipBackward() },
             onSkipForward: { viewModel.skipForward() },
             onSeek: { time in viewModel.seek(to: time) },
             onCycleRate: { viewModel.cyclePlaybackRate() },
-            onToggleLoop: { viewModel.toggleCurrentLoop() }
+            onSelectRepeatMode: { viewModel.setRepeatMode($0) },
+            onCycleRepeatMode: { viewModel.cycleRepeatMode() }
         )
     }
 
@@ -251,7 +252,7 @@ struct PlayerView: View {
         shouldAutoPlayOnReady = true
         // onPlaybackEnded ハンドラを新しいプレイヤーに再設定
         viewModel.playerService.onPlaybackEnded = {
-            if viewModel.isLooping {
+            if viewModel.repeatMode == .wholeTrack {
                 viewModel.playerService.seek(to: 0)
                 viewModel.playerService.play()
             } else {
@@ -736,6 +737,8 @@ struct SettingsSheetView: View {
     
     private var learningSettings: some View {
         VStack(spacing: 16) {
+            practiceReadingSection
+            
             VStack(spacing: 0) {
                 Text("translation")
                     .font(.caption).fontWeight(.semibold).foregroundStyle(.green)
@@ -830,6 +833,52 @@ struct SettingsSheetView: View {
             }
         }
         .padding(.top, 4)
+    }
+    
+    private static let interSubtitlePauseChoices: [Double] = [0, 0.5, 1, 1.5, 2, 3]
+    
+    private var practiceReadingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("practice_reading_section")
+                .font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+            VStack(spacing: 0) {
+                settingsRow(icon: "pause.circle", title: "inter_subtitle_pause_label", color: .green) {
+                    Menu {
+                        ForEach(Self.interSubtitlePauseChoices, id: \.self) { sec in
+                            Button {
+                                viewModel.setInterSubtitlePause(seconds: sec)
+                            } label: {
+                                Text(interSubtitlePauseChoiceLabel(seconds: sec))
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(interSubtitlePauseChoiceLabel(seconds: viewModel.interSubtitlePauseSeconds))
+                                .font(.subheadline)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground))
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+            Text("inter_subtitle_pause_hint")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 20)
+        }
+    }
+    
+    private func interSubtitlePauseChoiceLabel(seconds: Double) -> String {
+        let c = Self.interSubtitlePauseChoices.min(by: { abs($0 - seconds) < abs($1 - seconds) }) ?? seconds
+        if c == 0 { return String(localized: "inter_subtitle_pause_none") }
+        let fmt = String(localized: LocalizedStringResource("inter_subtitle_pause_seconds_format", locale: locale))
+        let v = (c == floor(c)) ? String(Int(c)) : String(c)
+        return String(format: fmt, v)
     }
     
     private func settingsRow<Content: View>(

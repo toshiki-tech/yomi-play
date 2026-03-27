@@ -29,7 +29,7 @@ struct PaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 28) {
+                VStack(spacing: 18) {
                     comparisonGlassSection
 
                     if !products.isEmpty {
@@ -49,9 +49,9 @@ struct PaywallView: View {
                             .padding(.horizontal)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 32)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
             }
             .background(paywallBackground)
             .navigationTitle("pro_subscription")
@@ -127,39 +127,46 @@ struct PaywallView: View {
     private static let proTextColor = Color(red: 0.72, green: 0.52, blue: 0.04) // 暖金
 
     private var comparisonGlassSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("free_vs_pro")
-                .font(.title3)
+                .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)
 
-            VStack(spacing: 14) {
-                quotaComparisonCard
-                comparisonCard(
+            VStack(spacing: 8) {
+                compactBenefitRow(
+                    icon: "clock.fill",
+                    title: "quota_per_month",
+                    free: String(
+                        format: String(
+                            localized: LocalizedStringResource("paywall_free_quota_compact", locale: locale)
+                        ),
+                        subscription.monthlyUsedSeconds / 60,
+                        subscription.remainingFreeSeconds / 60
+                    ),
+                    pro: String(localized: LocalizedStringResource("paywall_pro_quota_compact", locale: locale))
+                )
+                compactBenefitRow(
+                    icon: "waveform",
                     title: "import_type",
-                    freeIcon: "waveform",
-                    free: "free_audio_only",
-                    pro: "pro_video_supported"
+                    free: String(localized: LocalizedStringResource("paywall_free_import_compact", locale: locale)),
+                    pro: String(localized: LocalizedStringResource("paywall_pro_import_compact", locale: locale))
                 )
-                proOnlyCard(
-                    title: "export_share",
+                compactBenefitRow(
                     icon: "square.and.arrow.up",
-                    pro: "pro_export_srt_yomi_media"
-                )
-                proOnlyCard(
-                    title: "zip_export",
-                    icon: "doc.zipper",
-                    pro: "pro_zip_export"
+                    title: "export_share",
+                    free: String(localized: LocalizedStringResource("paywall_free_export_compact", locale: locale)),
+                    pro: String(localized: LocalizedStringResource("paywall_pro_export_compact", locale: locale))
                 )
             }
         }
-        .padding(22)
+        .padding(14)
         .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(.ultraThinMaterial)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
                         colors: [.white.opacity(0.45), .white.opacity(0.15)],
@@ -169,8 +176,34 @@ struct PaywallView: View {
                     lineWidth: 1.2
                 )
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 16, x: 0, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+    }
+
+    private func compactBenefitRow(icon: String, title: LocalizedStringKey, free: String, pro: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 14)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Free: \(free)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text("Pro: \(pro)")
+                    .font(.caption2)
+                    .foregroundStyle(Self.proTextColor)
+                    .fontWeight(.medium)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     /// 每月识别额度：Free 列动态显示当前使用进度（结合 SubscriptionManager）
@@ -350,9 +383,44 @@ struct PaywallView: View {
 
     // MARK: - 页脚：恢复购买 + 服务条款/隐私政策（符合 Apple 规范）
 
-    /// 替换为实际 URL 或设为 nil 隐藏链接
-    private static let termsURL: URL? = URL(string: "https://example.com/terms")
-    private static let privacyURL: URL? = URL(string: "https://example.com/privacy")
+    private var termsURL: URL? {
+        switch legalPathLocaleCode {
+        case "zh":
+            return URL(string: "https://toshiki.tech/zh/yomiplay/terms")
+        case "zh-tw":
+            return URL(string: "https://toshiki.tech/zh-tw/yomiplay/terms")
+        case "ja":
+            return URL(string: "https://toshiki.tech/ja/yomiplay/terms")
+        default:
+            return URL(string: "https://toshiki.tech/en/yomiplay/terms")
+        }
+    }
+    private var privacyURL: URL? {
+        switch legalPathLocaleCode {
+        case "zh":
+            return URL(string: "https://toshiki.tech/zh/yomiplay/privacy")
+        case "zh-tw":
+            return URL(string: "https://toshiki.tech/zh-tw/yomiplay/privacy")
+        case "ja":
+            return URL(string: "https://toshiki.tech/ja/yomiplay/privacy")
+        default:
+            return URL(string: "https://toshiki.tech/en/yomiplay/privacy")
+        }
+    }
+
+    /// 法务页面路径语言：en / zh / zh-tw / ja（其它默认 en）
+    private var legalPathLocaleCode: String {
+        let language = locale.language.languageCode?.identifier.lowercased() ?? "en"
+        let fullId = locale.identifier.lowercased()
+        if language == "zh" {
+            if fullId.contains("hant") || fullId.contains("tw") || fullId.contains("hk") || fullId.contains("mo") {
+                return "zh-tw"
+            }
+            return "zh"
+        }
+        if language == "ja" { return "ja" }
+        return "en"
+    }
 
     private var footerLinks: some View {
         VStack(spacing: 16) {
@@ -371,21 +439,21 @@ struct PaywallView: View {
             .disabled(isRestoring)
             .frame(minHeight: 44)
 
-            if Self.termsURL != nil || Self.privacyURL != nil {
+            if termsURL != nil || privacyURL != nil {
                 HStack(spacing: 8) {
-                    if let url = Self.termsURL {
+                    if let url = termsURL {
                         Link(destination: url) {
                             Text("paywall_terms")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    if Self.termsURL != nil, Self.privacyURL != nil {
+                    if termsURL != nil, privacyURL != nil {
                         Text("·")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-                    if let url = Self.privacyURL {
+                    if let url = privacyURL {
                         Link(destination: url) {
                             Text("paywall_privacy")
                                 .font(.caption)
@@ -414,10 +482,25 @@ struct PaywallView: View {
 
     private var productSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("choose_plan")
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundStyle(.primary)
+            HStack {
+                Text("choose_plan")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Button {
+                    Task { await restorePurchases() }
+                } label: {
+                    if isRestoring {
+                        ProgressView().scaleEffect(0.8)
+                    } else {
+                        Text("restore_purchases")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(isRestoring)
+            }
 
             VStack(spacing: 10) {
                 ForEach(products, id: \.id) { product in
@@ -440,10 +523,21 @@ struct PaywallView: View {
             ZStack(alignment: .topTrailing) {
                 HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(product.displayName)
-                            .font(isYearly ? .subheadline : .subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.primary)
+                        HStack(spacing: 8) {
+                            Text(localizedPlanName(for: product))
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                            if isYearly {
+                                Text("paywall_most_popular")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(Capsule().fill(Color.orange))
+                            }
+                        }
                         if isLifetime {
                             Text("paywall_lifetime_tagline")
                                 .font(.caption2)
@@ -499,21 +593,44 @@ struct PaywallView: View {
                 )
                 .shadow(color: isYearly ? Color.orange.opacity(0.15) : .clear, radius: 12, x: 0, y: 4)
 
-                if isYearly {
-                    Text("paywall_most_popular")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.orange))
-                        .padding(14)
-                }
+                EmptyView()
             }
         }
         .buttonStyle(.plain)
         .disabled(isPurchasing)
     }
+
+    private func localizedPlanName(for product: Product) -> String {
+        let language = locale.language.languageCode?.identifier ?? "en"
+        let isZhHans = language == "zh" && locale.identifier.contains("Hans")
+        let isZhHant = language == "zh" && locale.identifier.contains("Hant")
+        let isJa = language == "ja"
+
+        switch product.id {
+        case monthlyProductId:
+            if isZhHans { return "YomiPlay Pro 月度" }
+            if isZhHant { return "YomiPlay Pro 月度" }
+            if isJa { return "YomiPlay Pro 月額" }
+            return "YomiPlay Pro Monthly"
+        case yearlyProductId:
+            if isZhHans { return "YomiPlay Pro 年度" }
+            if isZhHant { return "YomiPlay Pro 年度" }
+            if isJa { return "YomiPlay Pro 年額" }
+            return "YomiPlay Pro Yearly"
+        case lifetimeProductId:
+            if isZhHans { return "早期支持计划（终身）" }
+            if isZhHant { return "早期支持方案（終身）" }
+            if isJa { return "Early Supporter Plan（買い切り）" }
+            return "Early Supporter Plan"
+        default:
+            return product.displayName
+        }
+    }
+
+    private var languageCode: String { locale.language.languageCode?.identifier ?? "en" }
+    private var isZhHans: Bool { languageCode == "zh" && locale.identifier.contains("Hans") }
+    private var isZhHant: Bool { languageCode == "zh" && locale.identifier.contains("Hant") }
+    private var isJa: Bool { languageCode == "ja" }
 
     /// 底部 CTA：立即解锁 Pro（SubscriptionStoreView 风格宽体按钮）
     private var unlockButton: some View {

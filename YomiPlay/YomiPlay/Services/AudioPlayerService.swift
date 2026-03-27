@@ -36,6 +36,9 @@ final class AudioPlayerService {
     /// ループ再生中のセグメント
     var loopingSegment: TranscriptSegment?
     
+    /// 相邻字幕之间停顿（秒），便于跟读；0 表示不停顿。单句循环开启时不生效。
+    var interSubtitlePauseSeconds: TimeInterval = 0
+    
     /// 音声が読み込み完了したか
     var isAudioReady: Bool = false
     
@@ -55,6 +58,11 @@ final class AudioPlayerService {
     private var endPlaybackObserver: (any NSObjectProtocol)?
     private var interruptionObserver: (any NSObjectProtocol)?
     private var downloadTask: URLSessionDownloadTask?
+    /// 句间停顿：上一句字幕 id（用于检测顺序前进）
+    private var previousSegmentIdForGap: UUID?
+    private var interGapWorkItem: DispatchWorkItem?
+    /// 句间停顿等待 UI：此期间锁定为「已进入的下一句」，避免 AVPlayer 略早于 startTime 导致仍落在上句、再次误判 A→B 而横跳
+    private var interGapTargetSegmentId: UUID?
     
     // MARK: - 初期化
     
@@ -284,6 +292,11 @@ final class AudioPlayerService {
         currentTime = 0
         duration = 0
         currentSegmentID = nil
+        previousSegmentIdForGap = nil
+        interGapWorkItem?.cancel()
+        interGapWorkItem = nil
+        interGapTargetSegmentId = nil
+        loopingSegment = nil
     }
     
     /// 字幕セグメントを設定する（同期表示用）
@@ -328,6 +341,9 @@ final class AudioPlayerService {
     
     /// 一時停止する
     func pause() {
+        interGapWorkItem?.cancel()
+        interGapWorkItem = nil
+        interGapTargetSegmentId = nil
         player?.pause()
         isPlaying = false
         print("AudioPlayerService: ⏸️ Paused at \(currentTime)")
@@ -335,6 +351,9 @@ final class AudioPlayerService {
     
     /// 指定時間にシークする
     func seek(to time: TimeInterval) {
+        interGapWorkItem?.cancel()
+        interGapWorkItem = nil
+        interGapTargetSegmentId = nil
         // 再生位置を範囲内にクランプしてからシークする
         let clampedTime = max(0, min(duration, time))
         let cmTime = CMTime(seconds: clampedTime, preferredTimescale: 600)
@@ -343,6 +362,7 @@ final class AudioPlayerService {
         // シーク直後に現在セグメントも更新しておくことで、
         // 進捗バーをドラッグした際に字幕リストも即座に追従する
         updateCurrentSegment()
+        previousSegmentIdForGap = currentSegmentID
     }
     
     /// 指定秒数をスキップする（正の値で前進、負の値で後退）
@@ -359,13 +379,16 @@ final class AudioPlayerService {
         }
     }
     
-    /// セグメントのループ再生を設定する
+    /// 単句ループ対象（nil で解除）。再生位置は呼び出し側で必要なら seek する。
     func setLoopSegment(_ segment: TranscriptSegment?) {
-        loopingSegment = segment
-        if let segment = segment {
-            seek(to: segment.startTime)
-            play()
+        interGapWorkItem?.cancel()
+        interGapWorkItem = nil
+        interGapTargetSegmentId = nil
+        if segment == nil {
+            // 单句循环刚关时，若仍沿用循环期间的 previousId，容易误判为「刚进到下一句」而触发句间停顿 seek，造成两句边界横跳
+            previousSegmentIdForGap = currentSegmentID
         }
+        loopingSegment = segment
     }
     
     // MARK: - 時間監視
@@ -385,7 +408,16 @@ final class AudioPlayerService {
             guard seconds.isFinite else { return }
             
             self.currentTime = seconds
-            self.updateCurrentSegment()
+            if let forcedId = self.interGapTargetSegmentId {
+                self.currentSegmentID = forcedId
+            } else {
+                self.updateCurrentSegment()
+            }
+            if self.interSubtitlePauseSeconds > 0, self.loopingSegment == nil {
+                self.handleInterSubtitleGapIfNeeded()
+            } else {
+                self.previousSegmentIdForGap = self.currentSegmentID
+            }
             self.handleLoopPlayback()
         }
     }
@@ -413,8 +445,52 @@ final class AudioPlayerService {
         guard let segment = loopingSegment else { return }
         
         if currentTime >= segment.endTime {
+            interGapWorkItem?.cancel()
+            interGapWorkItem = nil
             seek(to: segment.startTime)
         }
+    }
+    
+    /// 順播放到「下一句」时插入停顿（仅按字幕列表顺序前进时触发）
+    private func handleInterSubtitleGapIfNeeded() {
+        guard interGapWorkItem == nil else { return }
+        let newId = currentSegmentID
+        guard let prevId = previousSegmentIdForGap, let nid = newId, prevId != nid else {
+            previousSegmentIdForGap = newId
+            return
+        }
+        guard let oi = segments.firstIndex(where: { $0.id == prevId }),
+              let ni = segments.firstIndex(where: { $0.id == nid }),
+              ni == oi + 1 else {
+            previousSegmentIdForGap = newId
+            return
+        }
+        let pauseSeconds = max(0, interSubtitlePauseSeconds)
+        guard pauseSeconds > 0 else {
+            previousSegmentIdForGap = newId
+            return
+        }
+        let nextSeg = segments[ni]
+        pause()
+        // 对齐到句首常落在关键帧略前，contains 仍判在上句 → 又触发一次「顺播进下句」，形成两句间横跳
+        let span = max(0, nextSeg.endTime - nextSeg.startTime)
+        let inset = min(0.05, max(0.001, span > 0 ? span * 0.02 : 0.001))
+        var seekTime = nextSeg.startTime + inset
+        if seekTime >= nextSeg.endTime {
+            seekTime = max(nextSeg.startTime, nextSeg.endTime - 0.0005)
+        }
+        seek(to: seekTime)
+        interGapTargetSegmentId = nextSeg.id
+        currentSegmentID = nextSeg.id
+        previousSegmentIdForGap = nextSeg.id
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.interGapWorkItem = nil
+            self.interGapTargetSegmentId = nil
+            self.play()
+        }
+        interGapWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + pauseSeconds, execute: work)
     }
     
     // MARK: - フォーマット

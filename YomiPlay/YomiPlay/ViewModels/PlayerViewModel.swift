@@ -9,6 +9,16 @@
 import Foundation
 import AVFoundation
 
+// MARK: - 再生リピートモード（整段 / 单句）
+
+enum PlaybackRepeatMode: String, CaseIterable, Identifiable {
+    case off
+    case wholeTrack
+    case currentSubtitle
+    
+    var id: String { rawValue }
+}
+
 // MARK: - プレーヤー画面ViewModel
 
 @MainActor
@@ -32,7 +42,12 @@ final class PlayerViewModel {
         didSet { if persistDisplayToggles { Self.defaults.set(showEnglish, forKey: "showEnglish") } }
     }
     var fontSize: CGFloat = 18 { didSet { Self.defaults.set(fontSize, forKey: "fontSize") } }
-    var isLooping: Bool = false
+    
+    /// 重复播放：关闭 / 整段循环 / 当前单句循环（UserDefaults）
+    var repeatMode: PlaybackRepeatMode = .off
+    
+    /// 下一句字幕开始前停顿秒数（跟读用，0 表示不停；单句循环时不插入）
+    var interSubtitlePauseSeconds: Double = 0
     
     // 翻訳設定（UserDefaults で永続化）
     var targetLanguageCode: String = "zh-Hans" { didSet { Self.defaults.set(targetLanguageCode, forKey: "targetLanguageCode") } }
@@ -43,6 +58,11 @@ final class PlayerViewModel {
     static let availableRates: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
     
     private static let defaults = UserDefaults.standard
+    private static let playbackRepeatModeKey = "playbackRepeatMode"
+    private static let interSubtitlePauseKey = "interSubtitlePauseSeconds"
+    
+    /// 切到单句循环时延迟 seek 的任务；离开单句模式时必须取消，否则会与句间停顿/正常播放打架
+    private var applyCurrentSubtitleSeekWorkItem: DispatchWorkItem?
     
     // 字幕編集
     var editingSegmentID: UUID? = nil
@@ -94,7 +114,9 @@ final class PlayerViewModel {
             playerService.loadAudio(from: url)
         }
         playerService.setSegments(document.segments)
+        playerService.interSubtitlePauseSeconds = interSubtitlePauseSeconds
         playerService.setPlaybackRate(playbackRate)
+        syncRepeatModeWithPlayer()
     }
     
     /// UserDefaults から保存済みの設定を復元する
@@ -120,6 +142,15 @@ final class PlayerViewModel {
         if d.object(forKey: "playbackRate") != nil {
             let stored = d.float(forKey: "playbackRate")
             if Self.availableRates.contains(stored) { playbackRate = stored }
+        }
+        
+        if let raw = d.string(forKey: Self.playbackRepeatModeKey),
+           let mode = PlaybackRepeatMode(rawValue: raw) {
+            repeatMode = mode
+        }
+        if d.object(forKey: Self.interSubtitlePauseKey) != nil {
+            let p = d.double(forKey: Self.interSubtitlePauseKey)
+            interSubtitlePauseSeconds = max(0, min(6, p))
         }
         
         if let stored = d.string(forKey: "targetLanguageCode"), !stored.isEmpty {
@@ -179,13 +210,83 @@ final class PlayerViewModel {
     
     func onSegmentTapped(_ segment: TranscriptSegment) {
         playerService.seek(to: segment.startTime)
+        if repeatMode == .currentSubtitle {
+            playerService.setLoopSegment(segment)
+        }
         if !playerService.isPlaying {
             playerService.play()
         }
     }
     
-    func toggleCurrentLoop() {
-        isLooping.toggle()
+    /// 轻点重复按钮时按「关 → 整段 → 单句」轮换（配合菜单的长按直选）
+    func cycleRepeatMode() {
+        let order = PlaybackRepeatMode.allCases
+        guard let i = order.firstIndex(of: repeatMode) else { return }
+        let next = order[(i + 1) % order.count]
+        setRepeatMode(next)
+    }
+    
+    /// 切换 repeat 模式并持久化
+    func setRepeatMode(_ mode: PlaybackRepeatMode) {
+        HapticManager.shared.selection()
+        if repeatMode == mode {
+            return
+        }
+        applyCurrentSubtitleSeekWorkItem?.cancel()
+        applyCurrentSubtitleSeekWorkItem = nil
+        repeatMode = mode
+        let key = Self.playbackRepeatModeKey
+        let raw = mode.rawValue
+        DispatchQueue.global(qos: .utility).async {
+            UserDefaults.standard.set(raw, forKey: key)
+        }
+        switch mode {
+        case .off, .wholeTrack:
+            playerService.setLoopSegment(nil)
+        case .currentSubtitle:
+            syncRepeatModeWithPlayer()
+            if let seg = playerService.loopingSegment {
+                let shouldPlayAfterSeek = !playerService.isPlaying
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self else { return }
+                    let service = self.playerService
+                    guard self.repeatMode == .currentSubtitle,
+                          service.loopingSegment?.id == seg.id else { return }
+                    service.seek(to: seg.startTime)
+                    if shouldPlayAfterSeek {
+                        service.play()
+                    }
+                }
+                applyCurrentSubtitleSeekWorkItem = work
+                DispatchQueue.main.async(execute: work)
+            }
+        }
+    }
+    
+    /// 与播放器同步单句循环目标（时间轴编辑等之后调用）
+    func syncRepeatModeWithPlayer() {
+        switch repeatMode {
+        case .off, .wholeTrack:
+            playerService.setLoopSegment(nil)
+        case .currentSubtitle:
+            let t = playerService.currentTime
+            if let id = playerService.currentSegmentID,
+               let seg = document.segments.first(where: { $0.id == id }) {
+                playerService.setLoopSegment(seg)
+            } else if let seg = document.segments.first(where: { $0.contains(time: t) }) {
+                playerService.setLoopSegment(seg)
+            } else {
+                playerService.setLoopSegment(nil)
+            }
+        }
+    }
+    
+    /// 句间停顿时长（秒），写入默认设置并应用到播放器
+    func setInterSubtitlePause(seconds: Double) {
+        let c = max(0, min(6, seconds))
+        interSubtitlePauseSeconds = c
+        Self.defaults.set(c, forKey: Self.interSubtitlePauseKey)
+        playerService.interSubtitlePauseSeconds = c
     }
     
     // MARK: - 字幕編集
@@ -256,6 +357,7 @@ final class PlayerViewModel {
                 
                 // 再生サービス側も同期
                 self.playerService.setSegments(self.document.segments)
+                self.syncRepeatModeWithPlayer()
                 
                 // 編集状態リセット
                 self.editingSegmentID = nil
@@ -279,6 +381,7 @@ final class PlayerViewModel {
         }
         document.segments.remove(at: index)
         playerService.setSegments(document.segments)
+        syncRepeatModeWithPlayer()
         cancelEditing()
         saveDocument()
         print("PlayerViewModel: セグメントを削除しました id=\(segmentID)")
@@ -320,6 +423,7 @@ final class PlayerViewModel {
         document.segments.remove(at: index)
         document.segments.insert(contentsOf: [first, second], at: index)
         playerService.setSegments(document.segments)
+        syncRepeatModeWithPlayer()
         
         // 新しい後半セグメントを編集中として扱う
         editingSegmentID = second.id
@@ -369,6 +473,7 @@ final class PlayerViewModel {
                 }
                 
                 self.playerService.setSegments(self.document.segments)
+                self.syncRepeatModeWithPlayer()
                 
                 // 結合後のセグメントを編集中として扱う
                 self.editingSegmentID = self.document.segments[targetIndex].id
@@ -400,6 +505,7 @@ final class PlayerViewModel {
             )
             document.segments = result
             playerService.setSegments(document.segments)
+            syncRepeatModeWithPlayer()
             saveDocument()
             showTranslation = true
         } catch {
@@ -461,6 +567,7 @@ final class PlayerViewModel {
                 await MainActor.run {
                     document.segments = transcriptSegments
                     playerService.setSegments(document.segments)
+                    syncRepeatModeWithPlayer()
                     saveDocument()
                     isImportingSRT = false
                     showSRTImportSuccess = true
@@ -489,6 +596,7 @@ final class PlayerViewModel {
                 await MainActor.run {
                     document.segments = importedDoc.segments
                     playerService.setSegments(document.segments)
+                    syncRepeatModeWithPlayer()
                     saveDocument()
                     isImportingYomi = false
                     showYomiImportSuccess = true

@@ -74,6 +74,10 @@ struct LibrarySearchFolderMatch: Identifiable {
 @Observable
 final class HomeViewModel {
     
+    /// 记录 / 分组内列表共用排序；持久化，避免每次进分组或冷启动后重选
+    private static let documentSortOrderDefaultsKey = "libraryDocumentSortOrder"
+    private var isSortOrderPersistenceReady = false
+    
     // UI 状態
     var urlText: String = ""
     var isFileImporterPresented: Bool = false
@@ -112,8 +116,13 @@ final class HomeViewModel {
     /// 是否展示订阅墙（权限不足时弹出）
     var showPaywall: Bool = false
     
-    /// 一覧の並び順
-    var sortOrder: DocumentSortOrder = .dateNewestFirst
+    /// 一覧の並び順（主库与分组内列表共用，修改后写入 UserDefaults）；默认按名称升序，便于与可编辑标题一致
+    var sortOrder: DocumentSortOrder = .titleAscending {
+        didSet {
+            guard isSortOrderPersistenceReady else { return }
+            UserDefaults.standard.set(sortOrder.rawValue, forKey: Self.documentSortOrderDefaultsKey)
+        }
+    }
     private var allSavedDocuments: [TranscriptDocument] = []
     private var allFolders: [TranscriptFolder] = []
     /// フォルダ一覧（UI 用の読み取り専用）
@@ -144,6 +153,11 @@ final class HomeViewModel {
     var showDeleteFolderConfirmation: Bool = false
     
     init() {
+        if let raw = UserDefaults.standard.string(forKey: Self.documentSortOrderDefaultsKey),
+           let restored = DocumentSortOrder(rawValue: raw) {
+            sortOrder = restored
+        }
+        isSortOrderPersistenceReady = true
         loadSavedDocuments()
     }
     

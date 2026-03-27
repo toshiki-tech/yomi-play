@@ -48,9 +48,6 @@
     "⏱ %@" : {
 
     },
-    "✨ 生成你的学习内容" : {
-
-    },
     "about" : {
       "localizations" : {
         "en" : {
@@ -445,9 +442,6 @@
         }
       }
     },
-    "Create Your Learning Content" : {
-
-    },
     "date_newest_first" : {
       "localizations" : {
         "en" : {
@@ -503,6 +497,9 @@
           }
         }
       }
+    },
+    "Debug" : {
+
     },
     "default_group" : {
       "extractionState" : "stale",
@@ -1352,6 +1349,7 @@
 
     },
     "free_audio_only" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1493,6 +1491,9 @@
           }
         }
       }
+    },
+    "Free: %@" : {
+
     },
     "full_subtitle_file_with_furigana_translations_etc" : {
       "localizations" : {
@@ -2337,6 +2338,118 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "音視頻與字幕同名同包（.srt 或 .yomi）"
+          }
+        }
+      }
+    },
+    "inter_subtitle_pause_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When playing forward in order, waits this long after each subtitle before the next one. Not applied while “Repeat current subtitle” is on."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "順番に再生するとき、各字幕のあと次へ進むまでこの時間だけ止まります。「現在の字幕をリピート」のときは無効です。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按顺序播放时，每句字幕播完后会暂停此时长再播下一句；开启「单句循环」时不生效。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "依序播放時，每句字幕結束後會暫停此時間再播下一句；開啟「單句循環」時不套用。"
+          }
+        }
+      }
+    },
+    "inter_subtitle_pause_label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause before next subtitle"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次の字幕までの間隔"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一句前停顿"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一句前停頓"
+          }
+        }
+      }
+    },
+    "inter_subtitle_pause_none" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "なし"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉"
+          }
+        }
+      }
+    },
+    "inter_subtitle_pause_seconds_format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 秒"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 秒"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 秒"
           }
         }
       }
@@ -3615,6 +3728,174 @@
         }
       }
     },
+    "onboarding_continue" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I understand, start using YomiPlay"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "理解しました。はじめる"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我已了解，开始使用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我已了解，開始使用"
+          }
+        }
+      }
+    },
+    "onboarding_disclaimer_body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app is intended for personal language learning only. Please ensure you have the legal right to use any audio, video, or subtitle content you import or download, and keep your usage within fair use / personal study scope. You are solely responsible for any copyright or legal issues arising from the content you use or share."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本アプリは個人の語学学習を目的としたツールです。インポート／ダウンロードする音声・動画・字幕などのコンテンツについては、必ず合法な利用権限を確認し、私的学習の範囲に留めてご利用ください。著作権保護されたコンテンツの利用・共有に伴う責任は、利用者ご自身に帰属します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本应用仅作为个人语言学习工具使用。请确保你导入或下载的音视频、字幕等内容拥有合法使用权限，或仅在合理使用范围内自用学习。对于因导入、分享受版权保护内容而产生的法律责任，由用户本人承担。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本應用僅作為個人語言學習工具使用。請確保你匯入或下載的音視訊、字幕等內容擁有合法使用權限，或僅在合理使用範圍內自用學習。對於因匯入、分享受版權保護內容而產生的法律責任，由用戶本人承擔。"
+          }
+        }
+      }
+    },
+    "onboarding_disclaimer_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "For personal learning use only"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "個人学習用途のみ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅供个人学习使用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅供個人學習使用"
+          }
+        }
+      }
+    },
+    "onboarding_intro_body" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay uses on‑device AI speech recognition to turn audio / video into study‑friendly subtitles, helping with shadowing and multilingual listening practice. You can import media files, podcasts, or ZIP study bundles."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay はローカルの AI 音声認識を使って、音声・動画から学習用の字幕を生成し、シャドーイングや多言語リスニングをサポートするアプリです。音声／動画ファイルやポッドキャスト、ZIP 学習素材をインポートできます。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay 使用本地 AI 语音识别，将音频 / 视频生成可学习的字幕，辅助影子跟读和多语言听力练习。你可以导入音视频文件、播客或 ZIP 学习资料。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay 使用本地 AI 語音辨識，將音訊／影片轉成可學習的字幕，輔助影子跟讀與多語言聽力練習。你可以匯入音視訊檔案、Podcast 或 ZIP 學習資料。"
+          }
+        }
+      }
+    },
+    "onboarding_intro_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is this app?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリについて"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这是什么应用？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這是什麼應用程式？"
+          }
+        }
+      }
+    },
+    "onboarding_tagline" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ Create your learning content"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ 自分だけの学習素材を作る"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ 生成你的学习内容"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "✨ 生成你的學習內容"
+          }
+        }
+      }
+    },
     "parsing_subtitles" : {
       "localizations" : {
         "en" : {
@@ -3699,6 +3980,90 @@
         }
       }
     },
+    "paywall_free_export_compact" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export and sharing not supported"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "書き出し・共有は非対応"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不支持导出和分享"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不支援匯出與分享"
+          }
+        }
+      }
+    },
+    "paywall_free_import_compact" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio import only"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声のインポートのみ対応"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅支持导入音频"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅支援匯入音訊"
+          }
+        }
+      }
+    },
+    "paywall_free_quota_compact" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d min used / %d min left"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d分使用 / %d分残り"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已使用 %d 分钟 / 剩余 %d 分钟"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已使用 %d 分鐘 / 剩餘 %d 分鐘"
+          }
+        }
+      }
+    },
     "paywall_lifetime_tagline" : {
       "localizations" : {
         "en" : {
@@ -3779,6 +4144,90 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隱私政策"
+          }
+        }
+      }
+    },
+    "paywall_pro_export_compact" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export and share audio/video with subtitles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声/動画と字幕の書き出し・共有に対応"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持音视频及字幕的导出与分享"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支援音訊/影片與字幕的匯出及分享"
+          }
+        }
+      }
+    },
+    "paywall_pro_import_compact" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Video import supported"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動画のインポートに対応"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持视频导入"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支援影片匯入"
+          }
+        }
+      }
+    },
+    "paywall_pro_quota_compact" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlimited recognition during subscription"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "利用期間中は認識無制限"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期间无限识别额度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "期間無限辨識額度"
           }
         }
       }
@@ -3920,6 +4369,202 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "立即解鎖 Pro 權限"
+          }
+        }
+      }
+    },
+    "playback_repeat_accessibility_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to cycle repeat mode. Touch and hold for the menu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップでリピートモードを切り替え、長押しでメニューを表示します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻点可轮换重复模式，长按打开菜单。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輕點可輪替重複模式，長按開啟選單。"
+          }
+        }
+      }
+    },
+    "playback_repeat_current_sentence" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat current subtitle"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在の字幕をリピート"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单句循环"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "單句循環"
+          }
+        }
+      }
+    },
+    "playback_repeat_label_off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リピート"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "循环"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "循環"
+          }
+        }
+      }
+    },
+    "playback_repeat_label_sentence" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Line"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1行"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单句"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "單句"
+          }
+        }
+      }
+    },
+    "playback_repeat_label_whole" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全体"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整段"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整段"
+          }
+        }
+      }
+    },
+    "playback_repeat_off" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No repeat"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リピートしない"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不循环"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不循環"
+          }
+        }
+      }
+    },
+    "playback_repeat_whole_track" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat entire track"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全体をリピート"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整段循环"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整段循環"
           }
         }
       }
@@ -4547,6 +5192,34 @@
         }
       }
     },
+    "practice_reading_section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Practice / shadowing"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "シャドーイング"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟读练习"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟讀練習"
+          }
+        }
+      }
+    },
     "prefer_japanese_for_recognition" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4665,6 +5338,7 @@
       }
     },
     "pro_export_srt_yomi_media" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4749,6 +5423,7 @@
       }
     },
     "pro_video_supported" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4777,6 +5452,7 @@
       }
     },
     "pro_zip_export" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4803,6 +5479,9 @@
           }
         }
       }
+    },
+    "Pro: %@" : {
+
     },
     "processing" : {
       "localizations" : {
@@ -5815,6 +6494,7 @@
       }
     },
     "repeat" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6265,6 +6945,202 @@
         }
       }
     },
+    "settings_clear_cache" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Cache"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャッシュを削除"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除缓存"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除快取"
+          }
+        }
+      }
+    },
+    "settings_clear_cache_confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear Now"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除する"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "确认清除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確認清除"
+          }
+        }
+      }
+    },
+    "settings_clear_cache_footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only temporary cache files are removed. Your subtitle documents are kept."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一時キャッシュのみ削除します。字幕ドキュメントは削除されません。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅清理临时缓存文件，不会删除你的字幕文档。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅清理暫存快取，不會刪除你的字幕文件。"
+          }
+        }
+      }
+    },
+    "settings_clear_cache_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temporary cache files will be removed."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一時キャッシュを削除します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将清理应用的临时缓存文件。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將清理應用的暫存快取檔案。"
+          }
+        }
+      }
+    },
+    "settings_clear_cache_result_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cleanup failed: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除に失敗しました: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清理失败：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清理失敗：%@"
+          }
+        }
+      }
+    },
+    "settings_clear_cache_result_success" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed %d cache items (about %.1f MB)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%d件のキャッシュを削除しました（約%.1f MB）。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已清理 %d 个缓存项（约 %.1f MB）。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已清理 %d 個快取項目（約 %.1f MB）。"
+          }
+        }
+      }
+    },
+    "settings_clear_cache_result_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cache Cleanup Result"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャッシュ削除結果"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缓存清理结果"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "快取清理結果"
+          }
+        }
+      }
+    },
     "settings_export_audio_title" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6318,6 +7194,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "匯出音影音"
+          }
+        }
+      }
+    },
+    "settings_feedback_email" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send Feedback (Email)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フィードバック（メール）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "意见反馈（邮件）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "意見回饋（郵件）"
           }
         }
       }
@@ -6518,6 +7422,342 @@
         }
       }
     },
+    "settings_help_a1" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please make sure you are using the latest build and that related IAP/subscription items are fully configured and available in App Store Connect."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最新ビルドを使用し、App Store Connect の IAP/サブスク設定が完了して利用可能であることを確認してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请确认当前安装的是最新构建，并且 App Store Connect 中对应 IAP/订阅已配置完整并可用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請確認目前安裝的是最新版本，且 App Store Connect 中對應 IAP/訂閱已完整配置並可用。"
+          }
+        }
+      }
+    },
+    "settings_help_a2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap “Restore Purchases” on the paywall. The app will sync valid purchases tied to your current Apple account."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "課金画面で「購入を復元」をタップしてください。現在の Apple アカウントに紐づく有効な購入情報を同期します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在付费页面点击“恢复购买”，系统会同步你当前 Apple 账号下已有的有效购买记录。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在付費頁面點擊「恢復購買」，系統會同步你目前 Apple 帳號下的有效購買記錄。"
+          }
+        }
+      }
+    },
+    "settings_help_a3" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some languages may require downloading language packs on first use. Please ensure network access is allowed."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "初回利用時に言語パックのダウンロードが必要な場合があります。ネットワーク接続を許可してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次使用部分语言时可能需要下载语言包，请确保允许网络访问。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次使用部分語言時可能需要下載語言包，請確認已允許網路存取。"
+          }
+        }
+      }
+    },
+    "settings_help_about_1" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay is a subtitle tool for language learning, supporting transcription, translation, and subtitle export."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay は語学学習向けの字幕ツールで、文字起こし・翻訳・字幕書き出しに対応しています。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay 是一款面向语言学习的字幕工具，支持音视频转写、翻译与字幕导出。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay 是一款面向語言學習的字幕工具，支援音視頻轉寫、翻譯與字幕匯出。"
+          }
+        }
+      }
+    },
+    "settings_help_about_2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "If you encounter issues or have suggestions, feel free to contact us via the email entry in Settings."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不具合やご提案があれば、設定画面のメール窓口からお気軽にご連絡ください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如遇问题或有建议，欢迎通过设置页中的邮件入口反馈。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如有問題或建議，歡迎透過設定頁中的郵件入口回饋。"
+          }
+        }
+      }
+    },
+    "settings_help_about_section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About YomiPlay"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay について"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于 YomiPlay"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關於 YomiPlay"
+          }
+        }
+      }
+    },
+    "settings_help_center" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help Center (FAQ / About)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ヘルプ（FAQ / このアプリについて）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帮助中心（FAQ / 关于）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "幫助中心（FAQ / 關於）"
+          }
+        }
+      }
+    },
+    "settings_help_faq_section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FAQ"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "よくある質問"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "常见问题"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "常見問題"
+          }
+        }
+      }
+    },
+    "settings_help_q1" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Why can't I see subscription plans sometimes?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サブスクリプションプランが表示されないことがあるのはなぜですか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为什么有时看不到订阅方案？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "為什麼有時看不到訂閱方案？"
+          }
+        }
+      }
+    },
+    "settings_help_q2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How do I restore purchases?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入を復元するには？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何恢复购买？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何恢復購買？"
+          }
+        }
+      }
+    },
+    "settings_help_q3" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Does translation require network access?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳機能はネットワークが必要ですか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译功能需要联网吗？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻譯功能需要連網嗎？"
+          }
+        }
+      }
+    },
+    "settings_help_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help & About"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ヘルプとこのアプリについて"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帮助与关于"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "幫助與關於"
+          }
+        }
+      }
+    },
     "settings_no_audio_label" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6572,6 +7812,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "分享音訊"
+          }
+        }
+      }
+    },
+    "settings_support_section" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サポート"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持与帮助"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支援與幫助"
+          }
+        }
+      }
+    },
+    "settings_upgrade_button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upgrade to Pro"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proにアップグレード"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "订阅计划与购买"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "訂閱方案與購買"
           }
         }
       }
@@ -7746,6 +9042,7 @@
       }
     },
     "zip_export" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -7857,7 +9154,10 @@
         }
       }
     },
-    "自分だけの学習素材を作る" : {
+    "开启后全应用显示 Pro 状态，用于测试导入页/设置页等 Pro 界面。仅 Debug 构建有效。" : {
+
+    },
+    "模拟 Pro 用户" : {
 
     }
   },

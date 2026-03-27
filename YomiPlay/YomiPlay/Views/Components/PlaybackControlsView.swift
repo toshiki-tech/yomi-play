@@ -12,11 +12,13 @@ import SwiftUI
 
 struct PlaybackControlsView: View {
     @Environment(\.playerThemeScheme) private var playerScheme
+    /// 与设置里的「界面语言」一致；勿用裸 `String(localized:)`，否则会始终跟系统 Bundle 语言走
+    @Environment(\.locale) private var locale
     let isPlaying: Bool
     let currentTime: TimeInterval
     let duration: TimeInterval
     let playbackRateText: String
-    let isLooping: Bool
+    let repeatMode: PlaybackRepeatMode
     
     private var palette: PlayerPalette { PlayerTheme.palette(for: playerScheme) }
     let onTogglePlayPause: () -> Void
@@ -24,7 +26,8 @@ struct PlaybackControlsView: View {
     let onSkipForward: () -> Void
     let onSeek: (TimeInterval) -> Void
     let onCycleRate: () -> Void
-    let onToggleLoop: () -> Void
+    let onSelectRepeatMode: (PlaybackRepeatMode) -> Void
+    let onCycleRepeatMode: () -> Void
     
     @State private var isDragging = false
     @State private var dragValue: Double = 0
@@ -114,12 +117,11 @@ struct PlaybackControlsView: View {
     
     private var controlButtons: some View {
         HStack(spacing: 0) {
-            // ループ
             controlButton(
-                icon: isLooping ? "repeat.1" : "repeat",
-                label: String(localized: "repeat"),
-                isActive: isLooping,
-                action: onToggleLoop
+                icon: "gauge.with.dots.needle.33percent",
+                label: playbackRateText,
+                isActive: false,
+                action: onCycleRate
             )
             
             Spacer()
@@ -158,15 +160,67 @@ struct PlaybackControlsView: View {
             
             Spacer()
             
-            // 速度
-            controlButton(
-                icon: "gauge.with.dots.needle.33percent",
-                label: playbackRateText,
-                isActive: false,
-                action: onCycleRate
-            )
+            repeatModeMenu
         }
         .padding(.vertical, 4)
+    }
+    
+    private var repeatModeMenu: some View {
+        let isActive = repeatMode != .off
+        return Menu {
+            repeatModeMenuRow(mode: .off, icon: "repeat", titleKey: "playback_repeat_off")
+            repeatModeMenuRow(mode: .wholeTrack, icon: "repeat.circle", titleKey: "playback_repeat_whole_track")
+            repeatModeMenuRow(mode: .currentSubtitle, icon: "text.quote", titleKey: "playback_repeat_current_sentence")
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: repeatModeIcon)
+                    .font(.body)
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
+                Text(repeatModeShortLabel)
+                    .font(.system(size: 10))
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
+            }
+        } primaryAction: {
+            onCycleRepeatMode()
+        }
+        .sensoryFeedback(.selection, trigger: repeatMode)
+        .accessibilityHint(String(localized: LocalizedStringResource("playback_repeat_accessibility_hint", locale: locale)))
+        .frame(width: 56)
+    }
+    
+    private func repeatModeMenuRow(mode: PlaybackRepeatMode, icon: String, titleKey: String.LocalizationValue) -> some View {
+        Button {
+            onSelectRepeatMode(mode)
+        } label: {
+            HStack {
+                Label(String(localized: LocalizedStringResource(titleKey, locale: locale)), systemImage: icon)
+                Spacer(minLength: 8)
+                if repeatMode == mode {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(palette.accent)
+                }
+            }
+        }
+    }
+    
+    private var repeatModeIcon: String {
+        switch repeatMode {
+        case .off: return "repeat"
+        case .wholeTrack: return "repeat.circle.fill"
+        case .currentSubtitle: return "text.quote"
+        }
+    }
+    
+    private var repeatModeShortLabel: String {
+        switch repeatMode {
+        case .off:
+            return String(localized: LocalizedStringResource("playback_repeat_label_off", locale: locale))
+        case .wholeTrack:
+            return String(localized: LocalizedStringResource("playback_repeat_label_whole", locale: locale))
+        case .currentSubtitle:
+            return String(localized: LocalizedStringResource("playback_repeat_label_sentence", locale: locale))
+        }
     }
     
     private func controlButton(icon: String, label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
@@ -192,13 +246,14 @@ struct PlaybackControlsView: View {
         currentTime: 35,
         duration: 182,
         playbackRateText: "1x",
-        isLooping: false,
+        repeatMode: .off,
         onTogglePlayPause: {},
         onSkipBackward: {},
         onSkipForward: {},
         onSeek: { _ in },
         onCycleRate: {},
-        onToggleLoop: {}
+        onSelectRepeatMode: { _ in },
+        onCycleRepeatMode: {}
     )
     .preferredColorScheme(.dark)
 }

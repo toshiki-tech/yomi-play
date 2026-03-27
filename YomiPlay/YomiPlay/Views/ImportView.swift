@@ -868,20 +868,10 @@ struct ImportView: View {
                     .font(.title)
                     .fontWeight(.bold)
 
-                // 根据界面语言切换副标题
-                Group {
-                    switch locale.identifier {
-                    case let id where id.hasPrefix("zh"):
-                        Text("✨ 生成你的学习内容")
-                    case let id where id.hasPrefix("ja"):
-                        Text("自分だけの学習素材を作る")
-                    default:
-                        Text("Create Your Learning Content")
-                    }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                Text(String(localized: LocalizedStringResource("onboarding_tagline", locale: locale)))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
         }
         .frame(maxWidth: .infinity)

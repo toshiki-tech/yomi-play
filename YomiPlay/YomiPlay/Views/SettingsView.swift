@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.openURL) private var openURL
     @State private var showFurigana: Bool = UserDefaults.standard.bool(forKey: "showFurigana")
     @State private var showRomaji: Bool = UserDefaults.standard.bool(forKey: "showRomaji")
     @State private var showEnglish: Bool = UserDefaults.standard.bool(forKey: "showEnglish")
@@ -23,6 +24,11 @@ struct SettingsView: View {
     @State private var showModelDownloadConfirmAlert: Bool = false
     @State private var pendingDownloadMode: WhisperSpeechRecognitionService.RecognitionMode?
     @State private var previousRecognitionModeRaw: String = "small"
+    @State private var showPaywall: Bool = false
+    @State private var showHelpSheet: Bool = false
+    @State private var showClearCacheConfirm: Bool = false
+    @State private var clearCacheResultMessage: String?
+    @State private var showClearCacheResult: Bool = false
     private var subscription: SubscriptionManager { SubscriptionManager.shared }
 
     init() {
@@ -45,7 +51,12 @@ struct SettingsView: View {
     var body: some View {
         List {
             Section {
-                SettingsHeaderView(subscription: subscription)
+                SettingsHeaderView(
+                    subscription: subscription,
+                    onUpgradeTap: {
+                        showPaywall = true
+                    }
+                )
             }
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
             .listRowBackground(Color.clear)
@@ -231,6 +242,35 @@ struct SettingsView: View {
             } header: {
                 Text("about")
             }
+
+            Section {
+                Button {
+                    openURL(URL(string: "mailto:toshiki.tech.jp@gmail.com?subject=YomiPlay%20Feedback")!)
+                } label: {
+                    Label("settings_feedback_email", systemImage: "envelope")
+                        .font(.subheadline)
+                }
+
+                Button {
+                    showHelpSheet = true
+                } label: {
+                    Label("settings_help_center", systemImage: "questionmark.circle")
+                        .font(.subheadline)
+                }
+            } header: {
+                Text("settings_support_section")
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    showClearCacheConfirm = true
+                } label: {
+                    Label("settings_clear_cache", systemImage: "trash")
+                        .font(.subheadline)
+                }
+            } footer: {
+                Text("settings_clear_cache_footer")
+            }
             
             #if DEBUG
             Section {
@@ -249,6 +289,27 @@ struct SettingsView: View {
             #endif
         }
         .navigationTitle("settings")
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(onDismiss: { showPaywall = false })
+        }
+        .sheet(isPresented: $showHelpSheet) {
+            NavigationStack {
+                HelpCenterView()
+            }
+        }
+        .alert("settings_clear_cache", isPresented: $showClearCacheConfirm) {
+            Button("cancel", role: .cancel) {}
+            Button("settings_clear_cache_confirm", role: .destructive) {
+                clearTemporaryCache()
+            }
+        } message: {
+            Text("settings_clear_cache_message")
+        }
+        .alert("settings_clear_cache_result_title", isPresented: $showClearCacheResult) {
+            Button("ok") {}
+        } message: {
+            Text(clearCacheResultMessage ?? "")
+        }
     }
 
     private func recognitionModeTitleKey(_ mode: WhisperSpeechRecognitionService.RecognitionMode) -> LocalizedStringKey {
@@ -299,6 +360,59 @@ struct SettingsView: View {
             }
         }
     }
+
+    private func clearTemporaryCache() {
+        let fm = FileManager.default
+        var removedCount = 0
+        var removedBytes: Int64 = 0
+
+        do {
+            let tempDir = fm.temporaryDirectory
+            let tempFiles = try fm.contentsOfDirectory(
+                at: tempDir,
+                includingPropertiesForKeys: [.isRegularFileKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey],
+                options: [.skipsHiddenFiles]
+            )
+            for file in tempFiles {
+                if let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey]),
+                   values.isRegularFile == true {
+                    removedBytes += Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? 0)
+                }
+                try? fm.removeItem(at: file)
+                removedCount += 1
+            }
+
+            let cacheDir = try fm.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+            let cacheFiles = (try? fm.contentsOfDirectory(
+                at: cacheDir,
+                includingPropertiesForKeys: [.isRegularFileKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey],
+                options: [.skipsHiddenFiles]
+            )) ?? []
+
+            for file in cacheFiles where file.lastPathComponent.lowercased().contains("yomiplay") {
+                if let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey]),
+                   values.isRegularFile == true {
+                    removedBytes += Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? 0)
+                }
+                try? fm.removeItem(at: file)
+                removedCount += 1
+            }
+
+            let mb = Double(removedBytes) / (1024 * 1024)
+            clearCacheResultMessage = String(
+                format: String(localized: LocalizedStringResource("settings_clear_cache_result_success", locale: locale)),
+                removedCount,
+                mb
+            )
+            showClearCacheResult = true
+        } catch {
+            clearCacheResultMessage = String(
+                format: String(localized: LocalizedStringResource("settings_clear_cache_result_failed", locale: locale)),
+                error.localizedDescription
+            )
+            showClearCacheResult = true
+        }
+    }
     
     private func settingsToggle(icon: String, title: LocalizedStringKey, color: Color, isOn: Binding<Bool>, action: @escaping () -> Void) -> some View {
         Toggle(isOn: isOn) {
@@ -325,11 +439,49 @@ struct SettingsView: View {
     }
 }
 
+private struct HelpCenterView: View {
+    var body: some View {
+        List {
+            Section("settings_help_faq_section") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("settings_help_q1").font(.subheadline).fontWeight(.semibold)
+                    Text("settings_help_a1")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("settings_help_q2").font(.subheadline).fontWeight(.semibold)
+                    Text("settings_help_a2")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("settings_help_q3").font(.subheadline).fontWeight(.semibold)
+                    Text("settings_help_a3")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("settings_help_about_section") {
+                Text("settings_help_about_1")
+                    .font(.subheadline)
+                Text("settings_help_about_2")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("settings_help_title")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 // MARK: - 设置页头部（Free / Pro 动态状态）
 
 private struct SettingsHeaderView: View {
     @Environment(\.locale) private var locale
     @Bindable var subscription: SubscriptionManager
+    var onUpgradeTap: () -> Void = {}
     @State private var crownRotation: Double = 0
     
     private var quotaProgress: Double {
@@ -409,6 +561,26 @@ private struct SettingsHeaderView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity)
+
+            Button(action: onUpgradeTap) {
+                HStack(spacing: 6) {
+                    Image(systemName: "crown.fill")
+                    Text("settings_upgrade_button")
+                        .fontWeight(.semibold)
+                }
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(
+                        colors: [Color.green, Color.green.opacity(0.85)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(20)
