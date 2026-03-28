@@ -7875,6 +7875,170 @@
         }
       }
     },
+    "shadow_reading_disclaimer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Score is approximate: it compares what you said (as transcribed by on-device Whisper) to the subtitle text. It is not a pronunciation exam."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スコアは目安です。端末内の Whisper が聞き取った内容と字幕原文を比較しており、発音試験ではありません。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分数仅供参考：用本机 Whisper 把你的跟读转成文字再和字幕比对，不是专业发音评测。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分數僅供參考：以本機 Whisper 將跟讀轉成文字後與字幕比對，非專業發音評測。"
+          }
+        }
+      }
+    },
+    "shadow_reading_done" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "閉じる" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成" } }
+      }
+    },
+    "shadow_reading_error" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not analyze recording." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音の解析に失敗しました。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法分析录音。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法分析錄音。" } }
+      }
+    },
+    "shadow_reading_mic_denied" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone access is required. Enable it in Settings → Privacy → Microphone." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "マイクの許可が必要です。設定 → プライバシー → マイク で許可してください。" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要麦克风权限。请在 设置 → 隐私与安全性 → 麦克风中允许。" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "需要麥克風權限。請在「設定 → 隱私權與安全性 → 麥克風」中允許。" } }
+      }
+    },
+    "shadow_reading_no_speech" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "(No speech detected)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "（音声が検出されませんでした）" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "（未识别到语音）" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "（未辨識到語音）" } }
+      }
+    },
+    "shadow_reading_recognized_label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recognized" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "認識結果" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "识别结果" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "辨識結果" } }
+      }
+    },
+    "shadow_reading_recording_seconds" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording: %lld s (max 60)" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音中: %lld 秒（最大60秒）" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音中：%lld 秒（最长 60 秒）" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "錄音中：%lld 秒（最長 60 秒）" } }
+      }
+    },
+    "shadow_reading_reference_label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Subtitle line" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この字幕" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "本句字幕" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "本句字幕" } }
+      }
+    },
+    "shadow_reading_score_percent" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Match: %lld / 100" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "一致度: %lld / 100" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "相似度：%lld / 100" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "相似度：%lld / 100" } }
+      }
+    },
+    "shadow_reading_scoring" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribing on device…" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "端末で文字起こし中…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在本机转写…" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在本機轉寫…" } }
+      }
+    },
+    "shadow_reading_start_record" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start recording" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音を開始" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始录音" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開始錄音" } }
+      }
+    },
+    "shadow_reading_stop_and_score" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop & score" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "停止して採点" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止并打分" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "停止並打分" } }
+      }
+    },
+    "shadow_reading_tier_great" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Very close" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "とても近い" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "很接近" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "很接近" } }
+      }
+    },
+    "shadow_reading_tier_ok" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pretty good" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "なかなか良い" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "还不错" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "還不錯" } }
+      }
+    },
+    "shadow_reading_tier_retry" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try again" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "もう一度" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "再试一次" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "再試一次" } }
+      }
+    },
+    "shadow_reading_tier_weak" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep practicing" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "もう少し練習を" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "再多练一下" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "再多練一下" } }
+      }
+    },
+    "shadow_reading_title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shadow reading" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "シャドーイング" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟读练习" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟讀練習" } }
+      }
+    },
+    "shadow_reading_mic_a11y" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shadow read this line" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この行をシャドーイング" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟读本句" } },
+        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟讀本句" } }
+      }
+    },
     "share_media" : {
       "localizations" : {
         "en" : {

@@ -33,6 +33,7 @@ struct TranscriptView: View {
     let onSplitSegment: () -> Void
     let onMergeWithPrevious: () -> Void
     let onTranslateThisSegment: () async -> Void
+    let onShadowReadingTapped: (TranscriptSegment) -> Void
 
     @FocusState private var focusedSegmentID: UUID?
     
@@ -66,6 +67,7 @@ struct TranscriptView: View {
                             onSplitSegment: onSplitSegment,
                             onMergeWithPrevious: onMergeWithPrevious,
                             onTranslateThisSegment: onTranslateThisSegment,
+                            onShadowReadingTapped: { onShadowReadingTapped(segment) },
                             canMergeWithPrevious: index > 0
                         )
                         .id(segment.id)
@@ -103,6 +105,7 @@ struct TranscriptView: View {
 // MARK: - 各行のビュー（表示モードと編集モードを同一ビュー内で切り替え）
 
 struct SegmentRowView: View {
+    @Environment(\.locale) private var locale
     @Environment(\.playerThemeScheme) private var playerScheme
     let segment: TranscriptSegment
     let isActive: Bool
@@ -130,6 +133,7 @@ struct SegmentRowView: View {
     let onSplitSegment: () -> Void
     let onMergeWithPrevious: () -> Void
     let onTranslateThisSegment: () async -> Void
+    let onShadowReadingTapped: () -> Void
     let canMergeWithPrevious: Bool
     
     @State private var isLongPressing = false
@@ -147,6 +151,7 @@ struct SegmentRowView: View {
     // MARK: - 表示モード
     
     private var displayBody: some View {
+        HStack(alignment: .top, spacing: 10) {
         VStack(alignment: .leading, spacing: 6) {
             // 上段：原文 + 卡拉 OK 高亮
             if !segment.tokens.isEmpty {
@@ -191,9 +196,29 @@ struct SegmentRowView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTapped()
+        }
+        .onLongPressGesture(minimumDuration: 0.4, pressing: { pressing in
+            isLongPressing = pressing
+        }, perform: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onEditTapped()
+        })
+
+            Button {
+                onShadowReadingTapped()
+            } label: {
+                Image(systemName: "mic.circle")
+                    .font(.title2)
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: LocalizedStringResource("shadow_reading_mic_a11y", locale: locale)))
+        }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .contentShape(Rectangle())
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(isLongPressing
@@ -206,15 +231,6 @@ struct SegmentRowView: View {
         )
         .scaleEffect(isLongPressing ? 0.97 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isLongPressing)
-        .onTapGesture {
-            onTapped()
-        }
-        .onLongPressGesture(minimumDuration: 0.4, pressing: { pressing in
-            isLongPressing = pressing
-        }, perform: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            onEditTapped()
-        })
     }
     
     // MARK: - 編集モード

@@ -52,6 +52,8 @@
 	<string>動画ファイルから音声を読み取り、字幕を生成するために写真ライブラリへのアクセスが必要です。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>音声を文字に変換して字幕を生成するために音声認識の許可が必要です。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>跟读练习时录制你的发音，并在本机与字幕原文比对（不上传服务器）。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

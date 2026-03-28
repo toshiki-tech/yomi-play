@@ -39,6 +39,7 @@ struct PlayerView: View {
     @State private var playlist: [TranscriptDocument]
     @State private var currentIndex: Int
     @State private var showSettings: Bool = false
+    @State private var shadowReadingSegment: TranscriptSegment?
     @State private var shouldAutoPlayOnReady: Bool = false
     @State private var pinchScale: CGFloat = 1.0
     @Environment(\.dismiss) private var dismiss
@@ -129,6 +130,14 @@ struct PlayerView: View {
                 .presentationDetents(settingsSheetDetents)
                 .presentationDragIndicator(.visible)
         }
+        .sheet(item: $shadowReadingSegment) { segment in
+            ShadowReadingPracticeSheet(
+                segment: segment,
+                locale: locale,
+                onDismiss: { shadowReadingSegment = nil },
+                onPausePlayback: { viewModel.playerService.pause() }
+            )
+        }
         .onDisappear {
             viewModel.playerService.pause()
             viewModel.savePlaybackPosition()
@@ -200,6 +209,10 @@ struct PlayerView: View {
             },
             onTranslateThisSegment: {
                 await viewModel.translateCurrentSegment()
+            },
+            onShadowReadingTapped: { segment in
+                viewModel.playerService.pause()
+                shadowReadingSegment = segment
             }
         )
         .gesture(
