@@ -748,20 +748,12 @@ struct SettingsSheetView: View {
                 VStack(spacing: 0) {
                     settingsRow(icon: "globe", title: "target_language", color: .green) {
                         Menu {
-                            Button {
-                                viewModel.targetLanguageCode = "zh-Hans"
-                            } label: {
-                                Text(String(localized: LocalizedStringResource("chinese_simplified", locale: locale)))
-                            }
-                            Button {
-                                viewModel.targetLanguageCode = "zh-Hant"
-                            } label: {
-                                Text(String(localized: LocalizedStringResource("chinese_traditional", locale: locale)))
-                            }
-                            Button {
-                                viewModel.targetLanguageCode = "en"
-                            } label: {
-                                Text(String(localized: LocalizedStringResource("english", locale: locale)))
+                            ForEach(TranslationTargetLanguageOptions.allCodes, id: \.self) { code in
+                                Button {
+                                    viewModel.targetLanguageCode = code
+                                } label: {
+                                    Text(TranslationTargetLanguageOptions.displayName(code: code, locale: locale))
+                                }
                             }
                         } label: {
                             HStack(spacing: 4) {
@@ -911,11 +903,6 @@ struct SettingsSheetView: View {
     }
 
     private func labelForLanguage(code: String) -> String {
-        switch code {
-        case "zh-Hans": return String(localized: LocalizedStringResource("chinese_simplified", locale: locale))
-        case "zh-Hant": return String(localized: LocalizedStringResource("chinese_traditional", locale: locale))
-        case "en": return String(localized: LocalizedStringResource("english", locale: locale))
-        default: return code
-        }
+        TranslationTargetLanguageOptions.displayName(code: code, locale: locale)
     }
 }

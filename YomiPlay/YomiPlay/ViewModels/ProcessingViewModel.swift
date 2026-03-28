@@ -438,7 +438,7 @@ final class ProcessingViewModel {
         guard UserDefaults.standard.bool(forKey: "translationEnabled") else {
             return segments
         }
-        let targetLang = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
+        let targetLang = TranslationTargetLanguageOptions.resolvedStoredOrDefault()
         do {
             let result = try await translationService.translateSegments(
                 segments,

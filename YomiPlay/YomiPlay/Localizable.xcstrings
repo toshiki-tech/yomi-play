@@ -217,6 +217,7 @@
       }
     },
     "chinese_simplified" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -245,6 +246,7 @@
       }
     },
     "chinese_traditional" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -813,6 +815,7 @@
       }
     },
     "english" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8617,6 +8620,34 @@
         }
       }
     },
+    "translation_failed_explanation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On-device translation needs the chosen language to be available on this iPhone (language data is usually installed under Settings → General → Language & Region, or when you first use translation). If the target language isn’t installed, the system may refuse to translate—that’s expected. Add the language or pick a target you already use."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイス上の翻訳は、選択した言語のデータが iPhone に入っている必要があります（設定 → 一般 → 言語と地域、または初回の翻訳利用時にダウンロードされることがあります）。未インストールの場合、システム側で翻訳できない旨が出るのは正常な動作です。言語を追加するか、すでに利用している翻訳先言語を選んでください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统自带翻译需要本机已具备所选语言的相关数据（一般在「设置 → 通用 → 语言与地区」中安装/添加，或在首次使用翻译时下载）。若手机未添加韩语等目标语言，就可能无法翻译，并出现「无法翻译」之类提示，这种情况是正常现象。请先在系统中添加/下载对应语言，或把翻译目标改为你已安装的语言。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系統內建翻譯須仰賴本機已安裝的語言資料（多在「設定 → 一般 → 語言與地區」，或首次使用翻譯時下載）。若尚未加入韓文等目標語言，就可能無法翻譯並顯示「無法翻譯」等訊息，屬正常情況。請先到系統新增/下載對應語言，或改選已安裝的翻譯目標語言。"
+          }
+        }
+      }
+    },
     "translation_network_hint_message" : {
       "localizations" : {
         "en" : {
@@ -8725,6 +8756,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "翻譯設定"
+          }
+        }
+      }
+    },
+    "translation_target_footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The default follows your device's preferred languages. You can override the translation target below. On-device translation must support the language pair; unsupported pairs may fail until language packs are installed."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "初期値は端末の優先言語に合わせます。下の一覧で翻訳先を変更できます。デバイス上の翻訳で未対応の組み合わせの場合は、言語パックのダウンロードなどが必要になることがあります。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认跟随系统首选语言；可在下方选择翻译目标语言。部分语言对需系统已安装对应语言包，否则翻译可能失败。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設跟隨系統首選語言；可在下方選擇翻譯目標。部分語言須已安裝系統語言包，否則翻譯可能失敗。"
           }
         }
       }

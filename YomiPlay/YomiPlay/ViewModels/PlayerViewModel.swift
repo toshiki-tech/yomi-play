@@ -50,7 +50,7 @@ final class PlayerViewModel {
     var interSubtitlePauseSeconds: Double = 0
     
     // 翻訳設定（UserDefaults で永続化）
-    var targetLanguageCode: String = "zh-Hans" { didSet { Self.defaults.set(targetLanguageCode, forKey: "targetLanguageCode") } }
+    var targetLanguageCode: String = "en" { didSet { Self.defaults.set(targetLanguageCode, forKey: "targetLanguageCode") } }
     var showTranslation: Bool = false { didSet { Self.defaults.set(showTranslation, forKey: "showTranslation") } }
     
     // 再生速度（UserDefaults で永続化）
@@ -154,19 +154,10 @@ final class PlayerViewModel {
         }
         
         if let stored = d.string(forKey: "targetLanguageCode"), !stored.isEmpty {
-            targetLanguageCode = stored
+            targetLanguageCode = TranslationTargetLanguageOptions.normalizedCode(stored)
         } else {
-            targetLanguageCode = Self.detectDefaultLanguageCode()
+            targetLanguageCode = TranslationTargetLanguageOptions.defaultTargetCode()
         }
-    }
-    
-    /// システム言語から翻訳先のデフォルト言語コードを推定する
-    private static func detectDefaultLanguageCode() -> String {
-        let preferred = Locale.preferredLanguages.first ?? "en"
-        if preferred.hasPrefix("zh-Hans") || preferred.hasPrefix("zh-CN") { return "zh-Hans" }
-        if preferred.hasPrefix("zh-Hant") || preferred.hasPrefix("zh-TW") || preferred.hasPrefix("zh-HK") { return "zh-Hant" }
-        if preferred.hasPrefix("en") { return "en" }
-        return "zh-Hans"
     }
     
     // MARK: - 再生コントロール
@@ -510,9 +501,7 @@ final class PlayerViewModel {
             showTranslation = true
         } catch {
             print("PlayerViewModel: 翻译全部失败 - \(error)")
-            translationErrorMessage = (error as? TranslationServiceError) == .notAvailable
-                ? String(localized: "translation_requires_newer_ios")
-                : error.localizedDescription
+            translationErrorMessage = translationFailureUserMessage(for: error)
             showTranslationError = true
         }
     }
@@ -530,11 +519,20 @@ final class PlayerViewModel {
             editingTranslatedText = translated.isEmpty ? nil : translated
         } catch {
             print("PlayerViewModel: 单条翻译失败 - \(error)")
-            translationErrorMessage = (error as? TranslationServiceError) == .notAvailable
-                ? String(localized: "translation_requires_newer_ios")
-                : error.localizedDescription
+            translationErrorMessage = translationFailureUserMessage(for: error)
             showTranslationError = true
         }
+    }
+
+    /// 系统 Translation 在未安装目标语言数据等原因失败时，localizedDescription 往往只有「无法翻译」；补充可操作的说明
+    private func translationFailureUserMessage(for error: Error) -> String {
+        if (error as? TranslationServiceError) == .notAvailable {
+            return String(localized: LocalizedStringResource("translation_requires_newer_ios", locale: AppLocale.current))
+        }
+        let explanation = String(localized: LocalizedStringResource("translation_failed_explanation", locale: AppLocale.current))
+        let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !detail.isEmpty else { return explanation }
+        return explanation + "\n\n" + "(" + detail + ")"
     }
 
     // MARK: - SRT インポート

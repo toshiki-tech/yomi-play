@@ -14,7 +14,7 @@ struct SettingsView: View {
     @State private var showRomaji: Bool = UserDefaults.standard.bool(forKey: "showRomaji")
     @State private var showEnglish: Bool = UserDefaults.standard.bool(forKey: "showEnglish")
     @State private var fontSize: CGFloat = CGFloat(UserDefaults.standard.double(forKey: "fontSize"))
-    @State private var targetLanguageCode: String = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
+    @State private var targetLanguageCode: String
     @AppStorage("whisperModelVariant") private var recognitionModeRaw: String = "small"
     @AppStorage(WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) private var recognitionSourceLanguage: String = "ja"
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
@@ -39,14 +39,16 @@ struct SettingsView: View {
         if UserDefaults.standard.double(forKey: "fontSize") == 0 { _fontSize = State(initialValue: 18) }
         let raw = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey) ?? WhisperSpeechRecognitionService.recommendedModeForDevice.rawValue
         _previousRecognitionModeRaw = State(initialValue: raw)
+
+        let initialTarget: String
+        if let s = UserDefaults.standard.string(forKey: "targetLanguageCode"), !s.isEmpty {
+            initialTarget = TranslationTargetLanguageOptions.normalizedCode(s)
+        } else {
+            initialTarget = TranslationTargetLanguageOptions.defaultTargetCode()
+            UserDefaults.standard.set(initialTarget, forKey: "targetLanguageCode")
+        }
+        _targetLanguageCode = State(initialValue: initialTarget)
     }
-    
-    /// 翻译目标语言：用本地化 key，随界面语言显示「简体中文」/「Chinese (Simplified)」等
-    let languages: [(code: String, labelKey: String)] = [
-        ("zh-Hans", "chinese_simplified"),
-        ("zh-Hant", "chinese_traditional"),
-        ("en", "english")
-    ]
     
     var body: some View {
         List {
@@ -213,8 +215,8 @@ struct SettingsView: View {
                 }
                 
                 Picker(selection: $targetLanguageCode) {
-                    ForEach(languages, id: \.code) { lang in
-                        Text(String(localized: LocalizedStringResource(String.LocalizationValue(stringLiteral: lang.labelKey), locale: locale))).tag(lang.code)
+                    ForEach(TranslationTargetLanguageOptions.allCodes, id: \.self) { code in
+                        Text(TranslationTargetLanguageOptions.displayName(code: code, locale: locale)).tag(code)
                     }
                 } label: {
                     Label {
@@ -224,11 +226,15 @@ struct SettingsView: View {
                     }
                 }
                 .onChange(of: targetLanguageCode) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: "targetLanguageCode")
+                    let v = TranslationTargetLanguageOptions.normalizedCode(newValue)
+                    targetLanguageCode = v
+                    UserDefaults.standard.set(v, forKey: "targetLanguageCode")
                     HapticManager.shared.success()
                 }
             } header: {
                 Text("translation_settings")
+            } footer: {
+                Text(String(localized: LocalizedStringResource("translation_target_footer", locale: locale)))
             }
             .alert(String(localized: "translation_network_hint_title"), isPresented: $showTranslationNetworkHint) {
                 Button("ok") { showTranslationNetworkHint = false }
@@ -347,7 +353,7 @@ struct SettingsView: View {
 
     /// 用户打开「开启翻译」时：触发一次最小翻译以拉取语言包，然后提示允许网络
     private func triggerTranslationLanguagePackDownloadAndShowNetworkHint() {
-        let targetLang = UserDefaults.standard.string(forKey: "targetLanguageCode") ?? "zh-Hans"
+        let targetLang = TranslationTargetLanguageOptions.resolvedStoredOrDefault()
         let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: "こんにちは")
         Task {
             _ = try? await TranslationService.shared.translateSegments(
