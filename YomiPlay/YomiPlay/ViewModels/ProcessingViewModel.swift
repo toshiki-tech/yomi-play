@@ -145,12 +145,17 @@ final class ProcessingViewModel {
             if forceNonJa {
                 for seg in srtSegments {
                     if Task.isCancelled { return }
+                    let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
+                        recognitionUserSetting: lang,
+                        lineLooksJapanese: false
+                    )
                     transcriptSegments.append(TranscriptSegment(
                         startTime: seg.startTime,
                         endTime: seg.endTime,
                         originalText: seg.text,
                         tokens: [],
-                        skipFurigana: true
+                        skipFurigana: true,
+                        originalTextLanguageCode: lineLang
                     ))
                 }
             } else {
@@ -159,12 +164,17 @@ final class ProcessingViewModel {
                     if Task.isCancelled { return }
                     let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
                     let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
+                    let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
+                        recognitionUserSetting: lang,
+                        lineLooksJapanese: isJapanese
+                    )
                     transcriptSegments.append(TranscriptSegment(
                         startTime: seg.startTime,
                         endTime: seg.endTime,
                         originalText: seg.text,
                         tokens: tokens,
-                        skipFurigana: !isJapanese
+                        skipFurigana: !isJapanese,
+                        originalTextLanguageCode: lineLang
                     ))
                 }
                 print("ProcessingViewModel: 振り仮名生成完了")
@@ -297,13 +307,18 @@ final class ProcessingViewModel {
                 } else {
                     baseTokens = []
                 }
+                let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
+                    recognitionUserSetting: recLang,
+                    lineLooksJapanese: segment.isJapanese
+                )
                 transcriptSegments.append(TranscriptSegment(
                     startTime: segment.startTime,
                     endTime: segment.endTime,
                     originalText: segment.text,
                     tokens: baseTokens,
                     confidence: segment.confidence,
-                    skipFurigana: true
+                    skipFurigana: true,
+                    originalTextLanguageCode: lineLang
                 ))
             }
         } else {
@@ -339,13 +354,18 @@ final class ProcessingViewModel {
                     baseTokens = []
                 }
                 
+                let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
+                    recognitionUserSetting: recLang,
+                    lineLooksJapanese: segment.isJapanese
+                )
                 transcriptSegments.append(TranscriptSegment(
                     startTime: segment.startTime,
                     endTime: segment.endTime,
                     originalText: segment.text,
                     tokens: baseTokens,
                     confidence: segment.confidence,
-                    skipFurigana: !segment.isJapanese
+                    skipFurigana: !segment.isJapanese,
+                    originalTextLanguageCode: lineLang
                 ))
             }
         }

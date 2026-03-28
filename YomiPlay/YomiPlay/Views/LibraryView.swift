@@ -498,6 +498,10 @@ struct FolderContentView: View {
     /// 进入分组后短时内不响应行点击，避免列表未完全呈现时的二次点击误进播放页
     @State private var allowRowTap: Bool = false
     @State private var searchText: String = ""
+    @State private var isBatchMode = false
+    @State private var selectedDocumentIds: Set<UUID> = []
+    @State private var showBatchMoveSheet = false
+    @State private var showBatchDeleteConfirmation = false
     
     private var folderName: String {
         viewModel.folderDisplayName(for: folderId)
@@ -513,6 +517,22 @@ struct FolderContentView: View {
         return documents.filter { doc in
             doc.source.title.localizedCaseInsensitiveContains(keyword)
         }
+    }
+
+    private var selectedDocumentsForBatch: [TranscriptDocument] {
+        documents.filter { selectedDocumentIds.contains($0.id) }
+    }
+
+    private var allFilteredSelected: Bool {
+        !filteredDocuments.isEmpty && filteredDocuments.allSatisfy { selectedDocumentIds.contains($0.id) }
+    }
+
+    private var batchNavigationTitle: String {
+        if isBatchMode, !selectedDocumentIds.isEmpty {
+            let fmt = String(localized: LocalizedStringResource("library_batch_selected_count_format", locale: AppLocale.current))
+            return String(format: fmt, selectedDocumentIds.count)
+        }
+        return folderName
     }
     
     var body: some View {
@@ -551,20 +571,22 @@ struct FolderContentView: View {
                         }
                         
                         // 分组底部导入按钮：跳转到导入页，导入到当前分组
-                        Button {
-                            // 先关闭当前分组页面（返回到分组列表）
-                            if !navigationPath.isEmpty {
-                                navigationPath.removeLast()
-                            }
-                            // 记录目标分组 ID，并请求切换到导入 Tab
-                            viewModel.currentImportFolderId = folderId
-                            viewModel.requestSwitchToImportTab = true
-                        } label: {
-                            HStack {
-                                Spacer()
-                                Image(systemName: "square.and.arrow.down")
-                                Text("import")
-                                Spacer()
+                        if !isBatchMode {
+                            Button {
+                                // 先关闭当前分组页面（返回到分组列表）
+                                if !navigationPath.isEmpty {
+                                    navigationPath.removeLast()
+                                }
+                                // 记录目标分组 ID，并请求切换到导入 Tab
+                                viewModel.currentImportFolderId = folderId
+                                viewModel.requestSwitchToImportTab = true
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    Image(systemName: "square.and.arrow.down")
+                                    Text("import")
+                                    Spacer()
+                                }
                             }
                         }
                     }
@@ -572,23 +594,49 @@ struct FolderContentView: View {
                 .listStyle(.insetGrouped)
             }
         }
-        .navigationTitle(folderName)
+        .navigationTitle(batchNavigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    ForEach(DocumentSortOrder.allCases, id: \.self) { order in
-                        Button {
-                            viewModel.sortOrder = order
-                        } label: {
-                            HStack {
-                                Text(order.displayName)
-                                if viewModel.sortOrder == order { Image(systemName: "checkmark") }
-                            }
+            if isBatchMode {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("library_batch_done") {
+                        isBatchMode = false
+                        selectedDocumentIds = []
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(allFilteredSelected ? "library_batch_deselect_all" : "library_batch_select_all") {
+                        if allFilteredSelected {
+                            let ids = Set(filteredDocuments.map(\.id))
+                            selectedDocumentIds.subtract(ids)
+                        } else {
+                            selectedDocumentIds.formUnion(filteredDocuments.map(\.id))
                         }
                     }
-                } label: {
-                    Label("sort_label", systemImage: "arrow.up.arrow.down.circle")
+                    .disabled(filteredDocuments.isEmpty)
+                }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(DocumentSortOrder.allCases, id: \.self) { order in
+                            Button {
+                                viewModel.sortOrder = order
+                            } label: {
+                                HStack {
+                                    Text(order.displayName)
+                                    if viewModel.sortOrder == order { Image(systemName: "checkmark") }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("sort_label", systemImage: "arrow.up.arrow.down.circle")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("library_batch_select") {
+                        isBatchMode = true
+                        selectedDocumentIds = []
+                    }
                 }
             }
         }
@@ -608,10 +656,70 @@ struct FolderContentView: View {
                 }
             )
         }
+        .sheet(isPresented: $showBatchMoveSheet) {
+            BatchMoveToFolderSheet(
+                viewModel: viewModel,
+                documents: selectedDocumentsForBatch,
+                currentFolderId: folderId,
+                onCancel: { showBatchMoveSheet = false },
+                onMoved: {
+                    showBatchMoveSheet = false
+                    isBatchMode = false
+                    selectedDocumentIds = []
+                }
+            )
+        }
+        .alert("library_batch_delete_alert_title", isPresented: $showBatchDeleteConfirmation) {
+            Button("cancel", role: .cancel) {}
+            Button("delete", role: .destructive) {
+                viewModel.deleteDocuments(selectedDocumentsForBatch)
+                isBatchMode = false
+                selectedDocumentIds = []
+            }
+        } message: {
+            let fmt = String(localized: LocalizedStringResource("library_batch_delete_message", locale: AppLocale.current))
+            Text(String(format: fmt, selectedDocumentIds.count))
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isBatchMode, !documents.isEmpty {
+                VStack(spacing: 0) {
+                    Divider()
+                    HStack(spacing: 20) {
+                        Button {
+                            showBatchMoveSheet = true
+                        } label: {
+                            Label("library_batch_move", systemImage: "folder")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .disabled(selectedDocumentIds.isEmpty)
+                        Spacer()
+                        Button(role: .destructive) {
+                            showBatchDeleteConfirmation = true
+                        } label: {
+                            Label("library_batch_delete", systemImage: "trash")
+                                .font(.subheadline.weight(.medium))
+                        }
+                        .disabled(selectedDocumentIds.isEmpty)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(.bar)
+                }
+            }
+        }
     }
     
     private func documentRow(_ doc: TranscriptDocument) -> some View {
         Button {
+            if isBatchMode {
+                HapticManager.shared.impact(style: .light)
+                if selectedDocumentIds.contains(doc.id) {
+                    selectedDocumentIds.remove(doc.id)
+                } else {
+                    selectedDocumentIds.insert(doc.id)
+                }
+                return
+            }
             guard allowRowTap else { return }
             HapticManager.shared.impact(style: .light)
             // 分组内进入播放：播放列表仅含本分组记录（与当前列表顺序一致），便于顺序播放时停留在分组内
@@ -621,6 +729,12 @@ struct FolderContentView: View {
             }
         } label: {
             HStack(spacing: 12) {
+                if isBatchMode {
+                    Image(systemName: selectedDocumentIds.contains(doc.id) ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundStyle(selectedDocumentIds.contains(doc.id) ? Color.accentColor : .secondary)
+                        .frame(width: 28)
+                }
                 Image(systemName: doc.source.videoPlaybackURL != nil ? "play.rectangle.fill" : "waveform")
                     .font(.body)
                     .foregroundStyle(.secondary)
@@ -638,32 +752,36 @@ struct FolderContentView: View {
                     .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                if !isBatchMode {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
             .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(RecordRowButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                viewModel.deleteDocument(doc)
-            } label: {
-                Label("delete", systemImage: "trash")
+            if !isBatchMode {
+                Button(role: .destructive) {
+                    viewModel.deleteDocument(doc)
+                } label: {
+                    Label("delete", systemImage: "trash")
+                }
+                Button {
+                    viewModel.startRenaming(doc)
+                } label: {
+                    Label("rename", systemImage: "pencil")
+                }
+                .tint(.blue)
+                Button {
+                    documentToMove = doc
+                } label: {
+                    Label("move_to_folder", systemImage: "folder")
+                }
+                .tint(.green)
             }
-            Button {
-                viewModel.startRenaming(doc)
-            } label: {
-                Label("rename", systemImage: "pencil")
-            }
-            .tint(.blue)
-            Button {
-                documentToMove = doc
-            } label: {
-                Label("move_to_folder", systemImage: "folder")
-            }
-            .tint(.green)
         }
     }
     
@@ -685,6 +803,69 @@ struct FolderContentView: View {
         f.dateStyle = .medium
         f.timeStyle = .short
         return f.string(from: date)
+    }
+}
+
+/// 複数記録を別フォルダへ一括移動
+struct BatchMoveToFolderSheet: View {
+    @Bindable var viewModel: HomeViewModel
+    let documents: [TranscriptDocument]
+    let currentFolderId: UUID?
+    let onCancel: () -> Void
+    let onMoved: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if documents.isEmpty {
+                    ContentUnavailableView(
+                        "library_batch_move_empty",
+                        systemImage: "folder",
+                        description: Text("library_batch_move_empty_hint")
+                    )
+                } else {
+                    List {
+                        Button {
+                            viewModel.moveDocuments(documents, toFolderId: nil)
+                            onMoved()
+                        } label: {
+                            HStack {
+                                Image(systemName: "folder.fill")
+                                    .foregroundStyle(.gray)
+                                Text(String(localized: LocalizedStringResource("uncategorized", locale: AppLocale.current)))
+                                if currentFolderId == nil {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                        }
+                        ForEach(viewModel.folders) { folder in
+                            Button {
+                                viewModel.moveDocuments(documents, toFolderId: folder.id)
+                                onMoved()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "folder.fill")
+                                        .foregroundStyle(.yellow)
+                                    Text(folder.name)
+                                    if currentFolderId == folder.id {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.green)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("move_to_folder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("cancel") { onCancel() }
+                }
+            }
+        }
     }
 }
 

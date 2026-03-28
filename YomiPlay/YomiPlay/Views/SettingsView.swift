@@ -242,27 +242,22 @@ struct SettingsView: View {
                 Text("translation_network_hint_message")
             }
                         
+            /// 关于与支持：先自助（帮助）再联系，底部只读版本/引擎信息
             Section {
-                infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
-                infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
-            } header: {
-                Text("about")
-            }
-
-            Section {
-                Button {
-                    openURL(URL(string: "mailto:toshiki.tech.jp@gmail.com?subject=YomiPlay%20Feedback")!)
-                } label: {
-                    Label("settings_feedback_email", systemImage: "envelope")
-                        .font(.subheadline)
-                }
-
                 Button {
                     showHelpSheet = true
                 } label: {
                     Label("settings_help_center", systemImage: "questionmark.circle")
                         .font(.subheadline)
                 }
+                Button {
+                    openURL(URL(string: "mailto:toshiki.tech.jp@gmail.com?subject=YomiPlay%20Feedback")!)
+                } label: {
+                    Label("settings_feedback_email", systemImage: "envelope")
+                        .font(.subheadline)
+                }
+                infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
+                infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
             } header: {
                 Text("settings_support_section")
             }
@@ -284,13 +279,11 @@ struct SettingsView: View {
                     get: { subscription.debugSimulateProUser },
                     set: { subscription.debugSimulateProUser = $0 }
                 )) {
-                    Label("模拟 Pro 用户", systemImage: "crown.fill")
+                    Label("settings_debug_simulate_pro_toggle", systemImage: "crown.fill")
                         .foregroundStyle(.orange)
                 }
-            } header: {
-                Text("Debug")
             } footer: {
-                Text("开启后全应用显示 Pro 状态，用于测试导入页/设置页等 Pro 界面。仅 Debug 构建有效。")
+                Text("settings_debug_simulate_pro_footer")
             }
             #endif
         }

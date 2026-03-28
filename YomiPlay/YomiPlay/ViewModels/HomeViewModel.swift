@@ -274,14 +274,24 @@ final class HomeViewModel {
     
     /// ドキュメントを指定フォルダに移動する（nil = 未分组）
     func moveDocument(_ document: TranscriptDocument, toFolderId folderId: UUID?) {
-        guard var updated = allSavedDocuments.first(where: { $0.id == document.id }) else { return }
-        updated.folderId = folderId
-        do {
-            try DocumentStore.shared.save(updated)
-            loadSavedDocuments()
-        } catch {
-            showErrorMessage(error.localizedDescription)
+        moveDocuments([document], toFolderId: folderId)
+    }
+
+    /// 複数ドキュメントを一括で指定フォルダへ移動（nil = 未分组）
+    func moveDocuments(_ documents: [TranscriptDocument], toFolderId folderId: UUID?) {
+        guard !documents.isEmpty else { return }
+        for document in documents {
+            guard var updated = allSavedDocuments.first(where: { $0.id == document.id }) else { continue }
+            updated.folderId = folderId
+            do {
+                try DocumentStore.shared.save(updated)
+            } catch {
+                showErrorMessage(error.localizedDescription)
+                loadSavedDocuments()
+                return
+            }
         }
+        loadSavedDocuments()
     }
     
     /// フォルダ名の変更を開始
@@ -343,8 +353,16 @@ final class HomeViewModel {
     
     /// ドキュメントを削除する
     func deleteDocument(_ document: TranscriptDocument) {
-        try? DocumentStore.shared.delete(id: document.id)
-        allSavedDocuments.removeAll { $0.id == document.id }
+        deleteDocuments([document])
+    }
+
+    /// 複数ドキュメントを一括削除
+    func deleteDocuments(_ documents: [TranscriptDocument]) {
+        guard !documents.isEmpty else { return }
+        for doc in documents {
+            try? DocumentStore.shared.delete(id: doc.id)
+        }
+        loadSavedDocuments()
     }
     
     /// 重命名の準備
@@ -633,6 +651,7 @@ final class HomeViewModel {
                 let folder = TranscriptFolder(name: folderName)
                 try DocumentStore.shared.addFolder(folder)
                 let furiganaService = CFStringTokenizerFuriganaService()
+                let recLang = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja"
                 var created = 0
                 let baseNames = Set(mediaByBase.keys).sorted()
                 for base in baseNames {
@@ -672,12 +691,17 @@ final class HomeViewModel {
                         for seg in srtSegments {
                             let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
                             let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
+                            let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
+                                recognitionUserSetting: recLang,
+                                lineLooksJapanese: isJapanese
+                            )
                             segments.append(TranscriptSegment(
                                 startTime: seg.startTime,
                                 endTime: seg.endTime,
                                 originalText: seg.text,
                                 tokens: tokens,
-                                skipFurigana: !isJapanese
+                                skipFurigana: !isJapanese,
+                                originalTextLanguageCode: lineLang
                             ))
                         }
                         var source = AudioSource(

@@ -49,6 +49,7 @@
 
     },
     "about" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -499,9 +500,6 @@
           }
         }
       }
-    },
-    "Debug" : {
-
     },
     "default_group" : {
       "extractionState" : "stale",
@@ -2992,6 +2990,314 @@
         }
       }
     },
+    "library_batch_delete" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "削除"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除"
+          }
+        }
+      }
+    },
+    "library_batch_delete_alert_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete selected items?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択した記録を削除しますか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除所选记录？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除所選記錄？"
+          }
+        }
+      }
+    },
+    "library_batch_delete_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This will permanently delete %lld items. This cannot be undone."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 件の記録を完全に削除します。元に戻せません。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将永久删除 %lld 条记录，无法撤销。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將永久刪除 %lld 筆記錄，無法復原。"
+          }
+        }
+      }
+    },
+    "library_batch_deselect_all" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deselect all"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択解除"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消全选"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消全選"
+          }
+        }
+      }
+    },
+    "library_batch_done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完了"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "library_batch_move" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移动到分组"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移動到分組"
+          }
+        }
+      }
+    },
+    "library_batch_move_empty" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No items selected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択された記録がありません"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未选择任何记录"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未選擇任何記錄"
+          }
+        }
+      }
+    },
+    "library_batch_move_empty_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close and select records in the list."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閉じて一覧から記録を選んでください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请关闭后在列表中选择要移动的记录。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請關閉後在列表中選擇要移動的記錄。"
+          }
+        }
+      }
+    },
+    "library_batch_select" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多选"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多選"
+          }
+        }
+      }
+    },
+    "library_batch_select_all" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select all"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべて選択"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全选"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全選"
+          }
+        }
+      }
+    },
+    "library_batch_selected_count_format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld selected"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 件を選択中"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已选 %lld 项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已選 %lld 項"
+          }
+        }
+      }
+    },
     "library_header_subtitle" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4686,6 +4992,62 @@
         }
       }
     },
+    "player_show_shadow_reading_mic" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shadow reading button"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕横のマイクを表示"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示跟读麦克风"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示跟讀麥克風"
+          }
+        }
+      }
+    },
+    "player_show_shadow_reading_mic_subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the mic on each subtitle line to practice shadow reading."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各行でシャドーイング練習を開始できます。オフのときは非表示です。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启后在每行字幕旁显示麦克风，用于跟读练习。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟後在每行字幕旁顯示麥克風，用於跟讀練習。"
+          }
+        }
+      }
+    },
     "please_go_back_and_try_another_file" : {
       "localizations" : {
         "en" : {
@@ -5603,7 +5965,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%d min used / %d min left"
+            "value" : "%d min used\n/ %d min left"
           }
         },
         "ja" : {
@@ -7144,6 +7506,62 @@
         }
       }
     },
+    "settings_debug_simulate_pro_footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When on, the app shows Pro status everywhere so you can test import, settings, and other Pro UI. Only available in development builds; not included in App Store releases."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンにするとアプリ全体で Pro 状態として表示され、インポート画面や設定などの Pro 向け UI を確認できます。開発ビルド専用で、App Store 版には含まれません。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启后全应用显示为 Pro 状态，便于测试导入页、设置页等 Pro 相关界面。仅在开发构建中可用，正式上架版本不包含此项。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟後全應用顯示為 Pro 狀態，便於測試匯入頁、設定頁等 Pro 相關介面。僅在開發建置中可用，正式上架版本不包含此項。"
+          }
+        }
+      }
+    },
+    "settings_debug_simulate_pro_toggle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Simulate Pro subscriber"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro ユーザーをシミュレート"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模拟 Pro 订阅用户"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模擬 Pro 訂閱用戶"
+          }
+        }
+      }
+    },
     "settings_export_audio_title" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -7824,25 +8242,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Support"
+            "value" : "About & Support"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "サポート"
+            "value" : "アプリ情報・サポート"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持与帮助"
+            "value" : "关于与支持"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支援與幫助"
+            "value" : "關於與支援"
           }
         }
       }
@@ -7905,138 +8323,482 @@
     },
     "shadow_reading_done" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "閉じる" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "完成" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "完成" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閉じる"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
       }
     },
     "shadow_reading_error" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not analyze recording." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音の解析に失敗しました。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法分析录音。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法分析錄音。" } }
-      }
-    },
-    "shadow_reading_mic_denied" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone access is required. Enable it in Settings → Privacy → Microphone." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "マイクの許可が必要です。設定 → プライバシー → マイク で許可してください。" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要麦克风权限。请在 设置 → 隐私与安全性 → 麦克风中允许。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "需要麥克風權限。請在「設定 → 隱私權與安全性 → 麥克風」中允許。" } }
-      }
-    },
-    "shadow_reading_no_speech" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "(No speech detected)" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "（音声が検出されませんでした）" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "（未识别到语音）" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "（未辨識到語音）" } }
-      }
-    },
-    "shadow_reading_recognized_label" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recognized" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "認識結果" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "识别结果" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "辨識結果" } }
-      }
-    },
-    "shadow_reading_recording_seconds" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording: %lld s (max 60)" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音中: %lld 秒（最大60秒）" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音中：%lld 秒（最长 60 秒）" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "錄音中：%lld 秒（最長 60 秒）" } }
-      }
-    },
-    "shadow_reading_reference_label" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Subtitle line" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この字幕" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "本句字幕" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "本句字幕" } }
-      }
-    },
-    "shadow_reading_score_percent" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Match: %lld / 100" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "一致度: %lld / 100" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "相似度：%lld / 100" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "相似度：%lld / 100" } }
-      }
-    },
-    "shadow_reading_scoring" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Transcribing on device…" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "端末で文字起こし中…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在本机转写…" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在本機轉寫…" } }
-      }
-    },
-    "shadow_reading_start_record" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start recording" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "録音を開始" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开始录音" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開始錄音" } }
-      }
-    },
-    "shadow_reading_stop_and_score" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stop & score" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "停止して採点" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "停止并打分" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "停止並打分" } }
-      }
-    },
-    "shadow_reading_tier_great" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Very close" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "とても近い" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "很接近" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "很接近" } }
-      }
-    },
-    "shadow_reading_tier_ok" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pretty good" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "なかなか良い" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "还不错" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "還不錯" } }
-      }
-    },
-    "shadow_reading_tier_retry" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try again" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "もう一度" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "再试一次" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "再試一次" } }
-      }
-    },
-    "shadow_reading_tier_weak" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep practicing" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "もう少し練習を" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "再多练一下" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "再多練一下" } }
-      }
-    },
-    "shadow_reading_title" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shadow reading" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "シャドーイング" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟读练习" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟讀練習" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not analyze recording."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音の解析に失敗しました。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法分析录音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法分析錄音。"
+          }
+        }
       }
     },
     "shadow_reading_mic_a11y" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shadow read this line" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この行をシャドーイング" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟读本句" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟讀本句" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shadow read this line"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この行をシャドーイング"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟读本句"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟讀本句"
+          }
+        }
+      }
+    },
+    "shadow_reading_mic_denied" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone access is required. Enable it in Settings → Privacy → Microphone."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マイクの許可が必要です。設定 → プライバシー → マイク で許可してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要麦克风权限。请在 设置 → 隐私与安全性 → 麦克风中允许。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要麥克風權限。請在「設定 → 隱私權與安全性 → 麥克風」中允許。"
+          }
+        }
+      }
+    },
+    "shadow_reading_no_speech" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(No speech detected)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（音声が検出されませんでした）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（未识别到语音）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（未辨識到語音）"
+          }
+        }
+      }
+    },
+    "shadow_reading_recognized_label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognized"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "認識結果"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别结果"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "辨識結果"
+          }
+        }
+      }
+    },
+    "shadow_reading_recording_seconds" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recording: %lld s (max 60)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音中: %lld 秒（最大60秒）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录音中：%lld 秒（最长 60 秒）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "錄音中：%lld 秒（最長 60 秒）"
+          }
+        }
+      }
+    },
+    "shadow_reading_reference_label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subtitle line"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この字幕"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本句字幕"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本句字幕"
+          }
+        }
+      }
+    },
+    "shadow_reading_score_percent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Match: %lld / 100"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一致度: %lld / 100"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相似度：%lld / 100"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相似度：%lld / 100"
+          }
+        }
+      }
+    },
+    "shadow_reading_scoring" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcribing on device…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "端末で文字起こし中…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在本机转写…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在本機轉寫…"
+          }
+        }
+      }
+    },
+    "shadow_reading_start_record" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start recording"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "録音を開始"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始录音"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開始錄音"
+          }
+        }
+      }
+    },
+    "shadow_reading_stop_and_score" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop & score"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止して採点"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止并打分"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止並打分"
+          }
+        }
+      }
+    },
+    "shadow_reading_tier_great" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Very close"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "とても近い"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "很接近"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "很接近"
+          }
+        }
+      }
+    },
+    "shadow_reading_tier_ok" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pretty good"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "なかなか良い"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还不错"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "還不錯"
+          }
+        }
+      }
+    },
+    "shadow_reading_tier_retry" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう一度"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再试一次"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試一次"
+          }
+        }
+      }
+    },
+    "shadow_reading_tier_weak" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep practicing"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう少し練習を"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再多练一下"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再多練一下"
+          }
+        }
+      }
+    },
+    "shadow_reading_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shadow reading"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "シャドーイング"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟读练习"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟讀練習"
+          }
+        }
       }
     },
     "share_media" : {
@@ -9376,12 +10138,6 @@
           }
         }
       }
-    },
-    "开启后全应用显示 Pro 状态，用于测试导入页/设置页等 Pro 界面。仅 Debug 构建有效。" : {
-
-    },
-    "模拟 Pro 用户" : {
-
     }
   },
   "version" : "1.0"

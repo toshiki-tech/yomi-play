@@ -26,3 +26,6 @@ xcuserdata/
 # Cursor / IDE
 .cursor/
 .idea/
+
+# Whisper Core ML 模型体积大，不放版本库；本地 / CI 按需放入 YomiPlay/WhisperModels/
+YomiPlay/WhisperModels/

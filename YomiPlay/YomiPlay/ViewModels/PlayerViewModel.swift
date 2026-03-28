@@ -52,6 +52,10 @@ final class PlayerViewModel {
     // 翻訳設定（UserDefaults で永続化）
     var targetLanguageCode: String = "en" { didSet { Self.defaults.set(targetLanguageCode, forKey: "targetLanguageCode") } }
     var showTranslation: Bool = false { didSet { Self.defaults.set(showTranslation, forKey: "showTranslation") } }
+    /// 字幕行右侧跟读麦克风入口（默认关闭，按需开启）
+    var showShadowReadingMic: Bool = false {
+        didSet { Self.defaults.set(showShadowReadingMic, forKey: "showShadowReadingMicInPlayer") }
+    }
     
     // 再生速度（UserDefaults で永続化）
     var playbackRate: Float = 1.0 { didSet { Self.defaults.set(playbackRate, forKey: "playbackRate") } }
@@ -134,6 +138,9 @@ final class PlayerViewModel {
         }
         if d.object(forKey: "showTranslation") != nil {
             showTranslation = d.bool(forKey: "showTranslation")
+        }
+        if d.object(forKey: "showShadowReadingMicInPlayer") != nil {
+            showShadowReadingMic = d.bool(forKey: "showShadowReadingMicInPlayer")
         }
         if d.object(forKey: "fontSize") != nil {
             let stored = d.double(forKey: "fontSize")
@@ -399,7 +406,8 @@ final class PlayerViewModel {
             tokens: segment.tokens,
             confidence: segment.confidence,
             skipFurigana: segment.skipFurigana,
-            translatedText: segment.translatedText
+            translatedText: segment.translatedText,
+            originalTextLanguageCode: segment.originalTextLanguageCode
         )
         let second = TranscriptSegment(
             startTime: t,
@@ -408,7 +416,8 @@ final class PlayerViewModel {
             tokens: segment.tokens,
             confidence: segment.confidence,
             skipFurigana: segment.skipFurigana,
-            translatedText: segment.translatedText
+            translatedText: segment.translatedText,
+            originalTextLanguageCode: segment.originalTextLanguageCode
         )
         
         document.segments.remove(at: index)
@@ -442,6 +451,9 @@ final class PlayerViewModel {
         let mergedEnd = max(prev.endTime, current.endTime)
         let mergedText = (prev.originalText + " " + current.originalText).trimmingCharacters(in: .whitespacesAndNewlines)
         let shouldSkip = prev.skipFurigana && current.skipFurigana
+        let mergedLang: String? = (prev.originalTextLanguageCode == current.originalTextLanguageCode)
+            ? prev.originalTextLanguageCode
+            : nil
         let targetIndex = index - 1
         
         Task {
@@ -457,6 +469,7 @@ final class PlayerViewModel {
                 self.document.segments[targetIndex].tokens = tokens
                 self.document.segments[targetIndex].skipFurigana = shouldSkip
                 self.document.segments[targetIndex].translatedText = nil
+                self.document.segments[targetIndex].originalTextLanguageCode = mergedLang
                 
                 // 現在のセグメントを削除
                 if index < self.document.segments.count {
@@ -551,14 +564,21 @@ final class PlayerViewModel {
                     return
                 }
                 
+                let recLang = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) ?? "ja"
                 var transcriptSegments: [TranscriptSegment] = []
                 for seg in srtSegments {
+                    let isJapanese = WhisperSpeechRecognitionService.isLikelyJapanese(seg.text)
                     let tokens = await furiganaService.generateFurigana(for: seg.text)
+                    let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
+                        recognitionUserSetting: recLang,
+                        lineLooksJapanese: isJapanese
+                    )
                     transcriptSegments.append(TranscriptSegment(
                         startTime: seg.startTime,
                         endTime: seg.endTime,
                         originalText: seg.text,
-                        tokens: tokens
+                        tokens: tokens,
+                        originalTextLanguageCode: lineLang
                     ))
                 }
                 

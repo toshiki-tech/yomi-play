@@ -91,6 +91,7 @@ struct ImportView: View {
                 Text(String(format: String(localized: LocalizedStringResource("quota_progress_format", locale: locale)), subscription.monthlyUsedSeconds / 60, remainingMin))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
                 Button {
                     viewModel.showPaywall = true
                 } label: {

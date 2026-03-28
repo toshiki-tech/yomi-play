@@ -51,8 +51,14 @@ struct WordTimingInfo {
 // MARK: - プロトコル定義
 
 protocol SpeechRecognitionServiceProtocol: Sendable {
-    func recognize(audioURL: URL) async throws -> [RecognitionSegment]
+    func recognize(audioURL: URL, preferredLanguageCode: String?) async throws -> [RecognitionSegment]
     func requestAuthorization() async -> Bool
+}
+
+extension SpeechRecognitionServiceProtocol {
+    func recognize(audioURL: URL) async throws -> [RecognitionSegment] {
+        try await recognize(audioURL: audioURL, preferredLanguageCode: nil)
+    }
 }
 
 // MARK: - Apple Speech Framework実装
@@ -72,7 +78,8 @@ final class AppleSpeechRecognitionService: SpeechRecognitionServiceProtocol {
         }
     }
     
-    func recognize(audioURL: URL) async throws -> [RecognitionSegment] {
+    func recognize(audioURL: URL, preferredLanguageCode: String?) async throws -> [RecognitionSegment] {
+        _ = preferredLanguageCode
         print("SpeechRecognition: 認識開始 URL=\(audioURL)")
         
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP")),
@@ -305,7 +312,8 @@ final class MockSpeechRecognitionService: SpeechRecognitionServiceProtocol {
     
     func requestAuthorization() async -> Bool { true }
     
-    func recognize(audioURL: URL) async throws -> [RecognitionSegment] {
+    func recognize(audioURL: URL, preferredLanguageCode: String?) async throws -> [RecognitionSegment] {
+        _ = preferredLanguageCode
         try await Task.sleep(nanoseconds: 2_000_000_000)
         return [
             RecognitionSegment(text: "皆さん、こんにちは。", startTime: 0.0, endTime: 2.5, confidence: 0.95),

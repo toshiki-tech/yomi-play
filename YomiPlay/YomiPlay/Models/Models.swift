@@ -158,6 +158,8 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     var skipFurigana: Bool
     /// 翻訳済みテキスト（ユーザーが翻訳機能を実行したときに設定される）
     var translatedText: String?
+    /// 本句 `originalText` 的书写/识别语言（Whisper 主标签如 ja/en/zh）。跟读转写优先用此值；nil 时用全局识别语言设置。
+    var originalTextLanguageCode: String?
     
     init(
         id: UUID = UUID(),
@@ -167,7 +169,8 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         tokens: [FuriganaToken] = [],
         confidence: Float? = nil,
         skipFurigana: Bool = false,
-        translatedText: String? = nil
+        translatedText: String? = nil,
+        originalTextLanguageCode: String? = nil
     ) {
         self.id = id
         self.startTime = startTime
@@ -177,6 +180,7 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         self.confidence = confidence
         self.skipFurigana = skipFurigana
         self.translatedText = translatedText
+        self.originalTextLanguageCode = originalTextLanguageCode
     }
     
     /// 指定時刻がこのセグメントの範囲内かどうか

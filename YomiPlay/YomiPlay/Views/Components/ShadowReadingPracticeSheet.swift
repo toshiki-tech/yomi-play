@@ -203,7 +203,7 @@ struct ShadowReadingPracticeSheet: View {
             try? FileManager.default.removeItem(at: url)
         }
         do {
-            let segs = try await whisper.recognize(audioURL: url)
+            let segs = try await whisper.recognize(audioURL: url, preferredLanguageCode: segment.originalTextLanguageCode)
             let hyp = segs.map(\.text).joined()
             hypothesis = hyp
             let s = ShadowReadingTextSimilarity.scorePercent(reference: segment.originalText, hypothesis: hyp)

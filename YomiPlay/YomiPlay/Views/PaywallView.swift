@@ -233,6 +233,7 @@ struct PaywallView: View {
                     Text(String(format: String(localized: LocalizedStringResource("quota_progress_format", locale: locale)), usedMin, remainingMin))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
                     ProgressView(value: min(1, progress))
                         .tint(.orange)
                         .scaleEffect(y: 0.7)

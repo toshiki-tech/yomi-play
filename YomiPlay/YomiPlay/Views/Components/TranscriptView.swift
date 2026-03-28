@@ -25,6 +25,8 @@ struct TranscriptView: View {
     @Binding var editingStartTime: TimeInterval
     @Binding var editingEndTime: TimeInterval
     let isTranslating: Bool
+    /// 是否在每行字幕旁显示跟读麦克风（播放页设置）
+    let showShadowReadingMic: Bool
     let onSegmentTapped: (TranscriptSegment) -> Void
     let onEditTapped: (TranscriptSegment) -> Void
     let onEditConfirmed: () -> Void
@@ -68,6 +70,7 @@ struct TranscriptView: View {
                             onMergeWithPrevious: onMergeWithPrevious,
                             onTranslateThisSegment: onTranslateThisSegment,
                             onShadowReadingTapped: { onShadowReadingTapped(segment) },
+                            showShadowReadingMic: showShadowReadingMic,
                             canMergeWithPrevious: index > 0
                         )
                         .id(segment.id)
@@ -134,6 +137,7 @@ struct SegmentRowView: View {
     let onMergeWithPrevious: () -> Void
     let onTranslateThisSegment: () async -> Void
     let onShadowReadingTapped: () -> Void
+    let showShadowReadingMic: Bool
     let canMergeWithPrevious: Bool
     
     @State private var isLongPressing = false
@@ -207,15 +211,17 @@ struct SegmentRowView: View {
             onEditTapped()
         })
 
-            Button {
-                onShadowReadingTapped()
-            } label: {
-                Image(systemName: "mic.circle")
-                    .font(.title2)
-                    .foregroundStyle(isActive ? palette.accent : .secondary)
+            if showShadowReadingMic {
+                Button {
+                    onShadowReadingTapped()
+                } label: {
+                    Image(systemName: "mic.circle")
+                        .font(.title2)
+                        .foregroundStyle(isActive ? palette.accent : .secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: LocalizedStringResource("shadow_reading_mic_a11y", locale: locale)))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: LocalizedStringResource("shadow_reading_mic_a11y", locale: locale)))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)

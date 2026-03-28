@@ -185,6 +185,7 @@ struct PlayerView: View {
             editingStartTime: $viewModel.editingStartTime,
             editingEndTime: $viewModel.editingEndTime,
             isTranslating: viewModel.isTranslating,
+            showShadowReadingMic: viewModel.showShadowReadingMic,
             onSegmentTapped: { segment in
                 viewModel.onSegmentTapped(segment)
             },
@@ -867,6 +868,14 @@ struct SettingsSheetView: View {
                         }
                     }
                 }
+                Divider().padding(.leading, 52)
+                settingsToggleRow(
+                    icon: "mic.circle",
+                    title: "player_show_shadow_reading_mic",
+                    subtitle: "player_show_shadow_reading_mic_subtitle",
+                    color: .green,
+                    isOn: $viewModel.showShadowReadingMic
+                )
             }
             .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(12)

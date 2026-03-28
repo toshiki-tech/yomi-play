@@ -102,7 +102,7 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     }
 
     /// 仅接受本地音频文件 URL；远程下载由上层（Coordinator/ViewModel）完成后再传入。
-    func recognize(audioURL: URL) async throws -> [RecognitionSegment] {
+    func recognize(audioURL: URL, preferredLanguageCode: String?) async throws -> [RecognitionSegment] {
         guard audioURL.isFileURL else {
             throw NSError(domain: "WhisperRecognition", code: -1, userInfo: [NSLocalizedDescriptionKey: String(localized: "podcast_link_unresolvable")])
         }
@@ -112,11 +112,17 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         var options = DecodingOptions()
         // 必须使用转写（原文输出），禁止使用 translation（会译成英文）
         options.task = .transcribe
-        // 根据设置中的识别语言转写：
+        // 根据设置中的识别语言转写；跟读等场景可传入本句 preferredLanguageCode 覆盖全局。
         // - "ja" / "en" / "zh"：固定语言
         // - "auto" 或未设置：让 Whisper 自动检测语言（不显式指定）
-        let stored = UserDefaults.standard.string(forKey: Self.sourceLanguageDefaultsKey)
-        let lang = stored ?? "ja"
+        let global = UserDefaults.standard.string(forKey: Self.sourceLanguageDefaultsKey) ?? "ja"
+        let trimmed = preferredLanguageCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lang: String
+        if let t = trimmed, !t.isEmpty {
+            lang = t
+        } else {
+            lang = global
+        }
         let forceNonJapaneseSegments = Self.forcesNonJapaneseSegments(lang: lang)
         if lang != "auto" {
             options.language = lang
@@ -158,6 +164,20 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     static func forcesNonJapaneseSegments(lang: String) -> Bool {
         if lang == "ja" || lang == "auto" { return false }
         return true
+    }
+
+    /// 写入字幕句的原文语言码（与识别设置、分句文本一致）。`nil` 表示未知，跟读时回退全局设置。
+    static func storedOriginalTextLanguageCode(recognitionUserSetting: String, lineLooksJapanese: Bool) -> String? {
+        let lang = recognitionUserSetting
+        if forcesNonJapaneseSegments(lang: lang) {
+            return lang == "auto" ? nil : lang
+        }
+        switch lang {
+        case "auto": return lineLooksJapanese ? "ja" : "en"
+        case "ja": return lineLooksJapanese ? "ja" : "en"
+        case "en", "zh": return lang
+        default: return lang == "auto" ? nil : lang
+        }
     }
     
     private func getOrInitWhisperKit() async throws -> WhisperKit {
@@ -327,6 +347,24 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol {
         return false
     }
 
+    static func forcesNonJapaneseSegments(lang: String) -> Bool {
+        if lang == "ja" || lang == "auto" { return false }
+        return true
+    }
+
+    static func storedOriginalTextLanguageCode(recognitionUserSetting: String, lineLooksJapanese: Bool) -> String? {
+        let lang = recognitionUserSetting
+        if forcesNonJapaneseSegments(lang: lang) {
+            return lang == "auto" ? nil : lang
+        }
+        switch lang {
+        case "auto": return lineLooksJapanese ? "ja" : "en"
+        case "ja": return lineLooksJapanese ? "ja" : "en"
+        case "en", "zh": return lang
+        default: return lang == "auto" ? nil : lang
+        }
+    }
+
     private let fallback = AppleSpeechRecognitionService()
     
     init() {
@@ -337,8 +375,8 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol {
         return await fallback.requestAuthorization()
     }
     
-    func recognize(audioURL: URL) async throws -> [RecognitionSegment] {
-        return try await fallback.recognize(audioURL: audioURL)
+    func recognize(audioURL: URL, preferredLanguageCode: String?) async throws -> [RecognitionSegment] {
+        return try await fallback.recognize(audioURL: audioURL, preferredLanguageCode: preferredLanguageCode)
     }
 }
 
