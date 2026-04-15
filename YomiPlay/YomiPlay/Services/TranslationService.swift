@@ -3,7 +3,7 @@
 //  YomiPlay
 //
 //  Apple Translation フレームワークを使った字幕翻訳サービス
-//  Translation は iOS 26.0 以上で利用可能（SDK による）。それ未満では notAvailable を返す。
+//  Translation は iOS 26.0 以上で利用可能。未満では notAvailable を返す。
 //
 
 import Foundation
@@ -17,6 +17,10 @@ enum TranslationServiceError: Error {
 final class TranslationService {
     
     static let shared = TranslationService()
+    static var isAvailableOnCurrentSystem: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
     
     private init() {}
     

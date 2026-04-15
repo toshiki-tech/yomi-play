@@ -20,6 +20,7 @@ struct SettingsView: View {
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
     @AppStorage("appInterfaceTheme") private var appInterfaceTheme: String = "system"
     @AppStorage("translationEnabled") private var translationEnabled: Bool = false
+    @AppStorage("showExperimentalRecognitionModes") private var showExperimentalRecognitionModes: Bool = false
     @State private var showTranslationNetworkHint: Bool = false
     @State private var showModelDownloadConfirmAlert: Bool = false
     @State private var pendingDownloadMode: WhisperSpeechRecognitionService.RecognitionMode?
@@ -30,6 +31,9 @@ struct SettingsView: View {
     @State private var clearCacheResultMessage: String?
     @State private var showClearCacheResult: Bool = false
     private var subscription: SubscriptionManager { SubscriptionManager.shared }
+    private let baseRecognitionModes: [WhisperSpeechRecognitionService.RecognitionMode] = [.tiny, .base, .small]
+    private static let translationPackReadyCodesKey = "translationPackReadyCodes"
+    private static let translationPackHintShownCodesKey = "translationPackHintShownCodes"
 
     init() {
         WhisperSpeechRecognitionService.ensureModelVariantInitialized()
@@ -122,7 +126,7 @@ struct SettingsView: View {
 
                 // 再选「模型」
                 Picker(selection: $recognitionModeRaw) {
-                    ForEach(WhisperSpeechRecognitionService.RecognitionMode.allCases, id: \.rawValue) { mode in
+                    ForEach(selectableRecognitionModes, id: \.rawValue) { mode in
                         Text(recognitionModeTitleKey(mode)).tag(mode.rawValue)
                     }
                 } label: {
@@ -154,9 +158,38 @@ struct SettingsView: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(recognitionModeHintKey)
-                    Text("recognition_mode_device_recommendation \(recommendedModeDisplayName)")
+                    Text(String(
+                        format: String(localized: LocalizedStringResource("recognition_mode_device_recommendation", locale: locale)),
+                        recommendedModeDisplayName
+                    ))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Text("recognition_mode_order_hint")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if showExperimentalRecognitionModes {
+                        if canShowAdvancedRecognitionModes {
+                            Button("recognition_mode_experimental_hide") {
+                                showExperimentalRecognitionModes = false
+                                sanitizeRecognitionModeIfNeeded()
+                            }
+                            .font(.caption)
+                            .buttonStyle(.plain)
+                        } else {
+                            Text("recognition_mode_experimental_unavailable_hint")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        Button("recognition_mode_experimental_show") {
+                            showExperimentalRecognitionModes = true
+                        }
+                        .font(.caption)
+                        .buttonStyle(.plain)
+                    }
+                    Text("recognition_mode_experimental_hint")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
             }
             .alert(String(localized: "recognition_model_download_confirm_title"), isPresented: $showModelDownloadConfirmAlert) {
@@ -229,6 +262,9 @@ struct SettingsView: View {
                     let v = TranslationTargetLanguageOptions.normalizedCode(newValue)
                     targetLanguageCode = v
                     UserDefaults.standard.set(v, forKey: "targetLanguageCode")
+                    if translationEnabled {
+                        triggerTranslationLanguagePackDownloadAndShowNetworkHint(for: v)
+                    }
                     HapticManager.shared.success()
                 }
             } header: {
@@ -256,7 +292,7 @@ struct SettingsView: View {
                     Label("settings_feedback_email", systemImage: "envelope")
                         .font(.subheadline)
                 }
-                infoRow(title: "version", value: "1.0.0", icon: "info.circle", color: .secondary)
+                infoRow(title: "version", value: "1.1.0", icon: "info.circle", color: .secondary)
                 infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
             } header: {
                 Text("settings_support_section")
@@ -276,14 +312,30 @@ struct SettingsView: View {
             #if DEBUG
             Section {
                 Toggle(isOn: Binding(
+                    get: { subscription.debugForceFreeForPaywallTesting },
+                    set: { newValue in
+                        subscription.debugForceFreeForPaywallTesting = newValue
+                        if newValue { subscription.debugSimulateProUser = false }
+                    }
+                )) {
+                    Label("settings_debug_force_free_toggle", systemImage: "cart.fill")
+                        .foregroundStyle(.blue)
+                }
+                Toggle(isOn: Binding(
                     get: { subscription.debugSimulateProUser },
-                    set: { subscription.debugSimulateProUser = $0 }
+                    set: { newValue in
+                        subscription.debugSimulateProUser = newValue
+                        if newValue { subscription.debugForceFreeForPaywallTesting = false }
+                    }
                 )) {
                     Label("settings_debug_simulate_pro_toggle", systemImage: "crown.fill")
                         .foregroundStyle(.orange)
                 }
             } footer: {
-                Text("settings_debug_simulate_pro_footer")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("settings_debug_force_free_footer")
+                    Text("settings_debug_simulate_pro_footer")
+                }
             }
             #endif
         }
@@ -308,6 +360,9 @@ struct SettingsView: View {
             Button("ok") {}
         } message: {
             Text(clearCacheResultMessage ?? "")
+        }
+        .onAppear {
+            sanitizeRecognitionModeIfNeeded()
         }
     }
 
@@ -344,20 +399,77 @@ struct SettingsView: View {
         }
     }
 
-    /// 用户打开「开启翻译」时：触发一次最小翻译以拉取语言包，然后提示允许网络
-    private func triggerTranslationLanguagePackDownloadAndShowNetworkHint() {
-        let targetLang = TranslationTargetLanguageOptions.resolvedStoredOrDefault()
+    /// 仅在目标语言包未准备好时尝试预热；失败且该语言未提示过时才提示网络
+    private func triggerTranslationLanguagePackDownloadAndShowNetworkHint(for targetLang: String? = nil) {
+        guard TranslationService.isAvailableOnCurrentSystem else { return }
+        let code = targetLang ?? TranslationTargetLanguageOptions.resolvedStoredOrDefault()
+        guard !isTranslationPackReady(code) else { return }
         let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: "こんにちは")
         Task {
-            _ = try? await TranslationService.shared.translateSegments(
-                [segment],
-                sourceLanguageCode: "ja",
-                targetLanguageCode: targetLang
-            )
-            await MainActor.run {
-                showTranslationNetworkHint = true
+            do {
+                _ = try await TranslationService.shared.translateSegments(
+                    [segment],
+                    sourceLanguageCode: "ja",
+                    targetLanguageCode: code
+                )
+                markTranslationPackReady(code)
+            } catch {
+                if (error as? TranslationServiceError) == .notAvailable { return }
+                if shouldShowTranslationPackHint(for: code) {
+                    markTranslationPackHintShown(code)
+                    await MainActor.run {
+                        showTranslationNetworkHint = true
+                    }
+                }
             }
         }
+    }
+
+    private func isTranslationPackReady(_ code: String) -> Bool {
+        let list = UserDefaults.standard.array(forKey: Self.translationPackReadyCodesKey) as? [String] ?? []
+        return Set(list).contains(code)
+    }
+
+    private func markTranslationPackReady(_ code: String) {
+        var set = Set(UserDefaults.standard.array(forKey: Self.translationPackReadyCodesKey) as? [String] ?? [])
+        set.insert(code)
+        UserDefaults.standard.set(Array(set), forKey: Self.translationPackReadyCodesKey)
+    }
+
+    private func shouldShowTranslationPackHint(for code: String) -> Bool {
+        let list = UserDefaults.standard.array(forKey: Self.translationPackHintShownCodesKey) as? [String] ?? []
+        return !Set(list).contains(code)
+    }
+
+    private func markTranslationPackHintShown(_ code: String) {
+        var set = Set(UserDefaults.standard.array(forKey: Self.translationPackHintShownCodesKey) as? [String] ?? [])
+        set.insert(code)
+        UserDefaults.standard.set(Array(set), forKey: Self.translationPackHintShownCodesKey)
+    }
+
+    private func sanitizeRecognitionModeIfNeeded() {
+        guard let mode = WhisperSpeechRecognitionService.RecognitionMode(rawValue: recognitionModeRaw) else {
+            recognitionModeRaw = WhisperSpeechRecognitionService.recommendedModeForDevice.rawValue
+            previousRecognitionModeRaw = recognitionModeRaw
+            return
+        }
+        if !selectableRecognitionModes.contains(mode) {
+            recognitionModeRaw = WhisperSpeechRecognitionService.recommendedModeForDevice.rawValue
+            previousRecognitionModeRaw = recognitionModeRaw
+        }
+    }
+
+    private var selectableRecognitionModes: [WhisperSpeechRecognitionService.RecognitionMode] {
+        if showExperimentalRecognitionModes && canShowAdvancedRecognitionModes {
+            return baseRecognitionModes + [.medium, .large]
+        }
+        return baseRecognitionModes
+    }
+
+    private var canShowAdvancedRecognitionModes: Bool {
+        let mem = ProcessInfo.processInfo.physicalMemory
+        let gb = Double(mem) / (1024.0 * 1024.0 * 1024.0)
+        return gb >= 8.0
     }
 
     private func clearTemporaryCache() {

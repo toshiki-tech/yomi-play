@@ -25,12 +25,16 @@ final class ProcessingViewModel {
 
     /// 语音识别预估总耗时（秒）。仅用于 UI 展示，非精确倒计时。
     var recognitionEstimatedTotalSeconds: Int?
+    /// 仅在低性能设备首次显示一次的轻提示文案
+    var lowEndDeviceHintMessage: String?
     
     // MARK: - サービス
     
     private let speechService: SpeechRecognitionServiceProtocol
     private let furiganaService: FuriganaServiceProtocol
     private let translationService = TranslationService.shared
+    private static let recognitionModeOrder: [WhisperSpeechRecognitionService.RecognitionMode] = [.tiny, .base, .small, .medium, .large]
+    private static let lowEndHintShownKey = "didShowLowEndRecognitionHint"
 
     private var processingTask: Task<Void, Never>?
     
@@ -254,12 +258,13 @@ final class ProcessingViewModel {
         }
 
         // 进入识别前估算耗时（仅作 UI 参考）
+        alignRecognitionModeForCurrentDevice()
         recognitionEstimatedTotalSeconds = await estimateRecognitionSeconds(for: localAudioURL)
         state = .recognizing
 
         var recognitionSegments: [RecognitionSegment]
         do {
-            recognitionSegments = try await speechService.recognize(audioURL: localAudioURL)
+            recognitionSegments = try await recognizeWithFallback(audioURL: localAudioURL)
         } catch {
             if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
             if Task.isCancelled { return }
@@ -431,6 +436,88 @@ final class ProcessingViewModel {
         return max(10, estimated)
     }
 
+    private func recognizeWithFallback(audioURL: URL) async throws -> [RecognitionSegment] {
+        var mode = currentRecognitionMode()
+        var lastError: Error?
+        var attempts = 0
+
+        while attempts < 3 {
+            do {
+                return try await speechService.recognize(audioURL: audioURL)
+            } catch {
+                lastError = error
+                guard shouldDowngradeAndRetry(for: error),
+                      let lower = lowerRecognitionMode(than: mode) else {
+                    throw error
+                }
+                mode = lower
+                UserDefaults.standard.set(mode.rawValue, forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey)
+                attempts += 1
+            }
+        }
+        throw lastError ?? NSError(
+            domain: "YomiPlayRecognition",
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: String(localized: LocalizedStringResource("unknown_error", locale: AppLocale.current))]
+        )
+    }
+
+    private func alignRecognitionModeForCurrentDevice() {
+        let current = currentRecognitionMode()
+        let safe = safeRecognitionModeForCurrentDevice(preferred: current)
+        maybePrepareLowEndHint(modeChanged: safe != current)
+        if safe != current {
+            UserDefaults.standard.set(safe.rawValue, forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey)
+        }
+    }
+
+    private func safeRecognitionModeForCurrentDevice(preferred: WhisperSpeechRecognitionService.RecognitionMode) -> WhisperSpeechRecognitionService.RecognitionMode {
+        let gb = Double(ProcessInfo.processInfo.physicalMemory) / (1024.0 * 1024.0 * 1024.0)
+        let maxMode: WhisperSpeechRecognitionService.RecognitionMode
+        if gb < 4.0 {
+            maxMode = .tiny
+        } else if gb < 6.0 {
+            maxMode = .base
+        } else {
+            maxMode = .small
+        }
+        guard let preferredIdx = Self.recognitionModeOrder.firstIndex(of: preferred),
+              let maxIdx = Self.recognitionModeOrder.firstIndex(of: maxMode) else {
+            return .small
+        }
+        return preferredIdx > maxIdx ? maxMode : preferred
+    }
+
+    private func currentRecognitionMode() -> WhisperSpeechRecognitionService.RecognitionMode {
+        let raw = UserDefaults.standard.string(forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey)
+            ?? WhisperSpeechRecognitionService.recommendedModeForDevice.rawValue
+        return WhisperSpeechRecognitionService.RecognitionMode(rawValue: raw) ?? .small
+    }
+
+    private func maybePrepareLowEndHint(modeChanged: Bool) {
+        let gb = Double(ProcessInfo.processInfo.physicalMemory) / (1024.0 * 1024.0 * 1024.0)
+        guard gb < 6.0 else {
+            lowEndDeviceHintMessage = nil
+            return
+        }
+        let ud = UserDefaults.standard
+        guard ud.bool(forKey: Self.lowEndHintShownKey) == false else {
+            lowEndDeviceHintMessage = nil
+            return
+        }
+        if modeChanged {
+            lowEndDeviceHintMessage = String(
+                localized: LocalizedStringResource("recognition_low_end_device_first_hint", locale: AppLocale.current)
+            )
+            ud.set(true, forKey: Self.lowEndHintShownKey)
+        }
+    }
+
+    private func lowerRecognitionMode(than mode: WhisperSpeechRecognitionService.RecognitionMode) -> WhisperSpeechRecognitionService.RecognitionMode? {
+        guard let idx = Self.recognitionModeOrder.firstIndex(of: mode), idx > 0 else { return nil }
+        return Self.recognitionModeOrder[idx - 1]
+    }
+
     /// 播客下载的临时文件移动到 Documents/Media，返回本地 AudioSource。移动失败时抛出，避免保存「有字幕无音频」的文档。
     private static func persistDownloadedMedia(from tempURL: URL, title: String) throws -> AudioSource {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -481,11 +568,30 @@ final class ProcessingViewModel {
             return String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current))
         }
         let raw = error.localizedDescription
+        let lowerRaw = raw.lowercased()
+        if lowerRaw.contains("resource path does not exist") || lowerRaw.contains("no such file") {
+            return String(localized: LocalizedStringResource("recognition_source_file_missing_hint", locale: AppLocale.current))
+        }
+        if lowerRaw.contains("model not found") || lowerRaw.contains("broken/unsupported model") || lowerRaw.contains("downloaderror") {
+            return String(localized: LocalizedStringResource("recognition_model_unavailable_hint", locale: AppLocale.current))
+        }
+        if lowerRaw.contains("unable to compute the asynchronous prediction") || lowerRaw.contains("ml program") || lowerRaw.contains("invalid input data") {
+            return String(localized: LocalizedStringResource("recognition_runtime_failed_hint", locale: AppLocale.current))
+        }
         let isRecognitionEmpty = raw.contains("空でした") || raw.contains("empty") || raw.contains("音声認識") || raw.contains("recognition")
         if isRecognitionEmpty {
             return String(localized: LocalizedStringResource("could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech", locale: AppLocale.current))
         }
         return raw
+    }
+
+    private func shouldDowngradeAndRetry(for error: Error) -> Bool {
+        let lowerRaw = error.localizedDescription.lowercased()
+        return lowerRaw.contains("unable to compute the asynchronous prediction")
+            || lowerRaw.contains("ml program")
+            || lowerRaw.contains("broken/unsupported model")
+            || lowerRaw.contains("model not found")
+            || lowerRaw.contains("downloaderror")
     }
 
     /// 将 Whisper 提供的逐词时间戳近似映射到 FuriganaToken 上，用于更精确的卡拉 OK 高亮。

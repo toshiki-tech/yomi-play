@@ -19,6 +19,7 @@ struct ProcessingView: View {
     @State private var viewModel = ProcessingViewModel()
     @State private var recognitionElapsedSeconds: Int = 0
     @State private var showCancelConfirm: Bool = false
+    @State private var showLowEndHintAlert: Bool = false
     private let recognitionTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     var body: some View {
@@ -73,6 +74,18 @@ struct ProcessingView: View {
                     navigationPath.append(AppDestination.player(documents: [document], currentIndex: 0))
                 }
             }
+        }
+        .onChange(of: viewModel.lowEndDeviceHintMessage) { _, newValue in
+            if newValue != nil {
+                showLowEndHintAlert = true
+            }
+        }
+        .alert("recognition_low_end_device_first_hint_title", isPresented: $showLowEndHintAlert) {
+            Button("ok") {
+                viewModel.lowEndDeviceHintMessage = nil
+            }
+        } message: {
+            Text(viewModel.lowEndDeviceHintMessage ?? "")
         }
     }
     

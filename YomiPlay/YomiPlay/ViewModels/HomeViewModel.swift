@@ -303,10 +303,6 @@ final class HomeViewModel {
     
     /// 将分组导出为 ZIP 并触发分享（异步）；使用该分组内全部文档，不受搜索过滤影响
     func exportFolderAsZip(folderId: UUID?) {
-        guard SubscriptionManager.shared.isProUser else {
-            showPaywall = true
-            return
-        }
         let docs = allSavedDocuments.filter { $0.folderId == folderId }
         let name = folderDisplayName(for: folderId)
         guard !docs.isEmpty else {

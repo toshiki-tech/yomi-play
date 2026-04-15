@@ -15,11 +15,7 @@ final class ShadowReadingRecorder: NSObject, AVAudioRecorderDelegate {
 
     /// 请求麦克风权限
     func requestPermission() async -> Bool {
-        await withCheckedContinuation { cont in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                cont.resume(returning: granted)
-            }
-        }
+        await AVAudioApplication.requestRecordPermission()
     }
 
     /// 准备录音文件 URL（临时目录）
@@ -30,10 +26,10 @@ final class ShadowReadingRecorder: NSObject, AVAudioRecorderDelegate {
     }
 
     func startRecording(to url: URL) throws {
-        stopRecording()
+        _ = stopRecording()
 
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
         let settings: [String: Any] = [

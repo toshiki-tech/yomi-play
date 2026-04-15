@@ -35,12 +35,20 @@ struct PaywallView: View {
                     if !products.isEmpty {
                         productSection
                         unlockButton
-                        footerLinks
                     } else if isLoading {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 48)
+                    } else {
+                        Text("paywall_products_unavailable")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
                     }
+
+                    footerLinks
 
                     if let err = purchaseError {
                         Text(err)
@@ -152,12 +160,6 @@ struct PaywallView: View {
                     free: String(localized: LocalizedStringResource("paywall_free_import_compact", locale: locale)),
                     pro: String(localized: LocalizedStringResource("paywall_pro_import_compact", locale: locale))
                 )
-                compactBenefitRow(
-                    icon: "square.and.arrow.up",
-                    title: "export_share",
-                    free: String(localized: LocalizedStringResource("paywall_free_export_compact", locale: locale)),
-                    pro: String(localized: LocalizedStringResource("paywall_pro_export_compact", locale: locale))
-                )
             }
         }
         .padding(14)
@@ -191,10 +193,10 @@ struct PaywallView: View {
                 Text(title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("Free: \(free)")
+                Text(String(format: String(localized: LocalizedStringResource("paywall_tier_free_line", locale: locale)), free))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text("Pro: \(pro)")
+                Text(String(format: String(localized: LocalizedStringResource("paywall_tier_pro_line", locale: locale)), pro))
                     .font(.caption2)
                     .foregroundStyle(Self.proTextColor)
                     .fontWeight(.medium)
@@ -473,8 +475,8 @@ struct PaywallView: View {
         await MainActor.run {
             isRestoring = false
             restoreMessage = subscription.isProUser
-                ? String(localized: "paywall_restore_success")
-                : String(localized: "paywall_restore_no_entitlement")
+                ? String(localized: LocalizedStringResource("paywall_restore_success", locale: locale))
+                : String(localized: LocalizedStringResource("paywall_restore_no_entitlement", locale: locale))
             showRestoreAlert = true
         }
     }
@@ -522,7 +524,7 @@ struct PaywallView: View {
             selectedProductId = product.id
         } label: {
             ZStack(alignment: .topTrailing) {
-                HStack(spacing: 16) {
+                HStack(alignment: .top, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
                             Text(localizedPlanName(for: product))
@@ -539,16 +541,7 @@ struct PaywallView: View {
                                     .background(Capsule().fill(Color.orange))
                             }
                         }
-                        if isLifetime {
-                            Text("paywall_lifetime_tagline")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text(product.description)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
+                        subscriptionDetailTexts(for: product, isLifetime: isLifetime, isYearly: isYearly)
                     }
                     Spacer()
                     if isPurchasing {
@@ -601,37 +594,78 @@ struct PaywallView: View {
         .disabled(isPurchasing)
     }
 
-    private func localizedPlanName(for product: Product) -> String {
-        let language = locale.language.languageCode?.identifier ?? "en"
-        let isZhHans = language == "zh" && locale.identifier.contains("Hans")
-        let isZhHant = language == "zh" && locale.identifier.contains("Hant")
-        let isJa = language == "ja"
+    @ViewBuilder
+    private func subscriptionDetailTexts(for product: Product, isLifetime: Bool, isYearly: Bool) -> some View {
+        if isLifetime {
+            Text("paywall_lifetime_tagline")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("paywall_one_time_purchase")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        } else if let period = product.subscription?.subscriptionPeriod {
+            let periodPhrase = localizedSubscriptionPeriod(period)
+            Text(String(format: String(localized: LocalizedStringResource("paywall_auto_renews_format", locale: locale)), periodPhrase))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let monthlyLine = formattedMonthlyEquivalent(for: product, isYearly: isYearly) {
+                Text(monthlyLine)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
 
+    private func localizedSubscriptionPeriod(_ period: Product.SubscriptionPeriod) -> String {
+        let v = period.value
+        switch period.unit {
+        case .day:
+            if v == 1 {
+                return String(localized: LocalizedStringResource("paywall_period_1_day", locale: locale))
+            }
+            return String(format: String(localized: LocalizedStringResource("paywall_period_n_days", locale: locale)), v)
+        case .week:
+            if v == 1 {
+                return String(localized: LocalizedStringResource("paywall_period_1_week", locale: locale))
+            }
+            return String(format: String(localized: LocalizedStringResource("paywall_period_n_weeks", locale: locale)), v)
+        case .month:
+            if v == 1 {
+                return String(localized: LocalizedStringResource("paywall_period_1_month", locale: locale))
+            }
+            return String(format: String(localized: LocalizedStringResource("paywall_period_n_months", locale: locale)), v)
+        case .year:
+            if v == 1 {
+                return String(localized: LocalizedStringResource("paywall_period_1_year", locale: locale))
+            }
+            return String(format: String(localized: LocalizedStringResource("paywall_period_n_years", locale: locale)), v)
+        @unknown default:
+            return ""
+        }
+    }
+
+    private func formattedMonthlyEquivalent(for product: Product, isYearly: Bool) -> String? {
+        guard isYearly, product.subscription != nil else { return nil }
+        let monthly = product.price / Decimal(12)
+        let priceStr = monthly.formatted(product.priceFormatStyle)
+        return String(format: String(localized: LocalizedStringResource("paywall_price_per_month_format", locale: locale)), priceStr)
+    }
+
+    private func localizedPlanName(for product: Product) -> String {
         switch product.id {
         case monthlyProductId:
-            if isZhHans { return "YomiPlay Pro 月度" }
-            if isZhHant { return "YomiPlay Pro 月度" }
-            if isJa { return "YomiPlay Pro 月額" }
-            return "YomiPlay Pro Monthly"
+            return String(localized: LocalizedStringResource("paywall_plan_monthly", locale: locale))
         case yearlyProductId:
-            if isZhHans { return "YomiPlay Pro 年度" }
-            if isZhHant { return "YomiPlay Pro 年度" }
-            if isJa { return "YomiPlay Pro 年額" }
-            return "YomiPlay Pro Yearly"
+            return String(localized: LocalizedStringResource("paywall_plan_yearly", locale: locale))
         case lifetimeProductId:
-            if isZhHans { return "早期支持计划（终身）" }
-            if isZhHant { return "早期支持方案（終身）" }
-            if isJa { return "Early Supporter Plan（買い切り）" }
-            return "Early Supporter Plan"
+            return String(localized: LocalizedStringResource("paywall_plan_lifetime", locale: locale))
         default:
             return product.displayName
         }
     }
-
-    private var languageCode: String { locale.language.languageCode?.identifier ?? "en" }
-    private var isZhHans: Bool { languageCode == "zh" && locale.identifier.contains("Hans") }
-    private var isZhHant: Bool { languageCode == "zh" && locale.identifier.contains("Hant") }
-    private var isJa: Bool { languageCode == "ja" }
 
     /// 底部 CTA：立即解锁 Pro（SubscriptionStoreView 风格宽体按钮）
     private var unlockButton: some View {
@@ -683,7 +717,7 @@ struct PaywallView: View {
             }
         } catch {
             await MainActor.run {
-                purchaseError = error.localizedDescription
+                purchaseError = String(localized: LocalizedStringResource("paywall_store_products_failed", locale: locale))
                 isLoading = false
             }
         }
@@ -705,12 +739,12 @@ struct PaywallView: View {
                         Task { await SubscriptionManager.shared.updateSubscriptionStatus() }
                         onDismiss?()
                     case .unverified:
-                        purchaseError = String(localized: "purchase_verification_failed")
+                        purchaseError = String(localized: LocalizedStringResource("purchase_verification_failed", locale: locale))
                     }
                 case .userCancelled:
                     break
                 case .pending:
-                    purchaseError = String(localized: "purchase_pending")
+                    purchaseError = String(localized: LocalizedStringResource("purchase_pending", locale: locale))
                 @unknown default:
                     break
                 }
@@ -718,7 +752,7 @@ struct PaywallView: View {
         } catch {
             await MainActor.run {
                 purchasingProductId = nil
-                purchaseError = error.localizedDescription
+                purchaseError = String(localized: LocalizedStringResource("paywall_purchase_failed", locale: locale))
             }
         }
     }

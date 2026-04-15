@@ -63,6 +63,10 @@ final class AudioPlayerService {
     private var interGapWorkItem: DispatchWorkItem?
     /// 句间停顿等待 UI：此期间锁定为「已进入的下一句」，避免 AVPlayer 略早于 startTime 导致仍落在上句、再次误判 A→B 而横跳
     private var interGapTargetSegmentId: UUID?
+    /// 系统音频打断（来电、其它 App 抢焦点等）前是否处于播放态，用于 ended 时决定是否自动 resume
+    private var wasPlayingBeforeInterruption: Bool = false
+    /// 当前 PlayerItem 是否已做过「拉首帧」用的 seek(to: 0)，避免 readyToPlay 重复触发时把进度强行拉回开头
+    private var didSeekToStartForCurrentItem: Bool = false
     
     // MARK: - 初期化
     
@@ -90,7 +94,7 @@ final class AudioPlayerService {
     private func setupAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+            try session.setCategory(.playback, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetoothHFP, .allowBluetoothA2DP])
             try session.setActive(true)
             print("AudioPlayerService: セッション設定成功")
         } catch {
@@ -111,23 +115,32 @@ final class AudioPlayerService {
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
             switch type {
             case .began:
+                // 必须先取「是否在播」，再取消句间延时任务，否则 isPlaying 已被置 false 会误判
+                self.wasPlayingBeforeInterruption = self.isPlaying
+                self.interGapWorkItem?.cancel()
+                self.interGapWorkItem = nil
+                self.interGapTargetSegmentId = nil
                 self.player?.pause()
                 self.isPlaying = false
-                print("AudioPlayerService: 音声割り込み開始 → 一時停止・UI同期")
+                print("AudioPlayerService: 音声割り込み開始 → 一時停止・UI同期 wasPlayingBefore=\(self.wasPlayingBeforeInterruption)")
             case .ended:
+                defer { self.wasPlayingBeforeInterruption = false }
                 guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                if options.contains(.shouldResume) {
-                    if self.isAudioReady, self.player != nil {
-                        do {
-                            try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
-                        } catch {}
-                        self.player?.play()
-                        self.player?.rate = self.playbackRate
-                        self.isPlaying = true
-                        print("AudioPlayerService: 割り込み終了 → 再生再開")
-                    }
+                // 仅在中断前确实在播且系统建议恢复时自动 play，避免与句间停顿等延时 play 叠加，或用户已暂停却仍被撬开
+                guard options.contains(.shouldResume),
+                      self.wasPlayingBeforeInterruption,
+                      self.isAudioReady,
+                      self.player != nil else {
+                    return
                 }
+                do {
+                    try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+                } catch {}
+                self.player?.play()
+                self.player?.rate = self.playbackRate
+                self.isPlaying = true
+                print("AudioPlayerService: 割り込み終了 → 再生再開（中断前に再生中だった場合のみ）")
             @unknown default:
                 break
             }
@@ -219,7 +232,11 @@ final class AudioPlayerService {
                     self.isAudioReady = true
                     
                     // 動画の場合は先頭に seek して第一フレームを表示（黒画面を防ぐ）
-                    self.player?.seek(to: .zero) { _ in }
+                    // 同一 Item が再度 ready になった場合に Seek を繰り返さない（ロック解除後などで二重シークを防ぐ）
+                    if !self.didSeekToStartForCurrentItem {
+                        self.didSeekToStartForCurrentItem = true
+                        self.player?.seek(to: .zero) { _ in }
+                    }
                     
                     // durationを取得
                     let seconds = CMTimeGetSeconds(item.duration)
@@ -297,6 +314,8 @@ final class AudioPlayerService {
         interGapWorkItem = nil
         interGapTargetSegmentId = nil
         loopingSegment = nil
+        wasPlayingBeforeInterruption = false
+        didSeekToStartForCurrentItem = false
     }
     
     /// 字幕セグメントを設定する（同期表示用）

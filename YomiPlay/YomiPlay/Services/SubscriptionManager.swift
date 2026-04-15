@@ -10,7 +10,7 @@ import StoreKit
 import AVFoundation
 
 /// 月度免费识别额度（秒）
-private let freeQuotaLimit: Int = 1800  // 30 分钟
+private let freeQuotaLimit: Int = 3600  // 60 分钟
 
 private let monthlyUsedSecondsKey = "subscription_monthlyUsedSeconds"
 private let lastQuotaResetDateKey = "subscription_lastQuotaResetDate"
@@ -20,14 +20,22 @@ final class SubscriptionManager {
     static let shared = SubscriptionManager()
 
     #if DEBUG
+    private static let debugForceFreeDefaultsKey = "debug_force_free_for_paywall_testing"
+
     /// 设为 true 可模拟 Pro 用户，用于本地测试 Pro 界面（仅 Debug 生效，在设置页可切换）
     var debugSimulateProUser: Bool = false
+
+    /// 开启后忽略 StoreKit 真实权益与「模拟 Pro」，界面一律按免费用户显示，便于在沙盒已购终身等情况下仍测试付费墙（仅 Debug）
+    var debugForceFreeForPaywallTesting: Bool = UserDefaults.standard.bool(forKey: debugForceFreeDefaultsKey) {
+        didSet { UserDefaults.standard.set(debugForceFreeForPaywallTesting, forKey: Self.debugForceFreeDefaultsKey) }
+    }
     #endif
 
     private var _isProUser: Bool = false
-    /// 是否持有有效 Pro 订阅（月付 / 年付 / 终身）；Debug 下受 debugSimulateProUser 影响
+    /// 是否持有有效 Pro 订阅（月付 / 年付 / 终身）；Debug 下受 debugSimulateProUser / debugForceFreeForPaywallTesting 影响
     var isProUser: Bool {
         #if DEBUG
+        if debugForceFreeForPaywallTesting { return false }
         if debugSimulateProUser { return true }
         #endif
         return _isProUser
@@ -150,7 +158,7 @@ final class SubscriptionManager {
         UserDefaults.standard.set(monthlyUsedSeconds, forKey: monthlyUsedSecondsKey)
     }
 
-    /// 免费用户：当前已用 + 本次时长 是否超过 30 分钟
+    /// 免费用户：当前已用 + 本次时长 是否超过月度免费额度
     func canUseRecognitionSeconds(_ additionalSeconds: Int) -> Bool {
         if isProUser { return true }
         resetQuotaIfNeeded()

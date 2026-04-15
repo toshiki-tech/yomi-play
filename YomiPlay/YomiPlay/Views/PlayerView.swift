@@ -157,6 +157,8 @@ struct PlayerView: View {
                 if viewModel.repeatMode == .wholeTrack {
                     viewModel.playerService.seek(to: 0)
                     viewModel.playerService.play()
+                } else if viewModel.repeatMode == .playlist {
+                    playNextIfAvailable(loopToStart: true)
                 } else {
                     playNextIfAvailable()
                 }
@@ -238,12 +240,15 @@ struct PlayerView: View {
             currentTime: service.currentTime,
             duration: service.duration,
             playbackRateText: viewModel.playbackRateText,
+            playbackRate: viewModel.playbackRate,
+            availablePlaybackRates: PlayerViewModel.availableRates,
             repeatMode: viewModel.repeatMode,
             onTogglePlayPause: { viewModel.togglePlayPause() },
             onSkipBackward: { viewModel.skipBackward() },
             onSkipForward: { viewModel.skipForward() },
             onSeek: { time in viewModel.seek(to: time) },
             onCycleRate: { viewModel.cyclePlaybackRate() },
+            onSelectRate: { viewModel.setPlaybackRate($0) },
             onSelectRepeatMode: { viewModel.setRepeatMode($0) },
             onCycleRepeatMode: { viewModel.cycleRepeatMode() }
         )
@@ -256,12 +261,19 @@ struct PlayerView: View {
     
     // MARK: - プレイリスト制御
     
-    private func playNextIfAvailable() {
+    private func playNextIfAvailable(loopToStart: Bool = false) {
         let nextIndex = currentIndex + 1
-        guard nextIndex < playlist.count else { return }
-        let nextDoc = playlist[nextIndex]
+        let targetIndex: Int
+        if nextIndex < playlist.count {
+            targetIndex = nextIndex
+        } else if loopToStart, !playlist.isEmpty {
+            targetIndex = 0
+        } else {
+            return
+        }
+        let nextDoc = playlist[targetIndex]
         let nextDocument = DocumentStore.shared.load(id: nextDoc.id) ?? nextDoc
-        currentIndex = nextIndex
+        currentIndex = targetIndex
         viewModel = PlayerViewModel(document: nextDocument)
         shouldAutoPlayOnReady = true
         // onPlaybackEnded ハンドラを新しいプレイヤーに再設定
@@ -269,6 +281,8 @@ struct PlayerView: View {
             if viewModel.repeatMode == .wholeTrack {
                 viewModel.playerService.seek(to: 0)
                 viewModel.playerService.play()
+            } else if viewModel.repeatMode == .playlist {
+                playNextIfAvailable(loopToStart: true)
             } else {
                 playNextIfAvailable()
             }
@@ -380,6 +394,11 @@ struct SettingsSheetView: View {
             Button("ok") { viewModel.showTranslationError = false }
         } message: {
             Text(viewModel.translationErrorMessage ?? String(localized: "unknown_error"))
+        }
+        .alert(String(localized: LocalizedStringResource("translation_network_hint_title", locale: locale)), isPresented: $viewModel.showTranslationNetworkHint) {
+            Button("ok") { viewModel.showTranslationNetworkHint = false }
+        } message: {
+            Text(String(localized: LocalizedStringResource("translation_network_hint_message", locale: locale)))
         }
         .sheet(item: $exportShareItem) { item in
             exportShareSheet(item: item)
@@ -620,11 +639,7 @@ struct SettingsSheetView: View {
                         hasExported: hasExportedAudio,
                         isExporting: isExporting && exportingType == "Media"
                     ) {
-                        if SubscriptionManager.shared.isProUser {
-                            runExportTask(type: "Media") { url }
-                        } else {
-                            showPaywall = true
-                        }
+                        runExportTask(type: "Media") { url }
                     }
                     Divider().padding(.leading, 52)
                 }
@@ -637,15 +652,11 @@ struct SettingsSheetView: View {
                     hasExported: hasExportedSRT,
                     isExporting: isExporting && exportingType == "SRT"
                 ) {
-                    if SubscriptionManager.shared.isProUser {
-                        runExportTask(type: "SRT") {
-                            SubtitleExportService.writeSRTToTempFile(
-                                segments: viewModel.document.segments,
-                                fileName: viewModel.document.source.title
-                            )
-                        }
-                    } else {
-                        showPaywall = true
+                    runExportTask(type: "SRT") {
+                        SubtitleExportService.writeSRTToTempFile(
+                            segments: viewModel.document.segments,
+                            fileName: viewModel.document.source.title
+                        )
                     }
                 }
                 
@@ -659,15 +670,11 @@ struct SettingsSheetView: View {
                     hasExported: hasExportedYomi,
                     isExporting: isExporting && exportingType == "YOMI"
                 ) {
-                    if SubscriptionManager.shared.isProUser {
-                        runExportTask(type: "YOMI") {
-                            SubtitleExportService.writeYomiToTempFile(
-                                document: viewModel.document,
-                                fileName: viewModel.document.source.title
-                            )
-                        }
-                    } else {
-                        showPaywall = true
+                    runExportTask(type: "YOMI") {
+                        SubtitleExportService.writeYomiToTempFile(
+                            document: viewModel.document,
+                            fileName: viewModel.document.source.title
+                        )
                     }
                 }
             }
@@ -764,7 +771,7 @@ struct SettingsSheetView: View {
                         Menu {
                             ForEach(TranslationTargetLanguageOptions.allCodes, id: \.self) { code in
                                 Button {
-                                    viewModel.targetLanguageCode = code
+                                    Task { await viewModel.setTargetLanguageCode(code, userChangedTarget: true) }
                                 } label: {
                                     Text(TranslationTargetLanguageOptions.displayName(code: code, locale: locale))
                                 }
@@ -889,7 +896,9 @@ struct SettingsSheetView: View {
     
     private func interSubtitlePauseChoiceLabel(seconds: Double) -> String {
         let c = Self.interSubtitlePauseChoices.min(by: { abs($0 - seconds) < abs($1 - seconds) }) ?? seconds
-        if c == 0 { return String(localized: "inter_subtitle_pause_none") }
+        if c == 0 {
+            return String(localized: LocalizedStringResource("inter_subtitle_pause_none", locale: locale))
+        }
         let fmt = String(localized: LocalizedStringResource("inter_subtitle_pause_seconds_format", locale: locale))
         let v = (c == floor(c)) ? String(Int(c)) : String(c)
         return String(format: fmt, v)

@@ -44,18 +44,12 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         }
     }
 
-    /// 根据设备内存推荐可流畅运行的模型档位（首次安装时作为默认值）
+    /// 默认模型档位：为减少首次使用等待，统一使用 Small
     static var recommendedModeForDevice: RecognitionMode {
-        let mem = ProcessInfo.processInfo.physicalMemory
-        let gb = Double(mem) / (1024.0 * 1024.0 * 1024.0)
-        if gb < 3 { return .tiny }
-        if gb < 4 { return .base }
-        if gb < 6 { return .small }
-        if gb < 8 { return .medium }
-        return .large
+        .small
     }
 
-    /// 迁移旧值并确保 UserDefaults 中有有效选择；首次安装时写入设备推荐档位
+    /// 迁移旧值并确保 UserDefaults 中有有效选择；首次安装时写入默认 Small
     static func ensureModelVariantInitialized() {
         let ud = UserDefaults.standard
         var raw = ud.string(forKey: modelVariantDefaultsKey)
@@ -66,12 +60,17 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
             switch r {
             case "fast": migrated = "base"
             case "standard": migrated = "small"
-            case "high": migrated = "medium"
-            case "large": migrated = "large"
+            case "high": migrated = "small"
+            case "large": migrated = "small"
             default: migrated = recommendedModeForDevice.rawValue
             }
             raw = migrated
             ud.set(migrated, forKey: modelVariantDefaultsKey)
+        }
+        if raw == RecognitionMode.medium.rawValue || raw == RecognitionMode.large.rawValue {
+            let fallback = recommendedModeForDevice.rawValue
+            raw = fallback
+            ud.set(fallback, forKey: modelVariantDefaultsKey)
         }
         if raw == nil {
             let recommended = recommendedModeForDevice

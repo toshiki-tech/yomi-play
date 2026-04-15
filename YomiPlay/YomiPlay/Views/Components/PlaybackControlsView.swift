@@ -18,6 +18,8 @@ struct PlaybackControlsView: View {
     let currentTime: TimeInterval
     let duration: TimeInterval
     let playbackRateText: String
+    let playbackRate: Float
+    let availablePlaybackRates: [Float]
     let repeatMode: PlaybackRepeatMode
     
     private var palette: PlayerPalette { PlayerTheme.palette(for: playerScheme) }
@@ -26,6 +28,7 @@ struct PlaybackControlsView: View {
     let onSkipForward: () -> Void
     let onSeek: (TimeInterval) -> Void
     let onCycleRate: () -> Void
+    let onSelectRate: (Float) -> Void
     let onSelectRepeatMode: (PlaybackRepeatMode) -> Void
     let onCycleRepeatMode: () -> Void
     
@@ -117,12 +120,7 @@ struct PlaybackControlsView: View {
     
     private var controlButtons: some View {
         HStack(spacing: 0) {
-            controlButton(
-                icon: "gauge.with.dots.needle.33percent",
-                label: playbackRateText,
-                isActive: false,
-                action: onCycleRate
-            )
+            playbackRateMenu
             
             Spacer()
             
@@ -164,13 +162,47 @@ struct PlaybackControlsView: View {
         }
         .padding(.vertical, 4)
     }
+
+    private var playbackRateMenu: some View {
+        let isActive = playbackRate != 1.0
+        return Menu {
+            ForEach(availablePlaybackRates, id: \.self) { rate in
+                Button {
+                    onSelectRate(rate)
+                } label: {
+                    HStack {
+                        Text(playbackRateLabel(for: rate))
+                        Spacer(minLength: 8)
+                        if playbackRate == rate {
+                            Image(systemName: "checkmark")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(palette.accent)
+                        }
+                    }
+                }
+            }
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: "gauge.with.dots.needle.33percent")
+                    .font(.body)
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
+                Text(playbackRateText)
+                    .font(.system(size: 10))
+                    .foregroundStyle(isActive ? palette.accent : .secondary)
+            }
+        } primaryAction: {
+            onCycleRate()
+        }
+        .sensoryFeedback(.selection, trigger: playbackRate)
+        .frame(width: 56)
+    }
     
     private var repeatModeMenu: some View {
         let isActive = repeatMode != .off
         return Menu {
-            repeatModeMenuRow(mode: .off, icon: "repeat", titleKey: "playback_repeat_off")
-            repeatModeMenuRow(mode: .wholeTrack, icon: "repeat.circle", titleKey: "playback_repeat_whole_track")
             repeatModeMenuRow(mode: .currentSubtitle, icon: "text.quote", titleKey: "playback_repeat_current_sentence")
+            repeatModeMenuRow(mode: .wholeTrack, icon: "repeat.circle", titleKey: "playback_repeat_whole_track")
+            repeatModeMenuRow(mode: .playlist, icon: "list.bullet.circle", titleKey: "playback_repeat_playlist")
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: repeatModeIcon)
@@ -207,8 +239,9 @@ struct PlaybackControlsView: View {
     private var repeatModeIcon: String {
         switch repeatMode {
         case .off: return "repeat"
-        case .wholeTrack: return "repeat.circle.fill"
         case .currentSubtitle: return "text.quote"
+        case .wholeTrack: return "repeat.circle.fill"
+        case .playlist: return "list.bullet.circle.fill"
         }
     }
     
@@ -216,10 +249,12 @@ struct PlaybackControlsView: View {
         switch repeatMode {
         case .off:
             return String(localized: LocalizedStringResource("playback_repeat_label_off", locale: locale))
-        case .wholeTrack:
-            return String(localized: LocalizedStringResource("playback_repeat_label_whole", locale: locale))
         case .currentSubtitle:
             return String(localized: LocalizedStringResource("playback_repeat_label_sentence", locale: locale))
+        case .wholeTrack:
+            return String(localized: LocalizedStringResource("playback_repeat_label_whole", locale: locale))
+        case .playlist:
+            return String(localized: LocalizedStringResource("playback_repeat_label_playlist", locale: locale))
         }
     }
     
@@ -236,6 +271,12 @@ struct PlaybackControlsView: View {
         }
         .frame(width: 50)
     }
+
+    private func playbackRateLabel(for rate: Float) -> String {
+        if rate == 1.0 { return "1x" }
+        if rate == floor(rate) { return "\(Int(rate))x" }
+        return String(format: "%.2gx", rate)
+    }
 }
 
 // MARK: - プレビュー
@@ -246,12 +287,15 @@ struct PlaybackControlsView: View {
         currentTime: 35,
         duration: 182,
         playbackRateText: "1x",
+        playbackRate: 1.0,
+        availablePlaybackRates: [0.5, 0.75, 0.8, 0.9, 1.0, 1.25, 1.5, 2.0],
         repeatMode: .off,
         onTogglePlayPause: {},
         onSkipBackward: {},
         onSkipForward: {},
         onSeek: { _ in },
         onCycleRate: {},
+        onSelectRate: { _ in },
         onSelectRepeatMode: { _ in },
         onCycleRepeatMode: {}
     )

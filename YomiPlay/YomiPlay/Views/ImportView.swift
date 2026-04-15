@@ -12,7 +12,8 @@ struct ImportView: View {
     @Environment(\.locale) private var locale
     @Bindable var viewModel: HomeViewModel
     @State private var selectedVideoItem: PhotosPickerItem?
-    @State private var showPodcastImport: Bool = false
+    @State private var showPodcastSearchImport: Bool = false
+    @State private var showURLImport: Bool = false
     private var subscription: SubscriptionManager { SubscriptionManager.shared }
 
     var body: some View {
@@ -41,7 +42,8 @@ struct ImportView: View {
                 headerSection
                 headerStatusSection
                 VStack(spacing: 16) {
-                    podcastImportSection
+                    podcastSearchImportSection
+                    urlImportSection
                     fileImportSection
                     photoLibrarySection
                     zipImportSection
@@ -361,9 +363,9 @@ struct ImportView: View {
         .buttonStyle(.plain)
     }
     
-    private var podcastImportSection: some View {
+    private var podcastSearchImportSection: some View {
         Button {
-            showPodcastImport = true
+            showPodcastSearchImport = true
         } label: {
             HStack(spacing: 16) {
                 ZStack {
@@ -375,9 +377,9 @@ struct ImportView: View {
                 }
                 .frame(width: 50, height: 50)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(String(localized: LocalizedStringResource("import_from_podcast_or_url", locale: locale)))
+                    Text(String(localized: LocalizedStringResource("import_from_podcast", locale: locale)))
                         .font(.headline)
-                    Text(String(localized: LocalizedStringResource("import_podcast_or_url_description", locale: locale)))
+                    Text(String(localized: LocalizedStringResource("import_podcast_description", locale: locale)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -388,8 +390,40 @@ struct ImportView: View {
             .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
         }
         .buttonStyle(.plain)
-        .sheet(isPresented: $showPodcastImport) {
-            PodcastImportView(viewModel: viewModel, onDismiss: { showPodcastImport = false })
+        .sheet(isPresented: $showPodcastSearchImport) {
+            PodcastSearchImportView(viewModel: viewModel, onDismiss: { showPodcastSearchImport = false })
+        }
+    }
+
+    private var urlImportSection: some View {
+        Button {
+            showURLImport = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.green.opacity(0.1))
+                    Image(systemName: "link")
+                        .font(.title2)
+                        .foregroundStyle(.green)
+                }
+                .frame(width: 50, height: 50)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: LocalizedStringResource("load_from_url", locale: locale)))
+                        .font(.headline)
+                    Text(String(localized: LocalizedStringResource("podcast_audio_import_hint", locale: locale)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showURLImport) {
+            URLImportView(viewModel: viewModel, onDismiss: { showURLImport = false })
         }
     }
     
@@ -452,16 +486,17 @@ struct ImportView: View {
         )
     }
     
-    // MARK: - 播客或URL导入（搜索播客 + 直接粘贴链接）
+    // MARK: - 播客搜索导入
     
-    private struct PodcastImportView: View {
+    private struct PodcastSearchImportView: View {
         @Environment(\.locale) private var locale
         @Bindable var viewModel: HomeViewModel
         let onDismiss: () -> Void
-        @State private var urlInputText = ""
-        @State private var urlImportError: String?
-        @State private var isUrlSectionExpanded: Bool = false
+        private static let podcastSearchHistoryKey = "podcastSearchHistoryTerms"
+        private static let maxPodcastSearchHistoryCount = 6
         @State private var searchText = ""
+        @State private var searchHistory: [String] = []
+        @State private var firstSuccessfulSearchTerm: String?
         @State private var isSearching = false
         @State private var searchResults: [PodcastSearchResult] = []
         @State private var searchError: String?
@@ -469,8 +504,9 @@ struct ImportView: View {
         @State private var episodes: [PodcastEpisode] = []
         @State private var isLoadingEpisodes = false
         @State private var episodesError: String?
+        @State private var showEpisodeQuotaAlert: Bool = false
+        @State private var overQuotaEpisodeTitle: String = ""
         @FocusState private var isSearchFocused: Bool
-        @FocusState private var isUrlFieldFocused: Bool
 
         var body: some View {
             NavigationStack {
@@ -481,7 +517,7 @@ struct ImportView: View {
                         mainInputView
                     }
                 }
-                .navigationTitle(selectedPodcast != nil ? selectedPodcast!.name : String(localized: LocalizedStringResource("import_from_podcast_or_url", locale: locale)))
+                .navigationTitle(selectedPodcast != nil ? selectedPodcast!.name : String(localized: LocalizedStringResource("import_from_podcast", locale: locale)))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -500,9 +536,23 @@ struct ImportView: View {
                     }
                 }
             }
+            .alert("podcast_episode_over_quota_title", isPresented: $showEpisodeQuotaAlert) {
+                Button("import_upgrade_pro") {
+                    viewModel.showPaywall = true
+                }
+                Button("cancel", role: .cancel) {}
+            } message: {
+                Text(String(
+                    format: String(localized: LocalizedStringResource("podcast_episode_over_quota_message", locale: locale)),
+                    overQuotaEpisodeTitle
+                ))
+            }
+            .onAppear {
+                loadSearchHistory()
+            }
         }
 
-        /// 首页：URL 输入区 + 播客搜索
+        /// 首页：播客搜索
         private var mainInputView: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -514,113 +564,30 @@ struct ImportView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 24)
             }
-            // URL 小抽屉：默认贴边缩成一个图标，需要时横向展开
-            .overlay(alignment: .topTrailing) {
-                urlDrawer
-                    // 下移到提示文案下方，避免挡住搜索区
-                    .padding(.top, 88)
-                    .padding(.trailing, 2)
-            }
-        }
-
-        private var urlDrawer: some View {
-            let collapsedWidth: CGFloat = 46
-            let expandedWidth: CGFloat = 340
-            let collapsedHeight: CGFloat = 46
-            let expandedMaxHeight: CGFloat = 260
-            return ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-                    )
-                    // 关键：固定抽屉高度，避免背景拉满整屏导致“高条”观感
-                    .frame(
-                        width: isUrlSectionExpanded ? expandedWidth : collapsedWidth,
-                        height: isUrlSectionExpanded ? nil : collapsedHeight,
-                        alignment: .topTrailing
-                    )
-                    .frame(maxHeight: isUrlSectionExpanded ? expandedMaxHeight : collapsedHeight, alignment: .topTrailing)
-                    .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 6)
-
-                if isUrlSectionExpanded {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "captions.bubble.fill")
-                                .foregroundStyle(.secondary)
-                            Text("paste_url_section_title")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            Button {
-                                withAnimation(.spring(duration: 0.28)) {
-                                    isUrlSectionExpanded = false
-                                }
-                                isUrlFieldFocused = false
-                            } label: {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        TextEditor(text: $urlInputText)
-                            .frame(minHeight: 68, maxHeight: 110)
-                            .padding(10)
-                            .scrollContentBackground(.hidden)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isUrlFieldFocused ? Color.green : Color.clear, lineWidth: 2))
-                            .focused($isUrlFieldFocused)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-
-                        if let err = urlImportError {
-                            Text(err)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        }
-
-                        Button {
-                            importFromPastedURL()
-                        } label: {
-                            Label("import_from_link", systemImage: "arrow.down.circle.fill")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.green)
-                        .disabled(urlInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                    .padding(14)
-                    .frame(maxWidth: expandedWidth, alignment: .topLeading)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-                } else {
-                    Button {
-                        withAnimation(.spring(duration: 0.28)) {
-                            isUrlSectionExpanded = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            isUrlFieldFocused = true
-                        }
-                    } label: {
-                        Image(systemName: "captions.bubble.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: collapsedWidth, height: collapsedHeight)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("paste_url_section_title"))
-                }
-            }
-            .frame(maxHeight: isUrlSectionExpanded ? expandedMaxHeight : collapsedHeight, alignment: .topTrailing)
         }
 
         private var searchViewContent: some View {
-            VStack(spacing: 10) {
-                // 放大搜索框：整行卡片样式，更类似首页搜索
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "text.magnifyingglass")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("podcast_search_hint")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    if shouldShowFullGuidance {
+                        Text(String(
+                            format: String(localized: LocalizedStringResource("podcast_search_example_hint_format", locale: locale)),
+                            currentSearchExample
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(.horizontal, 12)
+
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
@@ -659,7 +626,45 @@ struct ImportView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .fill(Color(.secondarySystemBackground))
                 )
-                .padding(.horizontal)
+
+                if !searchHistory.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("podcast_search_history_title")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button("podcast_search_history_clear") {
+                                clearSearchHistory()
+                            }
+                            .font(.caption)
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                        }
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(searchHistory, id: \.self) { term in
+                                    Button {
+                                        searchText = term
+                                        runSearch()
+                                    } label: {
+                                        Text(term)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                Capsule()
+                                                    .fill(Color(.secondarySystemBackground))
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
 
                 if let err = searchError {
                     Text(err)
@@ -674,13 +679,6 @@ struct ImportView: View {
                 } else if searchResults.isEmpty && !searchText.isEmpty && !isSearching {
                     Text("podcast_no_results").font(.subheadline).foregroundStyle(.secondary)
                         .padding(.vertical, 20)
-                } else if searchResults.isEmpty {
-                    Text("podcast_search_hint")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
-                        .padding(.horizontal)
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(searchResults) { podcast in
@@ -711,25 +709,9 @@ struct ImportView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    .padding(.horizontal, 4)
                 }
             }
-        }
-
-        private func importFromPastedURL() {
-            let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty { return }
-            let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
-            guard let url = URL(string: firstLine), url.scheme != nil else {
-                urlImportError = String(localized: "invalid_url_hint")
-                return
-            }
-            urlImportError = nil
-            let title = url.deletingPathExtension().lastPathComponent
-            onDismiss()
-            viewModel.startImportFromURL(
-                url,
-                title: (title.isEmpty || title == "/") ? "URL" : title
-            )
         }
 
         private func episodeListView(podcast: PodcastSearchResult) -> some View {
@@ -757,8 +739,7 @@ struct ImportView: View {
                 } else {
                     List(episodes) { ep in
                         Button {
-                            onDismiss()
-                            viewModel.startImportFromURL(ep.audioURL, title: ep.title)
+                            handleEpisodeTap(ep)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(ep.title).font(.subheadline).lineLimit(2)
@@ -808,6 +789,12 @@ struct ImportView: View {
                     let results = try await PodcastSearchService.search(term: term)
                     await MainActor.run {
                         searchResults = results
+                        if !results.isEmpty {
+                            addSearchHistory(term)
+                            if firstSuccessfulSearchTerm == nil {
+                                firstSuccessfulSearchTerm = term
+                            }
+                        }
                         isSearching = false
                     }
                 } catch {
@@ -818,6 +805,42 @@ struct ImportView: View {
                     }
                 }
             }
+        }
+
+        private var currentSearchExample: String {
+            if let firstSuccessfulSearchTerm, !firstSuccessfulSearchTerm.isEmpty {
+                return firstSuccessfulSearchTerm
+            }
+            return String(localized: LocalizedStringResource("podcast_search_example_default", locale: locale))
+        }
+
+        private var shouldShowFullGuidance: Bool {
+            firstSuccessfulSearchTerm == nil && searchHistory.isEmpty
+        }
+
+        private func loadSearchHistory() {
+            let terms = UserDefaults.standard.array(forKey: Self.podcastSearchHistoryKey) as? [String] ?? []
+            searchHistory = terms.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            if firstSuccessfulSearchTerm == nil {
+                firstSuccessfulSearchTerm = searchHistory.first
+            }
+        }
+
+        private func addSearchHistory(_ term: String) {
+            let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return }
+            var updated = searchHistory.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
+            updated.insert(trimmed, at: 0)
+            if updated.count > Self.maxPodcastSearchHistoryCount {
+                updated = Array(updated.prefix(Self.maxPodcastSearchHistoryCount))
+            }
+            searchHistory = updated
+            UserDefaults.standard.set(updated, forKey: Self.podcastSearchHistoryKey)
+        }
+
+        private func clearSearchHistory() {
+            searchHistory = []
+            UserDefaults.standard.removeObject(forKey: Self.podcastSearchHistoryKey)
         }
 
         private func loadEpisodes(for podcast: PodcastSearchResult) {
@@ -838,6 +861,140 @@ struct ImportView: View {
                     }
                 }
             }
+        }
+
+        private func handleEpisodeTap(_ ep: PodcastEpisode) {
+            if shouldBlockByQuota(ep) {
+                overQuotaEpisodeTitle = ep.title
+                showEpisodeQuotaAlert = true
+                return
+            }
+            onDismiss()
+            viewModel.startImportFromURL(ep.audioURL, title: ep.title)
+        }
+
+        private func shouldBlockByQuota(_ ep: PodcastEpisode) -> Bool {
+            if SubscriptionManager.shared.isProUser { return false }
+            guard let seconds = ep.durationSeconds, seconds > 0 else { return false }
+            return !SubscriptionManager.shared.canUseRecognitionSeconds(seconds)
+        }
+    }
+
+    // MARK: - URL 导入
+
+    private struct URLImportView: View {
+        @Environment(\.locale) private var locale
+        @Bindable var viewModel: HomeViewModel
+        let onDismiss: () -> Void
+
+        @State private var urlInputText = ""
+        @State private var urlImportError: String?
+        @FocusState private var isUrlFieldFocused: Bool
+        private var isURLInputEmpty: Bool {
+            urlInputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        var body: some View {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "link")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("podcast_audio_import_hint")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text("podcast_url_unsupported_hint")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(.secondarySystemBackground))
+                        )
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("paste_url_section_title")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            TextEditor(text: $urlInputText)
+                                .frame(minHeight: 120, maxHeight: 180)
+                                .padding(10)
+                                .scrollContentBackground(.hidden)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.secondarySystemBackground))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isUrlFieldFocused ? Color.green : Color.clear, lineWidth: 2)
+                                )
+                                .focused($isUrlFieldFocused)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+
+                            if let err = urlImportError {
+                                Text(err)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(.tertiarySystemBackground))
+                        )
+
+                        Button {
+                            importFromPastedURL()
+                        } label: {
+                            Label("import_from_link", systemImage: "arrow.down.circle.fill")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .disabled(isURLInputEmpty)
+                    }
+                    .padding()
+                }
+                .navigationTitle(String(localized: LocalizedStringResource("load_from_url", locale: locale)))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("close") { onDismiss() }
+                    }
+                }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        isUrlFieldFocused = true
+                    }
+                }
+            }
+        }
+
+        private func importFromPastedURL() {
+            let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return }
+            let firstLine = trimmed.split(separator: "\n").first.map(String.init) ?? trimmed
+            guard let url = URL(string: firstLine), url.scheme != nil else {
+                urlImportError = String(localized: "invalid_url_hint")
+                return
+            }
+            urlImportError = nil
+            let title = url.deletingPathExtension().lastPathComponent
+            onDismiss()
+            viewModel.startImportFromURL(
+                url,
+                title: (title.isEmpty || title == "/") ? "URL" : title
+            )
         }
     }
 

@@ -9,12 +9,13 @@
 import Foundation
 import AVFoundation
 
-// MARK: - 再生リピートモード（整段 / 单句）
+// MARK: - 再生リピートモード（单句 / 单篇 / 列表）
 
 enum PlaybackRepeatMode: String, CaseIterable, Identifiable {
     case off
-    case wholeTrack
     case currentSubtitle
+    case wholeTrack
+    case playlist
     
     var id: String { rawValue }
 }
@@ -59,7 +60,7 @@ final class PlayerViewModel {
     
     // 再生速度（UserDefaults で永続化）
     var playbackRate: Float = 1.0 { didSet { Self.defaults.set(playbackRate, forKey: "playbackRate") } }
-    static let availableRates: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+    static let availableRates: [Float] = [0.5, 0.75, 0.8, 0.9, 1.0, 1.25, 1.5, 2.0]
     
     private static let defaults = UserDefaults.standard
     private static let playbackRepeatModeKey = "playbackRepeatMode"
@@ -85,6 +86,10 @@ final class PlayerViewModel {
     /// 手动翻译失败时显示
     var showTranslationError: Bool = false
     var translationErrorMessage: String?
+    /// 目标语言首次可能需要下载语言包时的提示
+    var showTranslationNetworkHint: Bool = false
+    private static let translationPackReadyCodesKey = "translationPackReadyCodes"
+    private static let translationPackHintShownCodesKey = "translationPackHintShownCodes"
     
     /// 元の動画ファイルの URL（動画インポート時のみ設定される）
     var videoPlaybackURL: URL? {
@@ -153,7 +158,13 @@ final class PlayerViewModel {
         
         if let raw = d.string(forKey: Self.playbackRepeatModeKey),
            let mode = PlaybackRepeatMode(rawValue: raw) {
-            repeatMode = mode
+            // 兼容旧版本：历史上的 off 已下线，自动映射到单篇循环并回写
+            if mode == .off {
+                repeatMode = .wholeTrack
+                d.set(PlaybackRepeatMode.wholeTrack.rawValue, forKey: Self.playbackRepeatModeKey)
+            } else {
+                repeatMode = mode
+            }
         }
         if d.object(forKey: Self.interSubtitlePauseKey) != nil {
             let p = d.double(forKey: Self.interSubtitlePauseKey)
@@ -197,6 +208,14 @@ final class PlayerViewModel {
         playbackRate = Self.availableRates[nextIndex]
         playerService.setPlaybackRate(playbackRate)
     }
+
+    func setPlaybackRate(_ rate: Float) {
+        guard Self.availableRates.contains(rate) else { return }
+        if playbackRate == rate { return }
+        playbackRate = rate
+        playerService.setPlaybackRate(rate)
+        HapticManager.shared.selection()
+    }
     
     var playbackRateText: String {
         if playbackRate == 1.0 { return "1x" }
@@ -216,10 +235,13 @@ final class PlayerViewModel {
         }
     }
     
-    /// 轻点重复按钮时按「关 → 整段 → 单句」轮换（配合菜单的长按直选）
+    /// 轻点重复按钮时按「单句 → 单篇 → 列表」轮换（配合菜单的长按直选）
     func cycleRepeatMode() {
-        let order = PlaybackRepeatMode.allCases
-        guard let i = order.firstIndex(of: repeatMode) else { return }
+        let order: [PlaybackRepeatMode] = [.currentSubtitle, .wholeTrack, .playlist]
+        guard let i = order.firstIndex(of: repeatMode) else {
+            setRepeatMode(order[0])
+            return
+        }
         let next = order[(i + 1) % order.count]
         setRepeatMode(next)
     }
@@ -239,8 +261,6 @@ final class PlayerViewModel {
             UserDefaults.standard.set(raw, forKey: key)
         }
         switch mode {
-        case .off, .wholeTrack:
-            playerService.setLoopSegment(nil)
         case .currentSubtitle:
             syncRepeatModeWithPlayer()
             if let seg = playerService.loopingSegment {
@@ -258,14 +278,14 @@ final class PlayerViewModel {
                 applyCurrentSubtitleSeekWorkItem = work
                 DispatchQueue.main.async(execute: work)
             }
+        case .wholeTrack, .playlist, .off:
+            playerService.setLoopSegment(nil)
         }
     }
     
     /// 与播放器同步单句循环目标（时间轴编辑等之后调用）
     func syncRepeatModeWithPlayer() {
         switch repeatMode {
-        case .off, .wholeTrack:
-            playerService.setLoopSegment(nil)
         case .currentSubtitle:
             let t = playerService.currentTime
             if let id = playerService.currentSegmentID,
@@ -276,6 +296,8 @@ final class PlayerViewModel {
             } else {
                 playerService.setLoopSegment(nil)
             }
+        case .wholeTrack, .playlist, .off:
+            playerService.setLoopSegment(nil)
         }
     }
     
@@ -499,6 +521,8 @@ final class PlayerViewModel {
     func translateAllSegments() async {
         let segments = document.segments
         guard !segments.isEmpty else { return }
+        // 不在此处预探测翻译：预探测失败会弹「网络/语言包」提示后仍继续正式批量翻译，
+        // 极易再次失败并弹出「翻译失败」，造成连续两个弹窗且误导用户。
         isTranslating = true
         defer { isTranslating = false }
         do {
@@ -507,6 +531,7 @@ final class PlayerViewModel {
                 sourceLanguageCode: "ja",
                 targetLanguageCode: targetLanguageCode
             )
+            markTranslationPackReady(targetLanguageCode)
             document.segments = result
             playerService.setSegments(document.segments)
             syncRepeatModeWithPlayer()
@@ -529,6 +554,7 @@ final class PlayerViewModel {
         defer { isTranslating = false }
         do {
             let translated = try await translationService.translateText(text, targetLanguageCode: targetLang)
+            markTranslationPackReady(targetLang)
             editingTranslatedText = translated.isEmpty ? nil : translated
         } catch {
             print("PlayerViewModel: 单条翻译失败 - \(error)")
@@ -543,9 +569,63 @@ final class PlayerViewModel {
             return String(localized: LocalizedStringResource("translation_requires_newer_ios", locale: AppLocale.current))
         }
         let explanation = String(localized: LocalizedStringResource("translation_failed_explanation", locale: AppLocale.current))
+        let networkHint = String(localized: LocalizedStringResource("translation_network_hint_message", locale: AppLocale.current))
+        var body = explanation + "\n\n" + networkHint
         let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !detail.isEmpty else { return explanation }
-        return explanation + "\n\n" + "(" + detail + ")"
+        if !detail.isEmpty {
+            body += "\n\n(" + detail + ")"
+        }
+        return body
+    }
+
+    /// - Parameter userChangedTarget: 仅当用户在播放页菜单中**切换到另一翻译目标**时为 `true`。
+    ///   默认/首次安装跟随系统语言时不应预探测，避免「开始翻译」前误弹网络/语言包提示；直接翻译失败时已有统一说明。
+    @MainActor
+    func setTargetLanguageCode(_ code: String, userChangedTarget: Bool = false) async {
+        let normalized = TranslationTargetLanguageOptions.normalizedCode(code)
+        let previous = targetLanguageCode
+        targetLanguageCode = normalized
+        guard userChangedTarget, normalized != previous else { return }
+        await prepareTargetLanguagePackIfNeeded()
+    }
+
+    @MainActor
+    private func prepareTargetLanguagePackIfNeeded() async {
+        if !TranslationService.isAvailableOnCurrentSystem { return }
+        let code = targetLanguageCode
+        guard !isTranslationPackReady(code) else { return }
+        do {
+            _ = try await translationService.translateText("こんにちは", targetLanguageCode: code)
+            markTranslationPackReady(code)
+        } catch {
+            if (error as? TranslationServiceError) == .notAvailable { return }
+            if shouldShowTranslationPackHint(for: code) {
+                showTranslationNetworkHint = true
+                markTranslationPackHintShown(code)
+            }
+        }
+    }
+
+    private func isTranslationPackReady(_ code: String) -> Bool {
+        let list = Self.defaults.array(forKey: Self.translationPackReadyCodesKey) as? [String] ?? []
+        return Set(list).contains(code)
+    }
+
+    private func markTranslationPackReady(_ code: String) {
+        var set = Set(Self.defaults.array(forKey: Self.translationPackReadyCodesKey) as? [String] ?? [])
+        set.insert(code)
+        Self.defaults.set(Array(set), forKey: Self.translationPackReadyCodesKey)
+    }
+
+    private func shouldShowTranslationPackHint(for code: String) -> Bool {
+        let list = Self.defaults.array(forKey: Self.translationPackHintShownCodesKey) as? [String] ?? []
+        return !Set(list).contains(code)
+    }
+
+    private func markTranslationPackHintShown(_ code: String) {
+        var set = Set(Self.defaults.array(forKey: Self.translationPackHintShownCodesKey) as? [String] ?? [])
+        set.insert(code)
+        Self.defaults.set(Array(set), forKey: Self.translationPackHintShownCodesKey)
     }
 
     // MARK: - SRT インポート

@@ -1011,6 +1011,7 @@
       }
     },
     "export_share" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1442,25 +1443,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "30 min/month"
+            "value" : "60 min/month"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "30分/月"
+            "value" : "60分/月"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "30 分钟/月"
+            "value" : "60 分钟/月"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "30 分鐘/月"
+            "value" : "60 分鐘/月"
           }
         }
       }
@@ -1492,9 +1493,6 @@
           }
         }
       }
-    },
-    "Free: %@" : {
-
     },
     "full_subtitle_file_with_furigana_translations_etc" : {
       "localizations" : {
@@ -1947,35 +1945,35 @@
       }
     },
     "import_from_podcast" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "From podcast link"
+            "value" : "Import from podcast"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播客リンクから"
+            "value" : "ポッドキャストからインポート"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从播客链接导入"
+            "value" : "从播客导入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "從播客連結匯入"
+            "value" : "從播客匯入"
           }
         }
       }
     },
     "import_from_podcast_or_url" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2090,35 +2088,35 @@
       }
     },
     "import_podcast_description" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Import public podcast or audio links and generate subtitles"
+            "value" : "Import public podcasts and generate subtitles"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "公開の播客・音声リンクを取り込んで字幕を生成"
+            "value" : "公開ポッドキャストを取り込んで字幕を生成"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导入公开播客或音频链接并生成字幕"
+            "value" : "导入公开播客并生成字幕"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匯入公開播客或音訊連結並生成字幕"
+            "value" : "匯入公開播客並生成字幕"
           }
         }
       }
     },
     "import_podcast_or_url_description" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3468,7 +3466,6 @@
       }
     },
     "load_from_url" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4289,30 +4286,59 @@
         }
       }
     },
-    "paywall_free_export_compact" : {
+    "paywall_auto_renews_format" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Export and sharing not supported"
+            "value" : "Auto-renews every %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "書き出し・共有は非対応"
+            "value" : "%@ごとに自動更新"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不支持导出和分享"
+            "value" : "每 %@ 自动续订"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不支援匯出與分享"
+            "value" : "每 %@ 自動續訂"
+          }
+        }
+      }
+    },
+    "paywall_free_export_compact" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export and share audio/video with subtitles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声/動画と字幕の書き出し・共有に対応"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支持音视频及字幕的导出与分享"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "支援音訊/影片與字幕的匯出及分享"
           }
         }
       }
@@ -4429,6 +4455,370 @@
         }
       }
     },
+    "paywall_one_time_purchase" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One-time purchase"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "買い切り（一度のお支払い）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次性购买"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次性購買"
+          }
+        }
+      }
+    },
+    "paywall_period_1_day" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 day"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1日間"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 天"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 天"
+          }
+        }
+      }
+    },
+    "paywall_period_1_month" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 month"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1か月"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 个月"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 個月"
+          }
+        }
+      }
+    },
+    "paywall_period_1_week" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 week"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1週間"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 周"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 週"
+          }
+        }
+      }
+    },
+    "paywall_period_1_year" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 year"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1年"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 年"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 年"
+          }
+        }
+      }
+    },
+    "paywall_period_n_days" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld days"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld日間"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 天"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 天"
+          }
+        }
+      }
+    },
+    "paywall_period_n_months" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld months"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldか月"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 个月"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 個月"
+          }
+        }
+      }
+    },
+    "paywall_period_n_weeks" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld weeks"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld週間"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 周"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 週"
+          }
+        }
+      }
+    },
+    "paywall_period_n_years" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld years"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld年"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 年"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 年"
+          }
+        }
+      }
+    },
+    "paywall_plan_lifetime" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Early Supporter Plan"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Early Supporter Plan（買い切り）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "早期支持计划（终身）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "早期支持方案（終身）"
+          }
+        }
+      }
+    },
+    "paywall_plan_monthly" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro Monthly"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro 月額"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro 月度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro 月度"
+          }
+        }
+      }
+    },
+    "paywall_plan_yearly" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro Yearly"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro 年額"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro 年度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Pro 年度"
+          }
+        }
+      }
+    },
+    "paywall_price_per_month_format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About %@ / month"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月額約 %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "约合 %@ / 月"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "約合 %@ / 月"
+          }
+        }
+      }
+    },
     "paywall_privacy" : {
       "localizations" : {
         "en" : {
@@ -4458,29 +4848,30 @@
       }
     },
     "paywall_pro_export_compact" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Export and share audio/video with subtitles"
+            "value" : "Same as Free"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声/動画と字幕の書き出し・共有に対応"
+            "value" : "無料版と同じ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持音视频及字幕的导出与分享"
+            "value" : "同免费版"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支援音訊/影片與字幕的匯出及分享"
+            "value" : "同免費版"
           }
         }
       }
@@ -4490,25 +4881,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Video import supported"
+            "value" : "Video and ZIP import supported"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "動画のインポートに対応"
+            "value" : "動画・ZIPのインポートに対応"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持视频导入"
+            "value" : "支持视频和 ZIP 导入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支援影片匯入"
+            "value" : "支援影片與 ZIP 匯入"
           }
         }
       }
@@ -4537,6 +4928,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "期間無限辨識額度"
+          }
+        }
+      }
+    },
+    "paywall_products_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscription prices are temporarily unavailable. Please try again later. Terms and Privacy Policy are linked below."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購読情報を読み込めませんでした。しばらくしてからお試しください。下部のリンクから利用規約とプライバシーポリシーをご確認いただけます。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂时无法加载订阅价格，请稍后重试。您仍可在下方查看服务条款与隐私政策。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫時無法載入訂閱價格，請稍後再試。您仍可在下方查看服務條款與隱私權政策。"
+          }
+        }
+      }
+    },
+    "paywall_purchase_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Purchase could not be completed. Please try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購入を完了できませんでした。もう一度お試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法完成购买，请稍后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法完成購買，請稍後再試。"
           }
         }
       }
@@ -4626,6 +5073,34 @@
         }
       }
     },
+    "paywall_store_products_failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t load subscription options. Check your connection and try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "購読プランを読み込めませんでした。接続を確認して再度お試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法加载订阅方案，请检查网络后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法載入訂閱方案，請檢查網路後重試。"
+          }
+        }
+      }
+    },
     "paywall_terms" : {
       "localizations" : {
         "en" : {
@@ -4650,6 +5125,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "服務條款"
+          }
+        }
+      }
+    },
+    "paywall_tier_free_line" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無料: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免费：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "免費：%@"
+          }
+        }
+      }
+    },
+    "paywall_tier_pro_line" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro：%@"
           }
         }
       }
@@ -4766,6 +5297,34 @@
         }
       }
     },
+    "playback_repeat_label_playlist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "List"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表"
+          }
+        }
+      }
+    },
     "playback_repeat_label_sentence" : {
       "localizations" : {
         "en" : {
@@ -4799,30 +5358,31 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All"
+            "value" : "Track"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全体"
+            "value" : "単篇"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整段"
+            "value" : "单篇"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整段"
+            "value" : "單篇"
           }
         }
       }
     },
     "playback_repeat_off" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4850,30 +5410,58 @@
         }
       }
     },
-    "playback_repeat_whole_track" : {
+    "playback_repeat_playlist" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repeat entire track"
+            "value" : "Loop playlist"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全体をリピート"
+            "value" : "列表ループ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整段循环"
+            "value" : "列表循环"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "整段循環"
+            "value" : "列表循環"
+          }
+        }
+      }
+    },
+    "playback_repeat_whole_track" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat current track"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "単篇ループ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单篇循环"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "單篇循環"
           }
         }
       }
@@ -5077,30 +5665,29 @@
       }
     },
     "podcast_audio_import_hint" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Supports some public podcast and audio links. If a link is not supported, use a local file you can save to the Files app and import via \"From Files\"."
+            "value" : "Paste a direct downloadable audio/video link to import."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一部の公開ポッドキャスト・音声リンクに対応しています。対応していない場合は、「ファイル」に保存できる音声を「ファイルから」で取り込んでください。"
+            "value" : "直接ダウンロードできる音声/動画リンクを貼り付けてインポートしてください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持部分公开播客与音频链接。若链接不可用，请使用可保存到「文件」的音频并通过「从文件导入」添加。"
+            "value" : "粘贴可直接下载的音频/视频链接进行导入。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支援部分公開播客與音訊連結。若連結無法使用，請使用可儲存至「檔案」的音訊並透過「從檔案匯入」加入。"
+            "value" : "貼上可直接下載的音訊/影片連結即可匯入。"
           }
         }
       }
@@ -5185,6 +5772,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下載逾時或伺服器忙碌，請稍後重試或改用其他來源。"
+          }
+        }
+      }
+    },
+    "podcast_episode_over_quota_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"%@\" may exceed your monthly free recognition quota. Upgrade to Pro to import this episode."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」は今月の無料認識枠を超える可能性があります。取り込むには Pro へアップグレードしてください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」可能会超出本月免费识别额度。升级 Pro 后可导入该单集。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」可能會超出本月免費識別額度。升級 Pro 後可匯入該單集。"
+          }
+        }
+      }
+    },
+    "podcast_episode_over_quota_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Free quota may be exceeded"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無料枠を超える可能性があります"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可能超出免费额度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可能超出免費額度"
           }
         }
       }
@@ -5357,30 +6000,171 @@
         }
       }
     },
-    "podcast_search_hint" : {
+    "podcast_search_compact_hint" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter a keyword to search Apple Podcasts, then choose a show and an episode to import."
+            "value" : "Search keywords are saved below. Tap the bottom-right icon to paste a URL."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーワードで検索し、番組とエピソードを選んで取り込みます。"
+            "value" : "検索キーワードは下に保存されます。右下のアイコンから URL を貼り付けできます。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "输入关键词搜索播客，选择节目和单集即可导入并生成字幕。"
+            "value" : "搜索关键词会保存在下方；需要链接时点击右下角图标即可。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "輸入關鍵詞搜尋播客，選擇節目與單集即可匯入並生成字幕。"
+            "value" : "搜尋關鍵詞會保存在下方；需要連結時點擊右下角圖示即可。"
+          }
+        }
+      }
+    },
+    "podcast_search_example_default" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "N3単語"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "N3単語"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "N3単語"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "N3単語"
+          }
+        }
+      }
+    },
+    "podcast_search_example_hint_format" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example keyword: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索キーワード例: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索关键词示例：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜尋關鍵詞示例：%@"
+          }
+        }
+      }
+    },
+    "podcast_search_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter keywords to search podcasts."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キーワードでポッドキャストを検索します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入关键词搜索播客。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輸入關鍵詞搜尋播客。"
+          }
+        }
+      }
+    },
+    "podcast_search_history_clear" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クリア"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
+          }
+        }
+      }
+    },
+    "podcast_search_history_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recent keywords"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近のキーワード"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近搜索"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近搜尋"
           }
         }
       }
@@ -5499,6 +6283,35 @@
         }
       }
     },
+    "podcast_url_drawer_hint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Need to paste a link? Tap the bottom-right icon to open the URL drawer."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リンクを貼り付ける場合は、右下のアイコンをタップして URL 入力を開いてください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要粘贴链接时，请点击右下角图标打开 URL 抽屉。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要貼上連結時，請點擊右下角圖示開啟 URL 抽屜。"
+          }
+        }
+      }
+    },
     "podcast_url_import_network_message" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5553,6 +6366,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要網路"
+          }
+        }
+      }
+    },
+    "podcast_url_unsupported_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only direct downloadable public audio/video links are supported. Pages that hide media files (for example, many YouTube pages) are usually not importable."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直接ダウンロード可能な公開音声/動画リンクのみ対応しています。メディア実体を隠すページ（例: 多くの YouTube ページ）は通常取り込めません。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅支持可直接下载的公开音频/视频链接。像 YouTube 这类隐藏媒体真实地址的播放页，通常无法导入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅支援可直接下載的公開音訊/影片連結。像 YouTube 這類隱藏媒體真實位址的播放頁，通常無法匯入。"
           }
         }
       }
@@ -5844,9 +6685,6 @@
           }
         }
       }
-    },
-    "Pro: %@" : {
-
     },
     "processing" : {
       "localizations" : {
@@ -6156,6 +6994,62 @@
         }
       }
     },
+    "recognition_low_end_device_first_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your device is using a faster, lighter recognition model to improve success rate and reduce waiting time."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この端末では、成功率と待ち時間の改善のため、より軽量で高速な認識モデルを自動使用しています。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为提升成功率并减少等待时间，当前设备已自动使用更轻量、更快的识别模型。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "為提升成功率並減少等待時間，目前裝置已自動使用更輕量、更快的識別模型。"
+          }
+        }
+      }
+    },
+    "recognition_low_end_device_first_hint_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optimized for your device"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "端末向けに最適化しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已为当前设备优化"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已為目前裝置最佳化"
+          }
+        }
+      }
+    },
     "recognition_mode_base" : {
       "localizations" : {
         "en" : {
@@ -6213,7 +7107,6 @@
       }
     },
     "recognition_mode_device_recommendation" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6242,6 +7135,7 @@
       }
     },
     "recognition_mode_device_recommendation %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -6265,6 +7159,118 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "根據您的裝置推薦：%@"
+          }
+        }
+      }
+    },
+    "recognition_mode_experimental_hide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide experimental models"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "実験モデルを隠す"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏实验模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隱藏實驗模型"
+          }
+        }
+      }
+    },
+    "recognition_mode_experimental_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium/Large can be much slower and are recommended only on high-performance devices."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium/Large は大幅に遅くなる可能性があり、高性能デバイス向けです。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium/Large 可能明显更慢，仅建议在高性能设备上使用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium/Large 可能明顯更慢，僅建議在高效能裝置上使用。"
+          }
+        }
+      }
+    },
+    "recognition_mode_experimental_show" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show experimental models"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "実験モデルを表示"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示实验模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顯示實驗模型"
+          }
+        }
+      }
+    },
+    "recognition_mode_experimental_unavailable_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimental Medium/Large is unavailable on this device."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この端末では実験モデル Medium/Large は利用できません。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前设备不提供实验模型 Medium/Large。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前裝置不提供實驗模型 Medium/Large。"
           }
         }
       }
@@ -6405,6 +7411,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更準確，複雜內容更放心。"
+          }
+        }
+      }
+    },
+    "recognition_mode_order_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whisper naming order: Tiny < Base < Small < Medium < Large."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whisper の命名順: Tiny < Base < Small < Medium < Large"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whisper 命名顺序：Tiny < Base < Small < Medium < Large。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Whisper 命名順序：Tiny < Base < Small < Medium < Large。"
           }
         }
       }
@@ -6689,6 +7723,62 @@
         }
       }
     },
+    "recognition_model_unavailable_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognition model is unavailable or download failed. YomiPlay has switched to a lighter model. Please try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "認識モデルが利用できないか、ダウンロードに失敗しました。軽量モデルへ切り替えたため、もう一度お試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别模型不可用或下载失败，已自动切换为更轻量模型，请重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別模型不可用或下載失敗，已自動切換為更輕量模型，請重試。"
+          }
+        }
+      }
+    },
+    "recognition_runtime_failed_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognition failed on this device/runtime. YomiPlay has downgraded the model automatically; try again or use shorter audio."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この端末/実行環境では認識に失敗しました。モデルを自動で軽量化したので、再試行するか短い音声でお試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前设备/运行环境识别失败，已自动降级模型。请重试，或先用更短音频。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前裝置/執行環境識別失敗，已自動降級模型。請重試，或先用較短音訊。"
+          }
+        }
+      }
+    },
     "recognition_settings" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6714,6 +7804,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "語音識別"
+          }
+        }
+      }
+    },
+    "recognition_source_file_missing_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The imported file is no longer available. Please reselect the source file and try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読み込んだファイルが見つかりません。元ファイルを再選択してもう一度お試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入的源文件已不存在，请重新选择文件后再试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯入的來源檔案已不存在，請重新選擇檔案後再試。"
           }
         }
       }
@@ -7506,6 +8624,62 @@
         }
       }
     },
+    "settings_debug_force_free_footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When on, the app treats you as a free user so you can open the paywall and test purchases again (e.g. after buying lifetime in the sandbox). Real entitlements are unchanged; turn off to restore normal Pro behavior. Debug builds only."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンにすると StoreKit上の権利に関係なく画面は無料ユーザー扱いになり、サンドボックスで買い切り後なども購読画面のテストができます。実際の権利は変わりません。オフにすると通常どおり Pro 表示に戻ります。開発ビルド専用です。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启后界面将始终按免费用户显示，便于在沙盒已购终身等情况再次打开付费墙测试；真实权益未被撤销，关闭本项即可恢复正常 Pro 显示。仅在开发构建中可用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟後介面將一律以免費使用者顯示，便於在沙盒已購買終身等情況再次開啟付費牆測試；實際權益並未取消，關閉後即恢復正常 Pro 顯示。僅開發建置可用。"
+          }
+        }
+      }
+    },
+    "settings_debug_force_free_toggle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Force free user (test paywall)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無料ユーザーとして表示（課金画面のテスト）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "强制显示为免费用户（测付费墙）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "強制顯示為免費使用者（測付費牆）"
+          }
+        }
+      }
+    },
     "settings_debug_simulate_pro_footer" : {
       "localizations" : {
         "en" : {
@@ -7848,25 +9022,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Please make sure you are using the latest build and that related IAP/subscription items are fully configured and available in App Store Connect."
+            "value" : "If podcast import or recognition fails, first verify the link is a direct downloadable audio source, then try a shorter episode or local file import. If it still fails, switch to a lighter recognition model in Settings."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "最新ビルドを使用し、App Store Connect の IAP/サブスク設定が完了して利用可能であることを確認してください。"
+            "value" : "播客の取り込みや認識に失敗する場合は、まずリンクが直接ダウンロード可能な音声ソースか確認し、短いエピソードやローカルファイル取り込みを試してください。改善しない場合は設定でより軽量な認識モデルに切り替えてください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请确认当前安装的是最新构建，并且 App Store Connect 中对应 IAP/订阅已配置完整并可用。"
+            "value" : "如果播客导入或识别失败，请先确认链接是可直接下载的音频源，再尝试更短的单集或本地文件导入；仍失败时可在设置中切换更轻量的识别模型。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "請確認目前安裝的是最新版本，且 App Store Connect 中對應 IAP/訂閱已完整配置並可用。"
+            "value" : "若播客匯入或識別失敗，請先確認連結是可直接下載的音訊來源，再嘗試較短單集或本機檔案匯入；仍失敗時可在設定切換較輕量的識別模型。"
           }
         }
       }
@@ -7904,25 +9078,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Some languages may require downloading language packs on first use. Please ensure network access is allowed."
+            "value" : "Translation is available on iOS 26 or later. Some target languages may require a one-time language pack download on first use, so please allow network access."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "初回利用時に言語パックのダウンロードが必要な場合があります。ネットワーク接続を許可してください。"
+            "value" : "翻訳機能は iOS 26 以降で利用できます。初回利用時は対象言語の言語パックが必要な場合があるため、ネットワーク接続を許可してください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "首次使用部分语言时可能需要下载语言包，请确保允许网络访问。"
+            "value" : "翻译功能仅支持 iOS 26 及以上。首次使用部分目标语言时可能需要下载语言包，请确保允许网络访问。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "首次使用部分語言時可能需要下載語言包，請確認已允許網路存取。"
+            "value" : "翻譯功能僅支援 iOS 26 及以上。首次使用部分目標語言時可能需要下載語言包，請確認已允許網路存取。"
           }
         }
       }
@@ -8072,25 +9246,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Why can't I see subscription plans sometimes?"
+            "value" : "What should I do if podcast import or recognition fails?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "サブスクリプションプランが表示されないことがあるのはなぜですか？"
+            "value" : "播客の取り込みや音声認識に失敗した場合はどうすればよいですか？"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "为什么有时看不到订阅方案？"
+            "value" : "如果播客导入或语音识别失败该怎么办？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "為什麼有時看不到訂閱方案？"
+            "value" : "若播客匯入或語音識別失敗該怎麼辦？"
           }
         }
       }
@@ -9635,25 +10809,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Translation requires a newer version of iOS. Please update your device."
+            "value" : "Translation requires iOS 26 or later. Please update your device."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻訳機能は新しいバージョンのiOSが必要です。デバイスをアップデートしてください。"
+            "value" : "翻訳機能は iOS 26 以降が必要です。デバイスをアップデートしてください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻译功能需要更高版本的系统，请升级 iOS 后使用。"
+            "value" : "翻译功能需要 iOS 26 或更高版本，请升级后使用。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻譯功能需要更高版本的系統，請升級 iOS 後使用。"
+            "value" : "翻譯功能需要 iOS 26 或更高版本，請升級後使用。"
           }
         }
       }
