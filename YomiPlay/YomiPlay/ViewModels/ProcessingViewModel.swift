@@ -634,7 +634,7 @@ final class ProcessingViewModel {
         let status: TranslationStatus
     }
 
-    /// 使用设置中的目标语言对字幕做一次翻译，失败则返回原 segments（不阻塞导入），并回传执行结果。
+    /// 使用设置中的主+副目标语对字幕做一次翻译，失败则返回原 segments（不阻塞导入），并回传执行结果。
     /// 仅当用户已在设置中开启「翻译」时执行；未开启则返回 `.skipped`。
     private func runTranslationIfNeeded(
         _ segments: [TranscriptSegment],
@@ -646,14 +646,22 @@ final class ProcessingViewModel {
         guard UserDefaults.standard.bool(forKey: "translationEnabled") else {
             return TranslationOutcome(segments: segments, status: .skipped)
         }
-        let targetLang = TranslationTargetLanguageOptions.resolvedStoredOrDefault()
+        let primary = TranslationTargetLanguageOptions.resolvedStoredOrDefault()
+        var targets: [String] = [primary]
+        if let secondaryRaw = UserDefaults.standard.string(forKey: "secondaryTargetLanguageCode"),
+           !secondaryRaw.isEmpty {
+            let secondary = TranslationTargetLanguageOptions.normalizedCode(secondaryRaw)
+            if secondary != primary {
+                targets.append(secondary)
+            }
+        }
         do {
             let result = try await translationService.translateSegments(
                 segments,
-                targetLanguageCode: targetLang,
+                targetLanguageCodes: targets,
                 documentNonJapaneseRecognitionSource: documentNonJapanese
             )
-            print("ProcessingViewModel: 自动翻译完成 target=\(targetLang)")
+            print("ProcessingViewModel: 自动翻译完成 targets=\(targets)")
             return TranslationOutcome(segments: result, status: .success)
         } catch {
             print("ProcessingViewModel: 自动翻译跳过 \(error)")

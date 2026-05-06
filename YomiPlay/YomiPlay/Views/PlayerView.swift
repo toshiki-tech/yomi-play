@@ -295,11 +295,15 @@ struct PlayerView: View {
             showFurigana: viewModel.showFurigana,
             showRomaji: viewModel.showRomaji,
             showEnglish: viewModel.showEnglish,
-            showTranslation: viewModel.showTranslation,
+            showPrimaryTranslation: viewModel.showPrimaryTranslation,
+            showSecondaryTranslation: viewModel.showSecondaryTranslation,
+            primaryTranslationLanguageCode: viewModel.primaryTargetLanguageCode,
+            secondaryTranslationLanguageCode: viewModel.secondaryTargetLanguageCode,
             fontSize: effectiveFontSize,
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
-            editingTranslatedText: Binding(get: { viewModel.editingTranslatedText }, set: { viewModel.editingTranslatedText = $0 }),
+            editingPrimaryTranslatedText: Binding(get: { viewModel.editingPrimaryTranslatedText }, set: { viewModel.editingPrimaryTranslatedText = $0 }),
+            editingSecondaryTranslatedText: Binding(get: { viewModel.editingSecondaryTranslatedText }, set: { viewModel.editingSecondaryTranslatedText = $0 }),
             editingTokenReadings: $viewModel.editingTokenReadings,
             editingTokenSegmentationText: $viewModel.editingTokenSegmentationText,
             editingSkipFurigana: $viewModel.editingSkipFurigana,
@@ -880,18 +884,18 @@ struct SettingsSheetView: View {
                     .padding(.horizontal, 16).padding(.bottom, 8)
                 
                 VStack(spacing: 0) {
-                    settingsRow(icon: "globe", title: "target_language", color: .green) {
+                    settingsRow(icon: "globe", title: "target_language_primary", color: .green) {
                         Menu {
                             ForEach(TranslationTargetLanguageOptions.allCodes, id: \.self) { code in
                                 Button {
-                                    Task { await viewModel.setTargetLanguageCode(code, userChangedTarget: true) }
+                                    Task { await viewModel.setPrimaryTargetLanguageCode(code, userChangedTarget: true) }
                                 } label: {
                                     Text(TranslationTargetLanguageOptions.displayName(code: code, locale: locale))
                                 }
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text(labelForLanguage(code: viewModel.targetLanguageCode))
+                                Text(labelForLanguage(code: viewModel.primaryTargetLanguageCode))
                                     .font(.subheadline)
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.caption2)
@@ -899,7 +903,44 @@ struct SettingsSheetView: View {
                             }
                         }
                     }
-                    
+
+                    Divider().padding(.leading, 52)
+
+                    settingsRow(icon: "globe.badge.chevron.backward", title: "target_language_secondary", color: .green) {
+                        Menu {
+                            Button {
+                                Task { await viewModel.setSecondaryTargetLanguageCode(nil, userChangedTarget: true) }
+                            } label: {
+                                Text("target_language_secondary_none")
+                            }
+                            Divider()
+                            ForEach(TranslationTargetLanguageOptions.allCodes, id: \.self) { code in
+                                if TranslationTargetLanguageOptions.normalizedCode(code)
+                                    != TranslationTargetLanguageOptions.normalizedCode(viewModel.primaryTargetLanguageCode) {
+                                    Button {
+                                        Task { await viewModel.setSecondaryTargetLanguageCode(code, userChangedTarget: true) }
+                                    } label: {
+                                        Text(TranslationTargetLanguageOptions.displayName(code: code, locale: locale))
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                if let s = viewModel.secondaryTargetLanguageCode, !s.isEmpty {
+                                    Text(labelForLanguage(code: s))
+                                        .font(.subheadline)
+                                } else {
+                                    Text("target_language_secondary_none")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
                     Divider().padding(.leading, 52)
                     
                     settingsRow(icon: "text.bubble", title: "translate_all_subtitles", color: .green) {
@@ -918,10 +959,19 @@ struct SettingsSheetView: View {
                     Divider().padding(.leading, 52)
                     
                     settingsToggleRow(
-                        icon: "text.bubble.fill", title: "show_translation",
+                        icon: "text.bubble.fill", title: "show_translation_primary",
                         subtitle: "show_translation_below_each_line", color: .green,
-                        isOn: $viewModel.showTranslation
+                        isOn: $viewModel.showPrimaryTranslation
                     )
+
+                    if let s = viewModel.secondaryTargetLanguageCode, !s.isEmpty {
+                        Divider().padding(.leading, 52)
+                        settingsToggleRow(
+                            icon: "text.bubble", title: "show_translation_secondary",
+                            subtitle: "show_translation_below_each_line", color: .green,
+                            isOn: $viewModel.showSecondaryTranslation
+                        )
+                    }
                 }
                 .background(Color(.secondarySystemGroupedBackground))
                 .cornerRadius(12)

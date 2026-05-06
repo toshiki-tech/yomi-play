@@ -16,11 +16,15 @@ struct TranscriptView: View {
     let showFurigana: Bool
     let showRomaji: Bool
     let showEnglish: Bool
-    let showTranslation: Bool
+    let showPrimaryTranslation: Bool
+    let showSecondaryTranslation: Bool
+    let primaryTranslationLanguageCode: String
+    let secondaryTranslationLanguageCode: String?
     let fontSize: CGFloat
     let editingSegmentID: UUID?
     @Binding var editingText: String
-    @Binding var editingTranslatedText: String?
+    @Binding var editingPrimaryTranslatedText: String?
+    @Binding var editingSecondaryTranslatedText: String?
     @Binding var editingTokenReadings: [EditableTokenReading]
     @Binding var editingTokenSegmentationText: String
     @Binding var editingSkipFurigana: Bool
@@ -55,10 +59,14 @@ struct TranscriptView: View {
                             showFurigana: showFurigana,
                             showRomaji: showRomaji,
                             showEnglish: showEnglish,
-                            showTranslation: showTranslation,
+                            showPrimaryTranslation: showPrimaryTranslation,
+                            showSecondaryTranslation: showSecondaryTranslation,
+                            primaryTranslationLanguageCode: primaryTranslationLanguageCode,
+                            secondaryTranslationLanguageCode: secondaryTranslationLanguageCode,
                             fontSize: fontSize,
                             editingText: $editingText,
-                            editingTranslatedText: $editingTranslatedText,
+                            editingPrimaryTranslatedText: $editingPrimaryTranslatedText,
+                            editingSecondaryTranslatedText: $editingSecondaryTranslatedText,
                             editingTokenReadings: $editingTokenReadings,
                             editingTokenSegmentationText: $editingTokenSegmentationText,
                             editingSkipFurigana: $editingSkipFurigana,
@@ -125,10 +133,14 @@ struct SegmentRowView: View {
     private var palette: PlayerPalette { PlayerTheme.palette(for: playerScheme) }
     let showRomaji: Bool
     let showEnglish: Bool
-    let showTranslation: Bool
+    let showPrimaryTranslation: Bool
+    let showSecondaryTranslation: Bool
+    let primaryTranslationLanguageCode: String
+    let secondaryTranslationLanguageCode: String?
     let fontSize: CGFloat
     @Binding var editingText: String
-    @Binding var editingTranslatedText: String?
+    @Binding var editingPrimaryTranslatedText: String?
+    @Binding var editingSecondaryTranslatedText: String?
     @Binding var editingTokenReadings: [EditableTokenReading]
     @Binding var editingTokenSegmentationText: String
     @Binding var editingSkipFurigana: Bool
@@ -213,14 +225,36 @@ struct SegmentRowView: View {
                     .foregroundStyle(isActive ? palette.contentForegroundActive : .primary)
             }
             
-            // 下段：翻译文本
-            if showTranslation,
-               let translated = segment.translatedText,
+            // 下段：主翻译
+            if showPrimaryTranslation,
+               let translated = segment.translation(for: primaryTranslationLanguageCode),
                !translated.isEmpty {
                 Text(translated)
                     .font(.system(size: fontSize * 0.85))
                     .foregroundStyle(isActive ? palette.contentForegroundActiveSecondary : .secondary)
                     .padding(.top, 2)
+            }
+            // 下段：副翻译（用更小字号 + 标签区分主/副）
+            if showSecondaryTranslation,
+               let secondary = secondaryTranslationLanguageCode,
+               !secondary.isEmpty,
+               let translated = segment.translation(for: secondary),
+               !translated.isEmpty {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(TranslationTargetLanguageOptions.shortBadge(for: secondary))
+                        .font(.system(size: max(10, fontSize * 0.6), weight: .semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(palette.accent.opacity(0.18))
+                        )
+                        .foregroundStyle(palette.accent)
+                    Text(translated)
+                        .font(.system(size: fontSize * 0.78))
+                        .foregroundStyle(isActive ? palette.contentForegroundActiveSecondary : .secondary)
+                }
+                .padding(.top, 1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -382,18 +416,50 @@ struct SegmentRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("translation_editable_label")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text("translation_editable_label")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(TranslationTargetLanguageOptions.shortBadge(for: primaryTranslationLanguageCode))
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(RoundedRectangle(cornerRadius: 4).fill(palette.accent.opacity(0.15)))
+                        .foregroundStyle(palette.accent)
+                }
                 TextField("translation_edit_placeholder", text: Binding(
-                    get: { editingTranslatedText ?? "" },
-                    set: { editingTranslatedText = $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+                    get: { editingPrimaryTranslatedText ?? "" },
+                    set: { editingPrimaryTranslatedText = $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
                 ), axis: .vertical)
                     .font(.system(size: fontSize * 0.9))
                     .textFieldStyle(.plain)
                     .lineLimit(2...4)
                     .padding(8)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color(.tertiarySystemBackground)))
+            }
+            if let secondary = secondaryTranslationLanguageCode, !secondary.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text("translation_editable_label_secondary")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(TranslationTargetLanguageOptions.shortBadge(for: secondary))
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(palette.accent.opacity(0.15)))
+                            .foregroundStyle(palette.accent)
+                    }
+                    TextField("translation_edit_placeholder", text: Binding(
+                        get: { editingSecondaryTranslatedText ?? "" },
+                        set: { editingSecondaryTranslatedText = $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+                    ), axis: .vertical)
+                        .font(.system(size: fontSize * 0.9))
+                        .textFieldStyle(.plain)
+                        .lineLimit(2...4)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color(.tertiarySystemBackground)))
+                }
             }
             Button {
                 Task { await onTranslateThisSegment() }

@@ -156,8 +156,12 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     var confidence: Float?        // 認識信頼度（オプション）
     /// true の場合、振り仮名・ローマ字を表示しない（中国語など日本語以外のセグメント用）
     var skipFurigana: Bool
-    /// 翻訳済みテキスト（ユーザーが翻訳機能を実行したときに設定される）
+    /// 旧版本「单一翻译」字段。新版本统一改用 `translations`；保留此字段是为兼容老 JSON 解码与一次性迁移。
+    /// - 注意：新代码不要再写入此字段。读取请走 `translation(for:)`。
     var translatedText: String?
+    /// 多目标语翻译。键为规范化语言代码（如 "zh-Hans" / "en"），值为译文。
+    /// nil 表示尚未翻译；空字典与 nil 等价。
+    var translations: [String: String]?
     /// 用户手动注音覆盖（可选）。有值时优先于自动分词 tokens 展示。
     var userTokenOverrides: [FuriganaToken]?
     /// 本句 `originalText` 的书写/识别语言（Whisper 主标签如 ja/en/zh）。跟读转写优先用此值；nil 时用全局识别语言设置。
@@ -172,6 +176,7 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         confidence: Float? = nil,
         skipFurigana: Bool = false,
         translatedText: String? = nil,
+        translations: [String: String]? = nil,
         userTokenOverrides: [FuriganaToken]? = nil,
         originalTextLanguageCode: String? = nil
     ) {
@@ -183,6 +188,7 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
         self.confidence = confidence
         self.skipFurigana = skipFurigana
         self.translatedText = translatedText
+        self.translations = translations
         self.userTokenOverrides = userTokenOverrides
         self.originalTextLanguageCode = originalTextLanguageCode
     }
@@ -212,6 +218,7 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
             confidence: confidence,
             skipFurigana: skipFurigana,
             translatedText: translatedText,
+            translations: nil,
             userTokenOverrides: nil,
             originalTextLanguageCode: originalTextLanguageCode
         )
@@ -220,6 +227,36 @@ struct TranscriptSegment: Identifiable, Codable, Equatable, Hashable {
     /// 指定時刻がこのセグメントの範囲内かどうか
     func contains(time: TimeInterval) -> Bool {
         return time >= startTime && time < endTime
+    }
+
+    // MARK: - 翻译访问 helper
+
+    /// 取某目标语言的译文。
+    /// - Parameter code: 目标语代码，使用前会做一次规范化（"zh"→"zh-Hans" 等）。
+    /// - Returns: 已存在且非空的译文；否则 nil。
+    func translation(for code: String) -> String? {
+        let key = TranslationTargetLanguageOptions.normalizedCode(code)
+        if let v = translations?[key], !v.isEmpty { return v }
+        return nil
+    }
+
+    /// 写入某目标语言的译文（传入 nil 或空字符串则删除）。
+    mutating func setTranslation(_ text: String?, for code: String) {
+        let key = TranslationTargetLanguageOptions.normalizedCode(code)
+        var dict = translations ?? [:]
+        if let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
+            dict[key] = text
+        } else {
+            dict.removeValue(forKey: key)
+        }
+        translations = dict.isEmpty ? nil : dict
+    }
+
+    /// 是否包含任意一种语言的翻译（多语字典或老的单字段都算）。
+    var hasAnyTranslation: Bool {
+        if let t = translatedText, !t.isEmpty { return true }
+        if let dict = translations, dict.values.contains(where: { !$0.isEmpty }) { return true }
+        return false
     }
 }
 

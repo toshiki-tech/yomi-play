@@ -69,8 +69,40 @@ final class PlayerViewModel {
     var interSubtitlePauseSeconds: Double = 0
     
     // 翻訳設定（UserDefaults で永続化）
-    var targetLanguageCode: String = "en" { didSet { Self.defaults.set(targetLanguageCode, forKey: "targetLanguageCode") } }
-    var showTranslation: Bool = false { didSet { Self.defaults.set(showTranslation, forKey: "showTranslation") } }
+    /// 主翻译语言（必填）。沿用旧 UserDefaults key `targetLanguageCode` 以兼容老版本。
+    var primaryTargetLanguageCode: String = "en" {
+        didSet { Self.defaults.set(primaryTargetLanguageCode, forKey: "targetLanguageCode") }
+    }
+    /// 副翻译语言（可选，nil = 不显示副翻译）。新增 UserDefaults key `secondaryTargetLanguageCode`。
+    var secondaryTargetLanguageCode: String? = nil {
+        didSet {
+            if let v = secondaryTargetLanguageCode, !v.isEmpty {
+                Self.defaults.set(v, forKey: "secondaryTargetLanguageCode")
+            } else {
+                Self.defaults.removeObject(forKey: "secondaryTargetLanguageCode")
+            }
+        }
+    }
+    /// 是否在字幕下方显示主翻译。沿用旧 UserDefaults key `showTranslation` 以兼容老版本。
+    var showPrimaryTranslation: Bool = false {
+        didSet { Self.defaults.set(showPrimaryTranslation, forKey: "showTranslation") }
+    }
+    /// 是否在字幕下方显示副翻译。
+    var showSecondaryTranslation: Bool = false {
+        didSet { Self.defaults.set(showSecondaryTranslation, forKey: "showSecondaryTranslation") }
+    }
+
+    /// 当前激活的目标语数组（主始终参与；副若有效且不与主重复则参与）。
+    var activeTargetLanguageCodes: [String] {
+        var out = [primaryTargetLanguageCode]
+        if let s = secondaryTargetLanguageCode,
+           !s.isEmpty,
+           TranslationTargetLanguageOptions.normalizedCode(s)
+            != TranslationTargetLanguageOptions.normalizedCode(primaryTargetLanguageCode) {
+            out.append(s)
+        }
+        return out
+    }
     /// 字幕行右侧跟读麦克风入口（默认关闭，按需开启）
     var showShadowReadingMic: Bool = false {
         didSet { Self.defaults.set(showShadowReadingMic, forKey: "showShadowReadingMicInPlayer") }
@@ -90,8 +122,10 @@ final class PlayerViewModel {
     // 字幕編集
     var editingSegmentID: UUID? = nil
     var editingText: String = ""
-    /// 编辑时本条翻译结果（确定后写回 segment.translatedText）
-    var editingTranslatedText: String? = nil
+    /// 编辑时本条主翻译结果（确定后写回 segment.translations[primaryCode]）
+    var editingPrimaryTranslatedText: String? = nil
+    /// 编辑时本条副翻译结果（确定后写回 segment.translations[secondaryCode]，副语为 nil 时忽略）
+    var editingSecondaryTranslatedText: String? = nil
     /// 编辑时逐词注音（用于用户自定义分词注音覆盖）
     var editingTokenReadings: [EditableTokenReading] = []
     /// 注音编辑页的手动分词文本（以 `|` 分隔）
@@ -137,11 +171,30 @@ final class PlayerViewModel {
             showEnglish = false
         }
         persistDisplayToggles = true
-        // 若文档已有翻译且用户从未设置过 showTranslation，默认显示翻译
-        if !showTranslation,
+
+        // 一次性把老的 segment.translatedText 迁到 segment.translations[primaryCode]
+        // 用 primaryTargetLanguageCode 作为推断的旧目标语（与老 UserDefaults["targetLanguageCode"] 一致）
+        if Self.migrateLegacyTranslatedText(in: &self.document, assumedCode: primaryTargetLanguageCode) {
+            do {
+                try DocumentStore.shared.save(self.document)
+            } catch {
+                print("PlayerViewModel: legacy translation 迁移落盘失败: \(error)")
+            }
+        }
+
+        // 若文档已有任意翻译且用户从未设置过 showPrimaryTranslation，默认显示主翻译
+        if !showPrimaryTranslation,
            Self.defaults.object(forKey: "showTranslation") == nil,
-           document.segments.contains(where: { $0.translatedText != nil && !($0.translatedText ?? "").isEmpty }) {
-            showTranslation = true
+           document.segments.contains(where: { $0.hasAnyTranslation }) {
+            showPrimaryTranslation = true
+        }
+        // 副翻译：若用户已设置过副语言且文档存在该语言译文，默认开启展示
+        if !showSecondaryTranslation,
+           Self.defaults.object(forKey: "showSecondaryTranslation") == nil,
+           let secondary = secondaryTargetLanguageCode,
+           !secondary.isEmpty,
+           document.segments.contains(where: { $0.translation(for: secondary) != nil }) {
+            showSecondaryTranslation = true
         }
         
         // 動画がある場合は動画ファイルをロード（映像＋音声を統一AVPlayerで管理）
@@ -169,7 +222,10 @@ final class PlayerViewModel {
             showEnglish = d.bool(forKey: "showEnglish")
         }
         if d.object(forKey: "showTranslation") != nil {
-            showTranslation = d.bool(forKey: "showTranslation")
+            showPrimaryTranslation = d.bool(forKey: "showTranslation")
+        }
+        if d.object(forKey: "showSecondaryTranslation") != nil {
+            showSecondaryTranslation = d.bool(forKey: "showSecondaryTranslation")
         }
         if d.object(forKey: "showShadowReadingMicInPlayer") != nil {
             showShadowReadingMic = d.bool(forKey: "showShadowReadingMicInPlayer")
@@ -193,10 +249,36 @@ final class PlayerViewModel {
         }
         
         if let stored = d.string(forKey: "targetLanguageCode"), !stored.isEmpty {
-            targetLanguageCode = TranslationTargetLanguageOptions.normalizedCode(stored)
+            primaryTargetLanguageCode = TranslationTargetLanguageOptions.normalizedCode(stored)
         } else {
-            targetLanguageCode = TranslationTargetLanguageOptions.defaultTargetCode()
+            primaryTargetLanguageCode = TranslationTargetLanguageOptions.defaultTargetCode()
         }
+        if let stored = d.string(forKey: "secondaryTargetLanguageCode"),
+           !stored.isEmpty {
+            let norm = TranslationTargetLanguageOptions.normalizedCode(stored)
+            // 副语与主语相同则视为未设置
+            secondaryTargetLanguageCode = (norm == primaryTargetLanguageCode) ? nil : norm
+        } else {
+            secondaryTargetLanguageCode = nil
+        }
+    }
+
+    /// 一次性把 segment.translatedText 字段（旧字段）迁移到 translations[assumedCode]
+    /// - Returns: 是否产生了任何修改（调用方据此决定是否落盘）
+    @discardableResult
+    private static func migrateLegacyTranslatedText(in document: inout TranscriptDocument, assumedCode: String) -> Bool {
+        var changed = false
+        for i in document.segments.indices {
+            guard let legacy = document.segments[i].translatedText,
+                  !legacy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            // 已迁移过：translations 已包含同语言译文，不再重复写
+            if document.segments[i].translation(for: assumedCode) == nil {
+                document.segments[i].setTranslation(legacy, for: assumedCode)
+            }
+            document.segments[i].translatedText = nil
+            changed = true
+        }
+        return changed
     }
     
     // MARK: - 再生コントロール
@@ -336,7 +418,12 @@ final class PlayerViewModel {
     func startEditing(segment: TranscriptSegment) {
         editingSegmentID = segment.id
         editingText = segment.originalText
-        editingTranslatedText = segment.translatedText
+        editingPrimaryTranslatedText = segment.translation(for: primaryTargetLanguageCode)
+        if let s = secondaryTargetLanguageCode {
+            editingSecondaryTranslatedText = segment.translation(for: s)
+        } else {
+            editingSecondaryTranslatedText = nil
+        }
         let sourceTokens = segment.userTokenOverrides ?? segment.tokens
         editingTokenReadings = Self.makeEditableTokenReadings(from: sourceTokens)
         editingTokenSegmentationText = sourceTokens.map(\.surface).joined(separator: "|")
@@ -349,7 +436,8 @@ final class PlayerViewModel {
     func cancelEditing() {
         editingSegmentID = nil
         editingText = ""
-        editingTranslatedText = nil
+        editingPrimaryTranslatedText = nil
+        editingSecondaryTranslatedText = nil
         editingTokenReadings = []
         editingTokenSegmentationText = ""
         editingSkipFurigana = false
@@ -413,8 +501,21 @@ final class PlayerViewModel {
                     ? nil
                     : (shouldKeepOverride ? (userOverrideTokens.isEmpty ? nil : userOverrideTokens) : nil)
                 self.document.segments[segmentIndex].skipFurigana = shouldSkip
-                self.document.segments[segmentIndex].translatedText = self.editingTranslatedText
-                self.editingTranslatedText = nil
+                // 编辑中的两份翻译：分别写到主/副目标语对应的字典槽位
+                self.document.segments[segmentIndex].setTranslation(
+                    self.editingPrimaryTranslatedText,
+                    for: self.primaryTargetLanguageCode
+                )
+                if let secondary = self.secondaryTargetLanguageCode {
+                    self.document.segments[segmentIndex].setTranslation(
+                        self.editingSecondaryTranslatedText,
+                        for: secondary
+                    )
+                }
+                // 旧字段不再使用，确保清空避免日后 lazy migration 再覆盖正确数据
+                self.document.segments[segmentIndex].translatedText = nil
+                self.editingPrimaryTranslatedText = nil
+                self.editingSecondaryTranslatedText = nil
                 self.editingTokenReadings = []
                 self.editingTokenSegmentationText = ""
                 
@@ -472,6 +573,7 @@ final class PlayerViewModel {
             confidence: segment.confidence,
             skipFurigana: segment.skipFurigana,
             translatedText: segment.translatedText,
+            translations: segment.translations,
             userTokenOverrides: segment.userTokenOverrides,
             originalTextLanguageCode: segment.originalTextLanguageCode
         )
@@ -483,6 +585,7 @@ final class PlayerViewModel {
             confidence: segment.confidence,
             skipFurigana: segment.skipFurigana,
             translatedText: segment.translatedText,
+            translations: segment.translations,
             userTokenOverrides: segment.userTokenOverrides,
             originalTextLanguageCode: segment.originalTextLanguageCode
         )
@@ -540,6 +643,7 @@ final class PlayerViewModel {
                 self.document.segments[targetIndex].userTokenOverrides = nil
                 self.document.segments[targetIndex].skipFurigana = shouldSkip
                 self.document.segments[targetIndex].translatedText = nil
+                self.document.segments[targetIndex].translations = nil
                 self.document.segments[targetIndex].originalTextLanguageCode = mergedLang
                 
                 // 現在のセグメントを削除
@@ -567,11 +671,13 @@ final class PlayerViewModel {
     
     // MARK: - 字幕翻訳（仅对现有字幕文本做翻译，不涉及语音识别）
 
-    /// 翻译全部字幕：对当前每条字幕的 originalText 调用系统翻译，结果写入 translatedText
+    /// 翻译全部字幕：按当前激活的所有目标语（主+副）依次翻译，结果合并到 translations。
     @MainActor
     func translateAllSegments() async {
         let segments = document.segments
         guard !segments.isEmpty else { return }
+        let targets = activeTargetLanguageCodes
+        guard !targets.isEmpty else { return }
         // 不在此处预探测翻译：预探测失败会弹「网络/语言包」提示后仍继续正式批量翻译，
         // 极易再次失败并弹出「翻译失败」，造成连续两个弹窗且误导用户。
         isTranslating = true
@@ -579,17 +685,18 @@ final class PlayerViewModel {
         do {
             let result = try await translationService.translateSegments(
                 segments,
-                targetLanguageCode: targetLanguageCode,
+                targetLanguageCodes: targets,
                 documentNonJapaneseRecognitionSource: document.isNonJapaneseRecognitionSource
             )
-            markTranslationPackReady(targetLanguageCode)
+            for code in targets { markTranslationPackReady(code) }
             document.segments = result
             // 同步翻译状态：成功后清除"翻译失败"提示
             document.translationStatus = .success
             playerService.setSegments(document.segments)
             syncRepeatModeWithPlayer()
             saveDocument()
-            showTranslation = true
+            showPrimaryTranslation = true
+            if secondaryTargetLanguageCode != nil { showSecondaryTranslation = true }
         } catch {
             print("PlayerViewModel: 翻译全部失败 - \(error)")
             // 翻译再次失败：更新状态以便提示横条继续显示
@@ -600,26 +707,43 @@ final class PlayerViewModel {
         }
     }
 
-    /// 编辑时翻译当前这条字幕（使用当前编辑框文本与设置中的目标语言）
+    /// 编辑时翻译当前这条字幕：按主+副各跑一次，分别写入 editing*TranslatedText。
+    /// 任一失败即抛出统一错误提示；成功部分仍保留在编辑字段中。
     @MainActor
     func translateCurrentSegment() async {
         let text = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let targetLang = targetLanguageCode
+        let targets = activeTargetLanguageCodes
+        guard !targets.isEmpty else { return }
         isTranslating = true
         defer { isTranslating = false }
+        let segmentSource = editingSegmentID.flatMap { id in
+            document.segments.first(where: { $0.id == id })?.originalTextLanguageCode
+        }
+        let primary = primaryTargetLanguageCode
+        let secondary = secondaryTargetLanguageCode
         do {
-            let segmentSource = editingSegmentID.flatMap { id in
-                document.segments.first(where: { $0.id == id })?.originalTextLanguageCode
-            }
-            let translated = try await translationService.translateText(
+            let primaryResult = try await translationService.translateText(
                 text,
                 segmentSourceLanguageCode: segmentSource,
-                targetLanguageCode: targetLang,
+                targetLanguageCode: primary,
                 documentNonJapaneseRecognitionSource: document.isNonJapaneseRecognitionSource
             )
-            markTranslationPackReady(targetLang)
-            editingTranslatedText = translated.isEmpty ? nil : translated
+            markTranslationPackReady(primary)
+            editingPrimaryTranslatedText = primaryResult.isEmpty ? nil : primaryResult
+
+            if let s = secondary, !s.isEmpty,
+               TranslationTargetLanguageOptions.normalizedCode(s)
+                != TranslationTargetLanguageOptions.normalizedCode(primary) {
+                let secondaryResult = try await translationService.translateText(
+                    text,
+                    segmentSourceLanguageCode: segmentSource,
+                    targetLanguageCode: s,
+                    documentNonJapaneseRecognitionSource: document.isNonJapaneseRecognitionSource
+                )
+                markTranslationPackReady(s)
+                editingSecondaryTranslatedText = secondaryResult.isEmpty ? nil : secondaryResult
+            }
         } catch {
             print("PlayerViewModel: 单条翻译失败 - \(error)")
             translationErrorMessage = translationFailureUserMessage(for: error)
@@ -645,18 +769,42 @@ final class PlayerViewModel {
     /// - Parameter userChangedTarget: 仅当用户在播放页菜单中**切换到另一翻译目标**时为 `true`。
     ///   默认/首次安装跟随系统语言时不应预探测，避免「开始翻译」前误弹网络/语言包提示；直接翻译失败时已有统一说明。
     @MainActor
-    func setTargetLanguageCode(_ code: String, userChangedTarget: Bool = false) async {
+    func setPrimaryTargetLanguageCode(_ code: String, userChangedTarget: Bool = false) async {
         let normalized = TranslationTargetLanguageOptions.normalizedCode(code)
-        let previous = targetLanguageCode
-        targetLanguageCode = normalized
+        let previous = primaryTargetLanguageCode
+        primaryTargetLanguageCode = normalized
+        // 主语与副语相同时，自动取消副语
+        if let s = secondaryTargetLanguageCode,
+           TranslationTargetLanguageOptions.normalizedCode(s) == normalized {
+            secondaryTargetLanguageCode = nil
+        }
         guard userChangedTarget, normalized != previous else { return }
-        await prepareTargetLanguagePackIfNeeded()
+        await prepareTargetLanguagePackIfNeeded(for: normalized)
+    }
+
+    /// 设置副翻译语言；`code == nil || ""` 表示取消副翻译。
+    @MainActor
+    func setSecondaryTargetLanguageCode(_ code: String?, userChangedTarget: Bool = false) async {
+        let previous = secondaryTargetLanguageCode
+        guard let raw = code, !raw.isEmpty else {
+            secondaryTargetLanguageCode = nil
+            return
+        }
+        let normalized = TranslationTargetLanguageOptions.normalizedCode(raw)
+        // 与主语相同则忽略
+        if normalized == primaryTargetLanguageCode {
+            secondaryTargetLanguageCode = nil
+            return
+        }
+        secondaryTargetLanguageCode = normalized
+        guard userChangedTarget,
+              previous.map({ TranslationTargetLanguageOptions.normalizedCode($0) }) != normalized else { return }
+        await prepareTargetLanguagePackIfNeeded(for: normalized)
     }
 
     @MainActor
-    private func prepareTargetLanguagePackIfNeeded() async {
+    private func prepareTargetLanguagePackIfNeeded(for code: String) async {
         if !TranslationService.isAvailableOnCurrentSystem { return }
-        let code = targetLanguageCode
         guard !isTranslationPackReady(code) else { return }
         do {
             _ = try await translationService.translateText(

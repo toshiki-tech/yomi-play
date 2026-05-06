@@ -24,7 +24,34 @@ final class TranslationService {
     
     private init() {}
     
-    /// セグメント配列を targetLanguageCode で指定された言語に翻訳する。
+    /// 多目标语版本：对一组字幕按多个目标语依次翻译，结果合并到 `translations` 字典。
+    /// - Parameter targetLanguageCodes: 目标语代码数组（去重、规范化）；为空则原样返回。
+    /// - Returns: 已合并所有目标语翻译的 segments。
+    /// - Note: 任意一种目标语失败即抛出。调用方按需对失败的子集做降级（例如先成功的目标语先入库）。
+    func translateSegments(
+        _ segments: [TranscriptSegment],
+        targetLanguageCodes: [String],
+        documentNonJapaneseRecognitionSource: Bool? = nil
+    ) async throws -> [TranscriptSegment] {
+        guard !segments.isEmpty else { return segments }
+        guard #available(iOS 26.0, *) else {
+            throw TranslationServiceError.notAvailable
+        }
+        let normalizedTargets = uniqueNormalizedTargetCodes(from: targetLanguageCodes)
+        guard !normalizedTargets.isEmpty else { return segments }
+
+        var result = segments
+        for code in normalizedTargets {
+            result = try await translateSegments(
+                result,
+                targetLanguageCode: code,
+                documentNonJapaneseRecognitionSource: documentNonJapaneseRecognitionSource
+            )
+        }
+        return result
+    }
+
+    /// セグメント配列を targetLanguageCode で指定された言語に翻訳する。结果写入 `translations[targetCode]`。
     /// 各句の源语言来自 `originalTextLanguageCode`（及可选的文档级「非日语识别源」回退）；源与目标相同时不写系统翻译，直接复制原文。
     func translateSegments(
         _ segments: [TranscriptSegment],
@@ -45,7 +72,7 @@ final class TranslationService {
         for i in result.indices {
             let rawText = result[i].originalText.trimmingCharacters(in: .whitespacesAndNewlines)
             if rawText.isEmpty {
-                result[i].translatedText = nil
+                result[i].setTranslation(nil, for: targetNorm)
                 continue
             }
             let srcId = TranslationLanguageRouting.sourceLanguageIdentifierForTranslation(
@@ -53,7 +80,7 @@ final class TranslationService {
                 documentNonJapaneseRecognitionSource: documentNonJapaneseRecognitionSource
             )
             if TranslationLanguageRouting.shouldSkipTranslationBecauseSameLanguage(sourceIdentifier: srcId, targetLanguageCode: targetNorm) {
-                result[i].translatedText = result[i].originalText
+                result[i].setTranslation(result[i].originalText, for: targetNorm)
                 continue
             }
             groups[srcId, default: []].append(i)
@@ -67,7 +94,7 @@ final class TranslationService {
                 targetLanguageCode: targetNorm
             )
             for (k, globalIdx) in idxs.enumerated() where k < translated.count {
-                result[globalIdx].translatedText = translated[k].translatedText
+                result[globalIdx].setTranslation(translated[k], for: targetNorm)
             }
         }
         
@@ -79,7 +106,7 @@ final class TranslationService {
         _ segments: [TranscriptSegment],
         sourceLanguageCode: String,
         targetLanguageCode: String
-    ) async throws -> [TranscriptSegment] {
+    ) async throws -> [String?] {
         let source = Locale.Language(identifier: sourceLanguageCode)
         let target = Locale.Language(identifier: targetLanguageCode)
         
@@ -94,15 +121,30 @@ final class TranslationService {
         
         let responses = try await session.translations(from: requests)
         
-        var batchResult = segments
+        var output: [String?] = Array(repeating: nil, count: segments.count)
         for response in responses {
             if let idStr = response.clientIdentifier,
                let idx = Int(idStr),
-               idx < batchResult.count {
-                batchResult[idx].translatedText = response.targetText
+               idx < output.count {
+                output[idx] = response.targetText
             }
         }
-        return batchResult
+        return output
+    }
+
+    /// 把一批译文按规范化目标语代码合并到字典中，去重并去空。
+    private func uniqueNormalizedTargetCodes(from codes: [String]) -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for code in codes {
+            let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let norm = TranslationTargetLanguageOptions.normalizedCode(trimmed)
+            if seen.insert(norm).inserted {
+                out.append(norm)
+            }
+        }
+        return out
     }
 
     /// 单句翻译（用于编辑时「翻译这条」）。`segmentSourceLanguageCode` 为 nil 时仅用文档级回退（与批量翻译一致）。
@@ -125,7 +167,7 @@ final class TranslationService {
             targetLanguageCode: targetLanguageCode,
             documentNonJapaneseRecognitionSource: documentNonJapaneseRecognitionSource
         )
-        return out.first?.translatedText ?? ""
+        return out.first?.translation(for: targetLanguageCode) ?? ""
     }
 
     /// 翻訳用の Configuration を作成する（SwiftUI の .translationTask で使用）。iOS 26.0 以上のみ。

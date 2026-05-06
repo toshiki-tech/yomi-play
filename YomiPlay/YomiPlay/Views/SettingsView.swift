@@ -15,6 +15,8 @@ struct SettingsView: View {
     @State private var showEnglish: Bool = UserDefaults.standard.bool(forKey: "showEnglish")
     @State private var fontSize: CGFloat = CGFloat(UserDefaults.standard.double(forKey: "fontSize"))
     @State private var targetLanguageCode: String
+    /// 副翻译语言代码，空字符串 "" 表示「不显示副翻译」。
+    @State private var secondaryTargetLanguageCode: String = ""
     @AppStorage("whisperModelVariant") private var recognitionModeRaw: String = "small"
     @AppStorage(WhisperSpeechRecognitionService.sourceLanguageDefaultsKey) private var recognitionSourceLanguage: String = "ja"
     @AppStorage("appInterfaceLanguage") private var appInterfaceLanguage: String = "system"
@@ -52,6 +54,11 @@ struct SettingsView: View {
             UserDefaults.standard.set(initialTarget, forKey: "targetLanguageCode")
         }
         _targetLanguageCode = State(initialValue: initialTarget)
+
+        // 副翻译：与主语相同则视为未设置；否则保留为有效值
+        let secondaryRaw = UserDefaults.standard.string(forKey: "secondaryTargetLanguageCode") ?? ""
+        let secondaryNorm = secondaryRaw.isEmpty ? "" : TranslationTargetLanguageOptions.normalizedCode(secondaryRaw)
+        _secondaryTargetLanguageCode = State(initialValue: secondaryNorm == initialTarget ? "" : secondaryNorm)
     }
     
     var body: some View {
@@ -253,7 +260,7 @@ struct SettingsView: View {
                     }
                 } label: {
                     Label {
-                        Text("target_language").font(.subheadline)
+                        Text("target_language_primary").font(.subheadline)
                     } icon: {
                         Image(systemName: "globe").foregroundStyle(.blue)
                     }
@@ -262,8 +269,48 @@ struct SettingsView: View {
                     let v = TranslationTargetLanguageOptions.normalizedCode(newValue)
                     targetLanguageCode = v
                     UserDefaults.standard.set(v, forKey: "targetLanguageCode")
+                    // 主语与副语撞车则取消副语
+                    if !secondaryTargetLanguageCode.isEmpty,
+                       TranslationTargetLanguageOptions.normalizedCode(secondaryTargetLanguageCode) == v {
+                        secondaryTargetLanguageCode = ""
+                        UserDefaults.standard.removeObject(forKey: "secondaryTargetLanguageCode")
+                    }
                     if translationEnabled {
                         triggerTranslationLanguagePackDownloadAndShowNetworkHint(for: v)
+                    }
+                    HapticManager.shared.success()
+                }
+
+                Picker(selection: $secondaryTargetLanguageCode) {
+                    Text("target_language_secondary_none").tag("")
+                    ForEach(TranslationTargetLanguageOptions.allCodes, id: \.self) { code in
+                        if TranslationTargetLanguageOptions.normalizedCode(code)
+                            != TranslationTargetLanguageOptions.normalizedCode(targetLanguageCode) {
+                            Text(TranslationTargetLanguageOptions.displayName(code: code, locale: locale)).tag(code)
+                        }
+                    }
+                } label: {
+                    Label {
+                        Text("target_language_secondary").font(.subheadline)
+                    } icon: {
+                        Image(systemName: "globe.badge.chevron.backward").foregroundStyle(.blue)
+                    }
+                }
+                .onChange(of: secondaryTargetLanguageCode) { _, newValue in
+                    if newValue.isEmpty {
+                        UserDefaults.standard.removeObject(forKey: "secondaryTargetLanguageCode")
+                    } else {
+                        let v = TranslationTargetLanguageOptions.normalizedCode(newValue)
+                        if v == TranslationTargetLanguageOptions.normalizedCode(targetLanguageCode) {
+                            secondaryTargetLanguageCode = ""
+                            UserDefaults.standard.removeObject(forKey: "secondaryTargetLanguageCode")
+                        } else {
+                            secondaryTargetLanguageCode = v
+                            UserDefaults.standard.set(v, forKey: "secondaryTargetLanguageCode")
+                            if translationEnabled {
+                                triggerTranslationLanguagePackDownloadAndShowNetworkHint(for: v)
+                            }
+                        }
                     }
                     HapticManager.shared.success()
                 }

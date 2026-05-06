@@ -88,4 +88,19 @@ enum TranslationTargetLanguageOptions {
            let s = loc.localizedString(forLanguageCode: String(head)), !s.isEmpty { return s }
         return id
     }
+
+    /// UI 上区分多目标语翻译时的简短标签（如 "EN" / "中" / "한" / "PT" 等）
+    static func shortBadge(for code: String) -> String {
+        let id = normalizedCode(code)
+        let lower = id.lowercased()
+        switch lower {
+        case "zh-hans": return "中"
+        case "zh-hant": return "繁"
+        case "ja": return "日"
+        case "ko": return "한"
+        default:
+            let head = id.split(separator: "-").first.map(String.init) ?? id
+            return head.uppercased()
+        }
+    }
 }
