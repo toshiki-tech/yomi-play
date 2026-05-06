@@ -163,9 +163,19 @@ struct PlaybackControlsView: View {
         .padding(.vertical, 4)
     }
 
+    /// 倍速：不使用 Menu 的 primaryAction。带 primaryAction 时轻点会先「轮换一档」而非打开菜单，需长按才出列表，播放时尤其难操作；倍速写入仍是立即生效的。
     private var playbackRateMenu: some View {
         let isActive = playbackRate != 1.0
         return Menu {
+            Button {
+                onCycleRate()
+            } label: {
+                HStack {
+                    Label(String(localized: LocalizedStringResource("playback_rate_cycle_next", locale: locale)), systemImage: "arrow.triangle.2.circlepath")
+                    Spacer(minLength: 8)
+                }
+            }
+            Divider()
             ForEach(availablePlaybackRates, id: \.self) { rate in
                 Button {
                     onSelectRate(rate)
@@ -190,16 +200,19 @@ struct PlaybackControlsView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(isActive ? palette.accent : .secondary)
             }
-        } primaryAction: {
-            onCycleRate()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .menuActionDismissBehavior(.automatic)
         .sensoryFeedback(.selection, trigger: playbackRate)
-        .frame(width: 56)
+        .frame(width: 56, height: 48)
+        .contentShape(Rectangle())
     }
     
     private var repeatModeMenu: some View {
-        let isActive = repeatMode != .off
+        /// 与两侧跳过按钮一致用 primary；开启循环类模式时用主题色强调
+        let labelColor = repeatMode == .off ? Color.primary : palette.accent
         return Menu {
+            repeatModeMenuRow(mode: .off, icon: "repeat", titleKey: "playback_repeat_off")
             repeatModeMenuRow(mode: .currentSubtitle, icon: "text.quote", titleKey: "playback_repeat_current_sentence")
             repeatModeMenuRow(mode: .wholeTrack, icon: "repeat.circle", titleKey: "playback_repeat_whole_track")
             repeatModeMenuRow(mode: .playlist, icon: "list.bullet.circle", titleKey: "playback_repeat_playlist")
@@ -207,10 +220,10 @@ struct PlaybackControlsView: View {
             VStack(spacing: 2) {
                 Image(systemName: repeatModeIcon)
                     .font(.body)
-                    .foregroundStyle(isActive ? palette.accent : .secondary)
+                    .foregroundStyle(labelColor)
                 Text(repeatModeShortLabel)
                     .font(.system(size: 10))
-                    .foregroundStyle(isActive ? palette.accent : .secondary)
+                    .foregroundStyle(labelColor)
             }
         } primaryAction: {
             onCycleRepeatMode()

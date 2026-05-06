@@ -24,6 +24,10 @@ final class DocumentStore: @unchecked Sendable {
     }
     
     private var foldersFileURL: URL { storeDirectory.appendingPathComponent("folders.json") }
+    /// 各分组内「自定义排序」下的记录 UUID 顺序（key: 分组 UUID 字符串，或 "uncategorized"）
+    private var libraryManualOrderFileURL: URL { storeDirectory.appendingPathComponent("libraryManualOrder.json") }
+    /// 用户分组（文件夹）在库列表中的显示顺序
+    private var libraryFolderOrderFileURL: URL { storeDirectory.appendingPathComponent("libraryFolderOrder.json") }
     
     private init() {}
     
@@ -149,17 +153,39 @@ final class DocumentStore: @unchecked Sendable {
     
     // MARK: - フォルダ
     
-    /// 全フォルダを読み込む
-    func loadAllFolders() -> [TranscriptFolder] {
+    /// folders.json をそのままデコード（表示順は付けない）
+    private func loadRawFoldersFromFile() -> [TranscriptFolder] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let data = try? Data(contentsOf: foldersFileURL),
               let folders = try? decoder.decode([TranscriptFolder].self, from: data)
         else { return [] }
-        return folders.sorted { $0.createdAt > $1.createdAt }
+        return folders
     }
     
-    /// フォルダ一覧を保存する
+    /// 全フォルダを読み込む（`libraryFolderOrder.json` の順；未設定時は作成日の新しい順に一度だけ書き出し）
+    func loadAllFolders() -> [TranscriptFolder] {
+        let raw = loadRawFoldersFromFile()
+        guard !raw.isEmpty else { return [] }
+        var orderedIds = loadLibraryFolderOrder()
+        if orderedIds.isEmpty {
+            orderedIds = raw.sorted { $0.createdAt > $1.createdAt }.map(\.id)
+            try? saveLibraryFolderOrder(orderedIds)
+        }
+        var dict = Dictionary(uniqueKeysWithValues: raw.map { ($0.id, $0) })
+        var result: [TranscriptFolder] = []
+        for id in orderedIds {
+            if let f = dict.removeValue(forKey: id) { result.append(f) }
+        }
+        let rest = dict.values.sorted { $0.createdAt > $1.createdAt }
+        result.append(contentsOf: rest)
+        if !rest.isEmpty {
+            try? saveLibraryFolderOrder(result.map(\.id))
+        }
+        return result
+    }
+    
+    /// フォルダ一覧を保存する（順序は `libraryFolderOrder` で管理するため、配列の並びは任意）
     func saveFolders(_ folders: [TranscriptFolder]) throws {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -170,22 +196,78 @@ final class DocumentStore: @unchecked Sendable {
     
     /// フォルダを追加する
     func addFolder(_ folder: TranscriptFolder) throws {
-        var folders = loadAllFolders()
-        folders.insert(folder, at: 0)
-        try saveFolders(folders)
+        var raw = loadRawFoldersFromFile()
+        raw.append(folder)
+        try saveFolders(raw)
+        var order = loadLibraryFolderOrder()
+        if order.isEmpty {
+            order = raw.sorted { $0.createdAt > $1.createdAt }.map(\.id)
+        } else {
+            order.insert(folder.id, at: 0)
+        }
+        try saveLibraryFolderOrder(order)
     }
     
     /// フォルダを削除する（ドキュメントの folderId は呼び出し側で nil にすること）
     func deleteFolder(id: UUID) throws {
-        let folders = loadAllFolders().filter { $0.id != id }
-        try saveFolders(folders)
+        let raw = loadRawFoldersFromFile().filter { $0.id != id }
+        try saveFolders(raw)
+        var order = loadLibraryFolderOrder()
+        order.removeAll { $0 == id }
+        try saveLibraryFolderOrder(order)
     }
     
     /// フォルダ名を更新する
     func updateFolder(_ folder: TranscriptFolder) throws {
-        var folders = loadAllFolders()
-        guard let idx = folders.firstIndex(where: { $0.id == folder.id }) else { return }
-        folders[idx] = folder
-        try saveFolders(folders)
+        var raw = loadRawFoldersFromFile()
+        guard let idx = raw.firstIndex(where: { $0.id == folder.id }) else { return }
+        raw[idx] = folder
+        try saveFolders(raw)
     }
+    
+    /// 库首页分组列表的文件夹 UUID 顺序
+    func loadLibraryFolderOrder() -> [UUID] {
+        guard let data = try? Data(contentsOf: libraryFolderOrderFileURL),
+              let file = try? JSONDecoder().decode(LibraryFolderOrderFile.self, from: data)
+        else { return [] }
+        return file.ids
+    }
+    
+    /// 保存库首页分组顺序（仅含用户创建的分组，不含「未分组」）
+    func saveLibraryFolderOrder(_ ids: [UUID]) throws {
+        let file = LibraryFolderOrderFile(ids: ids)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted]
+        let data = try encoder.encode(file)
+        try data.write(to: libraryFolderOrderFileURL)
+    }
+    
+    // MARK: - 库内自定义排序（按分组存储 UUID 顺序）
+    
+    /// 读取分组内记录的手动排序表；无文件时返回空字典
+    func loadLibraryManualOrder() -> [String: [UUID]] {
+        guard let data = try? Data(contentsOf: libraryManualOrderFileURL) else { return [:] }
+        let decoder = JSONDecoder()
+        guard let wrapper = try? decoder.decode(LibraryManualOrderFile.self, from: data) else { return [:] }
+        return wrapper.orders
+    }
+    
+    /// 保存分组内记录的手动排序表
+    func saveLibraryManualOrder(_ orders: [String: [UUID]]) throws {
+        let wrapper = LibraryManualOrderFile(orders: orders)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted]
+        let data = try encoder.encode(wrapper)
+        try data.write(to: libraryManualOrderFileURL)
+    }
+}
+
+// MARK: - 手动排序文件包装（便于扩展字段）
+
+private struct LibraryManualOrderFile: Codable {
+    var orders: [String: [UUID]]
+}
+
+private struct LibraryFolderOrderFile: Codable {
+    var ids: [UUID]
 }

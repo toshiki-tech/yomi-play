@@ -9,7 +9,7 @@
 import Foundation
 import AVFoundation
 
-// MARK: - 再生リピートモード（单句 / 单篇 / 列表）
+// MARK: - 再生リピートモード（不循环 / 单句 / 单篇 / 列表）
 
 enum PlaybackRepeatMode: String, CaseIterable, Identifiable {
     case off
@@ -20,11 +20,29 @@ enum PlaybackRepeatMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// 编辑态下的逐词注音项（用于将分词 surface 与可编辑 reading 绑定）
+struct EditableTokenReading: Identifiable, Equatable {
+    let id: UUID
+    let surface: String
+    var reading: String
+    var romaji: String
+    /// 片假名外来词标记与英译注释，编辑后需要保留用于展示。
+    var isKatakana: Bool = false
+    var englishMeaning: String? = nil
+    /// 保留逐词时间与词性，避免仅修改注音后丢失卡拉OK高亮与词性下划线。
+    var startTime: TimeInterval? = nil
+    var endTime: TimeInterval? = nil
+    var partOfSpeech: PartOfSpeech? = nil
+    /// 是否启用该词的英文释义编辑与保存。
+    var englishMeaningEnabled: Bool = false
+}
+
 // MARK: - プレーヤー画面ViewModel
 
 @MainActor
 @Observable
 final class PlayerViewModel {
+    private static let videoExtensions: Set<String> = ["mp4", "mov", "m4v", "avi", "mkv", "webm"]
     
     // MARK: - 公開プロパティ
     
@@ -44,7 +62,7 @@ final class PlayerViewModel {
     }
     var fontSize: CGFloat = 18 { didSet { Self.defaults.set(fontSize, forKey: "fontSize") } }
     
-    /// 重复播放：关闭 / 整段循环 / 当前单句循环（UserDefaults）
+    /// 重复播放：不循环 / 单句 / 单篇 / 列表（UserDefaults）
     var repeatMode: PlaybackRepeatMode = .off
     
     /// 下一句字幕开始前停顿秒数（跟读用，0 表示不停；单句循环时不插入）
@@ -74,6 +92,10 @@ final class PlayerViewModel {
     var editingText: String = ""
     /// 编辑时本条翻译结果（确定后写回 segment.translatedText）
     var editingTranslatedText: String? = nil
+    /// 编辑时逐词注音（用于用户自定义分词注音覆盖）
+    var editingTokenReadings: [EditableTokenReading] = []
+    /// 注音编辑页的手动分词文本（以 `|` 分隔）
+    var editingTokenSegmentationText: String = ""
     var editingSkipFurigana: Bool = false
     var editingStartTime: TimeInterval = 0
     var editingEndTime: TimeInterval = 0
@@ -93,7 +115,12 @@ final class PlayerViewModel {
     
     /// 元の動画ファイルの URL（動画インポート時のみ設定される）
     var videoPlaybackURL: URL? {
-        document.source.videoPlaybackURL
+        if let videoURL = document.source.videoPlaybackURL {
+            return videoURL
+        }
+        guard let playback = document.source.playbackURL else { return nil }
+        let ext = playback.pathExtension.lowercased()
+        return Self.videoExtensions.contains(ext) ? playback : nil
     }
     
     // MARK: - 初期化
@@ -118,7 +145,7 @@ final class PlayerViewModel {
         }
         
         // 動画がある場合は動画ファイルをロード（映像＋音声を統一AVPlayerで管理）
-        let mediaURL = document.source.videoPlaybackURL ?? document.source.playbackURL
+        let mediaURL = videoPlaybackURL ?? document.source.playbackURL
         if let url = mediaURL {
             playerService.loadAudio(from: url)
         }
@@ -158,13 +185,7 @@ final class PlayerViewModel {
         
         if let raw = d.string(forKey: Self.playbackRepeatModeKey),
            let mode = PlaybackRepeatMode(rawValue: raw) {
-            // 兼容旧版本：历史上的 off 已下线，自动映射到单篇循环并回写
-            if mode == .off {
-                repeatMode = .wholeTrack
-                d.set(PlaybackRepeatMode.wholeTrack.rawValue, forKey: Self.playbackRepeatModeKey)
-            } else {
-                repeatMode = mode
-            }
+            repeatMode = mode
         }
         if d.object(forKey: Self.interSubtitlePauseKey) != nil {
             let p = d.double(forKey: Self.interSubtitlePauseKey)
@@ -235,9 +256,9 @@ final class PlayerViewModel {
         }
     }
     
-    /// 轻点重复按钮时按「单句 → 单篇 → 列表」轮换（配合菜单的长按直选）
+    /// 轻点重复按钮时按「不循环 → 单句 → 单篇 → 列表」轮换（配合菜单的长按直选）
     func cycleRepeatMode() {
-        let order: [PlaybackRepeatMode] = [.currentSubtitle, .wholeTrack, .playlist]
+        let order: [PlaybackRepeatMode] = [.off, .currentSubtitle, .wholeTrack, .playlist]
         guard let i = order.firstIndex(of: repeatMode) else {
             setRepeatMode(order[0])
             return
@@ -316,6 +337,9 @@ final class PlayerViewModel {
         editingSegmentID = segment.id
         editingText = segment.originalText
         editingTranslatedText = segment.translatedText
+        let sourceTokens = segment.userTokenOverrides ?? segment.tokens
+        editingTokenReadings = Self.makeEditableTokenReadings(from: sourceTokens)
+        editingTokenSegmentationText = sourceTokens.map(\.surface).joined(separator: "|")
         editingSkipFurigana = segment.skipFurigana
         editingStartTime = segment.startTime
         editingEndTime = segment.endTime
@@ -326,6 +350,8 @@ final class PlayerViewModel {
         editingSegmentID = nil
         editingText = ""
         editingTranslatedText = nil
+        editingTokenReadings = []
+        editingTokenSegmentationText = ""
         editingSkipFurigana = false
         editingStartTime = 0
         editingEndTime = 0
@@ -348,7 +374,10 @@ final class PlayerViewModel {
         }
         
         let shouldSkip = editingSkipFurigana
+        let editingItemsSnapshot = editingTokenReadings
+        let userOverrideTokens = Self.makeUserOverrideTokens(from: editingTokenReadings)
         let segmentIndex = index
+        let originalTextBeforeEditing = document.segments[index].originalText
         let duration = playerService.duration
         let clampedStart = max(0, min(editingStartTime, duration))
         let clampedEnd = max(clampedStart, min(editingEndTime, duration > 0 ? duration : editingEndTime))
@@ -357,9 +386,13 @@ final class PlayerViewModel {
         
         Task {
             // 1. 新しい振り仮名を生成（非メインスレッド）
-            let tokens: [FuriganaToken] = shouldSkip
+            let generatedTokens: [FuriganaToken] = shouldSkip
                 ? []
                 : await furiganaService.generateFurigana(for: newText)
+            let tokens: [FuriganaToken] = shouldSkip ? [] : generatedTokens
+            if !shouldSkip {
+                self.syncKatakanaDictionaryFromEdits(editingItemsSnapshot)
+            }
             
             // 2. メインスレッドでドキュメントを更新して保存
             await MainActor.run {
@@ -371,9 +404,19 @@ final class PlayerViewModel {
                 self.document.segments[segmentIndex].endTime = clampedEnd
                 self.document.segments[segmentIndex].originalText = newText
                 self.document.segments[segmentIndex].tokens = tokens
+                let shouldKeepOverride = Self.shouldKeepUserTokenOverrides(
+                    userOverrideTokens: userOverrideTokens,
+                    newText: newText,
+                    oldText: originalTextBeforeEditing
+                )
+                self.document.segments[segmentIndex].userTokenOverrides = shouldSkip
+                    ? nil
+                    : (shouldKeepOverride ? (userOverrideTokens.isEmpty ? nil : userOverrideTokens) : nil)
                 self.document.segments[segmentIndex].skipFurigana = shouldSkip
                 self.document.segments[segmentIndex].translatedText = self.editingTranslatedText
                 self.editingTranslatedText = nil
+                self.editingTokenReadings = []
+                self.editingTokenSegmentationText = ""
                 
                 // 再生サービス側も同期
                 self.playerService.setSegments(self.document.segments)
@@ -429,6 +472,7 @@ final class PlayerViewModel {
             confidence: segment.confidence,
             skipFurigana: segment.skipFurigana,
             translatedText: segment.translatedText,
+            userTokenOverrides: segment.userTokenOverrides,
             originalTextLanguageCode: segment.originalTextLanguageCode
         )
         let second = TranscriptSegment(
@@ -439,6 +483,7 @@ final class PlayerViewModel {
             confidence: segment.confidence,
             skipFurigana: segment.skipFurigana,
             translatedText: segment.translatedText,
+            userTokenOverrides: segment.userTokenOverrides,
             originalTextLanguageCode: segment.originalTextLanguageCode
         )
         
@@ -452,6 +497,9 @@ final class PlayerViewModel {
         editingStartTime = second.startTime
         editingEndTime = second.endTime
         editingText = second.originalText
+        let sourceTokens = second.userTokenOverrides ?? second.tokens
+        editingTokenReadings = Self.makeEditableTokenReadings(from: sourceTokens)
+        editingTokenSegmentationText = sourceTokens.map(\.surface).joined(separator: "|")
         editingSkipFurigana = second.skipFurigana
         
         saveDocument()
@@ -489,6 +537,7 @@ final class PlayerViewModel {
                 self.document.segments[targetIndex].endTime = mergedEnd
                 self.document.segments[targetIndex].originalText = mergedText
                 self.document.segments[targetIndex].tokens = tokens
+                self.document.segments[targetIndex].userTokenOverrides = nil
                 self.document.segments[targetIndex].skipFurigana = shouldSkip
                 self.document.segments[targetIndex].translatedText = nil
                 self.document.segments[targetIndex].originalTextLanguageCode = mergedLang
@@ -506,6 +555,8 @@ final class PlayerViewModel {
                 self.editingStartTime = mergedStart
                 self.editingEndTime = mergedEnd
                 self.editingText = mergedText
+                self.editingTokenReadings = Self.makeEditableTokenReadings(from: self.document.segments[targetIndex].tokens)
+                self.editingTokenSegmentationText = self.document.segments[targetIndex].tokens.map(\.surface).joined(separator: "|")
                 self.editingSkipFurigana = shouldSkip
                 
                 self.saveDocument()
@@ -528,17 +579,22 @@ final class PlayerViewModel {
         do {
             let result = try await translationService.translateSegments(
                 segments,
-                sourceLanguageCode: "ja",
-                targetLanguageCode: targetLanguageCode
+                targetLanguageCode: targetLanguageCode,
+                documentNonJapaneseRecognitionSource: document.isNonJapaneseRecognitionSource
             )
             markTranslationPackReady(targetLanguageCode)
             document.segments = result
+            // 同步翻译状态：成功后清除"翻译失败"提示
+            document.translationStatus = .success
             playerService.setSegments(document.segments)
             syncRepeatModeWithPlayer()
             saveDocument()
             showTranslation = true
         } catch {
             print("PlayerViewModel: 翻译全部失败 - \(error)")
+            // 翻译再次失败：更新状态以便提示横条继续显示
+            document.translationStatus = .failed
+            saveDocument()
             translationErrorMessage = translationFailureUserMessage(for: error)
             showTranslationError = true
         }
@@ -553,7 +609,15 @@ final class PlayerViewModel {
         isTranslating = true
         defer { isTranslating = false }
         do {
-            let translated = try await translationService.translateText(text, targetLanguageCode: targetLang)
+            let segmentSource = editingSegmentID.flatMap { id in
+                document.segments.first(where: { $0.id == id })?.originalTextLanguageCode
+            }
+            let translated = try await translationService.translateText(
+                text,
+                segmentSourceLanguageCode: segmentSource,
+                targetLanguageCode: targetLang,
+                documentNonJapaneseRecognitionSource: document.isNonJapaneseRecognitionSource
+            )
             markTranslationPackReady(targetLang)
             editingTranslatedText = translated.isEmpty ? nil : translated
         } catch {
@@ -595,7 +659,12 @@ final class PlayerViewModel {
         let code = targetLanguageCode
         guard !isTranslationPackReady(code) else { return }
         do {
-            _ = try await translationService.translateText("こんにちは", targetLanguageCode: code)
+            _ = try await translationService.translateText(
+                "こんにちは",
+                segmentSourceLanguageCode: "ja",
+                targetLanguageCode: code,
+                documentNonJapaneseRecognitionSource: nil
+            )
             markTranslationPackReady(code)
         } catch {
             if (error as? TranslationServiceError) == .notAvailable { return }
@@ -693,6 +762,7 @@ final class PlayerViewModel {
                 let importedDoc = try SubtitleExportService.readYomiFile(from: url)
                 await MainActor.run {
                     document.segments = importedDoc.segments
+                    document.isNonJapaneseRecognitionSource = importedDoc.isNonJapaneseRecognitionSource
                     playerService.setSegments(document.segments)
                     syncRepeatModeWithPlayer()
                     saveDocument()
@@ -738,5 +808,203 @@ final class PlayerViewModel {
     var progress: Double {
         guard playerService.duration > 0 else { return 0 }
         return playerService.currentTime / playerService.duration
+    }
+
+    // MARK: - 逐词注音编辑
+
+    private static func makeEditableTokenReadings(from tokens: [FuriganaToken]) -> [EditableTokenReading] {
+        tokens.map {
+            let hasMeaning = (($0.englishMeaning?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) == false)
+            return EditableTokenReading(
+                id: $0.id,
+                surface: $0.surface,
+                reading: $0.reading,
+                romaji: $0.romaji,
+                isKatakana: $0.isKatakana,
+                englishMeaning: $0.englishMeaning,
+                startTime: $0.startTime,
+                endTime: $0.endTime,
+                partOfSpeech: $0.partOfSpeech,
+                englishMeaningEnabled: $0.isKatakana || hasMeaning
+            )
+        }
+    }
+
+    private static func makeUserOverrideTokens(from items: [EditableTokenReading]) -> [FuriganaToken] {
+        items.compactMap { item in
+            let surface = item.surface.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !surface.isEmpty else { return nil }
+            let reading = item.reading.trimmingCharacters(in: .whitespacesAndNewlines)
+            let romaji = item.romaji.trimmingCharacters(in: .whitespacesAndNewlines)
+            let englishMeaning = item.englishMeaning?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let shouldStoreMeaning = item.englishMeaningEnabled
+            let isKanji = containsKanji(surface)
+            let isKatakana = item.isKatakana || isKatakanaWord(surface)
+            return FuriganaToken(
+                surface: surface,
+                reading: reading,
+                romaji: romaji,
+                isKanji: isKanji,
+                isKatakana: isKatakana,
+                englishMeaning: (shouldStoreMeaning && englishMeaning?.isEmpty == false) ? englishMeaning : nil,
+                startTime: item.startTime,
+                endTime: item.endTime,
+                partOfSpeech: item.partOfSpeech
+            )
+        }
+    }
+
+    private func syncKatakanaDictionaryFromEdits(_ items: [EditableTokenReading]) {
+        for item in items where item.englishMeaningEnabled {
+            let surface = item.surface.trimmingCharacters(in: .whitespacesAndNewlines)
+            let meaning = (item.englishMeaning ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !surface.isEmpty, !meaning.isEmpty else { continue }
+            guard item.isKatakana || Self.isKatakanaWord(surface) else { continue }
+            KatakanaDictionaryService.shared.upsert(surface: surface, englishMeaning: meaning)
+        }
+    }
+
+    /// 仅当用户覆盖分词与新文本仍一致时才保留覆盖；
+    /// 否则清空覆盖，避免「显示旧词块但编辑框是新文本」的不一致。
+    private static func shouldKeepUserTokenOverrides(userOverrideTokens: [FuriganaToken], newText: String, oldText: String) -> Bool {
+        guard !userOverrideTokens.isEmpty else { return false }
+        let normalizedNew = normalizeComparableText(newText)
+        let normalizedOld = normalizeComparableText(oldText)
+        // 文本没变时保留覆盖（例如只改注音/罗马音）
+        if normalizedNew == normalizedOld { return true }
+        let joinedOverride = normalizeComparableText(userOverrideTokens.map(\.surface).joined())
+        return joinedOverride == normalizedNew
+    }
+
+    private static func normalizeComparableText(_ text: String) -> String {
+        text.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
+    }
+
+    private static func containsKanji(_ text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            (0x4E00...0x9FFF).contains(scalar.value) || (0x3400...0x4DBF).contains(scalar.value)
+        }
+    }
+
+    private static func isKatakanaWord(_ text: String) -> Bool {
+        guard !text.isEmpty else { return false }
+        var hasKatakana = false
+        for scalar in text.unicodeScalars {
+            let v = scalar.value
+            if (0x30A0...0x30FF).contains(v) {
+                hasKatakana = true
+                continue
+            }
+            if v == 0x30FC || v == 0x30FB {
+                continue
+            }
+            return false
+        }
+        return hasKatakana
+    }
+
+    func applyManualSegmentationFromEditingText() {
+        let source = editingTokenSegmentationText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !source.isEmpty else { return }
+        let parts = source
+            .split(separator: "|")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !parts.isEmpty else { return }
+        let previousItems = editingTokenReadings
+        var cursor = 0
+        var rebuilt: [EditableTokenReading] = []
+
+        for part in parts {
+            var consumed: [EditableTokenReading] = []
+            var joinedSurface = ""
+            var scan = cursor
+
+            // 优先按顺序消费旧词块：支持“把左右两个词块合并成一个词块”
+            while scan < previousItems.count {
+                let candidate = previousItems[scan]
+                let nextSurface = joinedSurface + candidate.surface
+                if part.hasPrefix(nextSurface) {
+                    consumed.append(candidate)
+                    joinedSurface = nextSurface
+                    scan += 1
+                    if joinedSurface == part {
+                        cursor = scan
+                        break
+                    }
+                } else {
+                    break
+                }
+            }
+
+            if joinedSurface == part, !consumed.isEmpty {
+                rebuilt.append(Self.mergeEditableItems(consumed, targetSurface: part))
+                continue
+            }
+
+            // 兜底：按 surface 精确匹配一个旧词块（处理用户跨位置编辑）
+            if let matched = previousItems.first(where: { $0.surface == part }) {
+                rebuilt.append(
+                    EditableTokenReading(
+                        id: UUID(),
+                        surface: part,
+                        reading: matched.reading,
+                        romaji: matched.romaji,
+                        isKatakana: matched.isKatakana || Self.isKatakanaWord(part),
+                        englishMeaning: matched.englishMeaning,
+                        startTime: matched.startTime,
+                        endTime: matched.endTime,
+                        partOfSpeech: matched.partOfSpeech,
+                        englishMeaningEnabled: matched.englishMeaningEnabled
+                    )
+                )
+                continue
+            }
+
+            // 完全新建的词块
+            rebuilt.append(
+                EditableTokenReading(
+                    id: UUID(),
+                    surface: part,
+                    reading: Self.containsKanji(part) ? part : "",
+                    romaji: "",
+                    isKatakana: Self.isKatakanaWord(part),
+                    englishMeaning: nil,
+                    startTime: nil,
+                    endTime: nil,
+                    partOfSpeech: nil,
+                    englishMeaningEnabled: Self.isKatakanaWord(part)
+                )
+            )
+        }
+        editingTokenReadings = rebuilt
+        editingTokenSegmentationText = rebuilt.map(\.surface).joined(separator: "|")
+    }
+
+    private static func mergeEditableItems(_ items: [EditableTokenReading], targetSurface: String) -> EditableTokenReading {
+        let mergedReading = items.map(\.reading).joined()
+        let mergedRomaji = items.map(\.romaji).joined()
+        let meanings = items.compactMap { item -> String? in
+            let value = item.englishMeaning?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return value.isEmpty ? nil : value
+        }
+        let mergedMeaning = meanings.isEmpty ? nil : meanings.joined(separator: " / ")
+        let firstStart = items.compactMap(\.startTime).min()
+        let lastEnd = items.compactMap(\.endTime).max()
+        let katakana = items.contains(where: \.isKatakana) || isKatakanaWord(targetSurface)
+        let meaningEnabled = items.contains(where: \.englishMeaningEnabled) || katakana
+
+        return EditableTokenReading(
+            id: UUID(),
+            surface: targetSurface,
+            reading: mergedReading,
+            romaji: mergedRomaji,
+            isKatakana: katakana,
+            englishMeaning: mergedMeaning,
+            startTime: firstStart,
+            endTime: lastEnd,
+            partOfSpeech: nil,
+            englishMeaningEnabled: meaningEnabled
+        )
     }
 }

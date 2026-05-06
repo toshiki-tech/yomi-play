@@ -7,12 +7,107 @@
 
 import SwiftUI
 
+// MARK: - 排序菜单（自动 / 自定义分组）
+
+private enum LibrarySortMenuContent {
+    @ViewBuilder
+    static func menu(viewModel: HomeViewModel) -> some View {
+        Section {
+            sortButton(viewModel, order: .titleAscending)
+            sortButton(viewModel, order: .dateNewestFirst)
+            sortButton(viewModel, order: .dateOldestFirst)
+            sortButton(viewModel, order: .titleDescending)
+        } header: {
+            Text(LocalizedStringResource("library_sort_section_auto"))
+        }
+        Section {
+            sortButton(viewModel, order: .manual)
+        } header: {
+            Text(LocalizedStringResource("library_sort_section_custom"))
+        }
+    }
+    
+    private static func sortButton(_ viewModel: HomeViewModel, order: DocumentSortOrder) -> some View {
+        Button {
+            viewModel.sortOrder = order
+        } label: {
+            HStack {
+                Text(order.displayName)
+                Spacer()
+                if viewModel.sortOrder == order {
+                    Image(systemName: "checkmark")
+                }
+            }
+        }
+    }
+}
+
+/// 库首页：排序 + 分组拖动排序，收起到「更多」菜单
+private struct LibraryHomeOverflowMenu: View {
+    @Bindable var viewModel: HomeViewModel
+    @Binding var folderListEditMode: EditMode
+    
+    var body: some View {
+        Menu {
+            LibrarySortMenuContent.menu(viewModel: viewModel)
+            if !viewModel.folders.isEmpty {
+                Divider()
+                Button {
+                    folderListEditMode = folderListEditMode == .active ? .inactive : .active
+                } label: {
+                    Label(
+                        folderListEditMode == .active ? "library_sort_reorder_done" : "library_folder_reorder_edit",
+                        systemImage: "arrow.up.arrow.down"
+                    )
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel(String(localized: "library_toolbar_more"))
+    }
+}
+
+/// 分组内页：排序 + 记录编辑顺序 + 多选，收起到「更多」菜单
+private struct FolderContentOverflowMenu: View {
+    @Bindable var viewModel: HomeViewModel
+    @Binding var manualReorderEditMode: EditMode
+    let canManualReorder: Bool
+    let onStartBatch: () -> Void
+    
+    var body: some View {
+        Menu {
+            LibrarySortMenuContent.menu(viewModel: viewModel)
+            if canManualReorder {
+                Divider()
+                Button {
+                    manualReorderEditMode = manualReorderEditMode == .active ? .inactive : .active
+                } label: {
+                    Label(
+                        manualReorderEditMode == .active ? "library_sort_reorder_done" : "library_sort_reorder_edit",
+                        systemImage: "arrow.up.arrow.down"
+                    )
+                }
+            }
+            Divider()
+            Button(action: onStartBatch) {
+                Label("library_batch_select", systemImage: "checkmark.circle")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel(String(localized: "library_toolbar_more"))
+    }
+}
+
 struct LibraryView: View {
     @Bindable var viewModel: HomeViewModel
     @Binding var navigationPath: NavigationPath
     @State private var showNewFolderAlert = false
     @State private var newFolderName = ""
     @State private var showLibrarySearchSheet = false
+    /// 库首页「我的分组」拖动排序
+    @State private var folderListEditMode: EditMode = .inactive
     
     var body: some View {
         VStack(spacing: 0) {
@@ -36,20 +131,15 @@ struct LibraryView: View {
         .navigationTitle("saved_records")
         .toolbar {
             if !viewModel.hasNoSavedDocuments {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        ForEach(DocumentSortOrder.allCases, id: \.self) { order in
-                            Button {
-                                viewModel.sortOrder = order
-                            } label: {
-                                HStack {
-                                    Text(order.displayName)
-                                    if viewModel.sortOrder == order { Image(systemName: "checkmark") }
-                                }
-                            }
+                if folderListEditMode == .active {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("library_sort_reorder_done") {
+                            folderListEditMode = .inactive
                         }
-                    } label: {
-                        Label("sort_label", systemImage: "arrow.up.arrow.down.circle")
+                    }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        LibraryHomeOverflowMenu(viewModel: viewModel, folderListEditMode: $folderListEditMode)
                     }
                 }
             }
@@ -63,6 +153,9 @@ struct LibraryView: View {
             }
         }
         .onAppear { viewModel.loadSavedDocuments() }
+        .onChange(of: viewModel.folders.count) { _, count in
+            if count == 0 { folderListEditMode = .inactive }
+        }
         .alert("new_folder", isPresented: $showNewFolderAlert) {
             TextField("folder_name", text: $newFolderName)
             Button("cancel", role: .cancel) {}
@@ -157,33 +250,65 @@ struct LibraryView: View {
     }
     
     private var groupListView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // 保留与原「默认分组」小标题行相当的高度，与 header 行距不变
+        List {
+            Section {
                 Color.clear
-                    .frame(height: 20)
+                    .frame(height: 8)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                     .accessibilityHidden(true)
+            }
+            Section {
                 groupCard(
                     id: nil,
                     name: String(localized: LocalizedStringResource("uncategorized", locale: AppLocale.current)),
                     count: viewModel.documents(inFolderId: nil).count,
                     isDefault: true,
+                    blockNavigation: false,
+                    showDisclosure: true,
                     onExport: viewModel.documents(inFolderId: nil).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: nil) }
                 )
-                if !viewModel.folders.isEmpty {
-                    sectionLabel("my_groups")
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
+            if !viewModel.folders.isEmpty {
+                Section {
                     ForEach(viewModel.folders) { folder in
                         groupCard(
                             id: folder.id,
                             name: folder.name,
                             count: viewModel.documents(inFolderId: folder.id).count,
                             isDefault: false,
+                            blockNavigation: folderListEditMode == .active,
+                            showDisclosure: folderListEditMode != .active,
                             onRename: { viewModel.startRenamingFolder(folder) },
                             onDelete: { viewModel.requestDeleteFolder(folder) },
                             onExport: viewModel.documents(inFolderId: folder.id).isEmpty ? nil : { viewModel.exportFolderAsZip(folderId: folder.id) }
                         )
+                        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+                    .onMove { from, to in
+                        viewModel.reorderFolders(from: from, to: to)
+                    }
+                } header: {
+                    Text("my_groups")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textCase(nil)
+                        .padding(.bottom, 2)
+                } footer: {
+                    if folderListEditMode == .active {
+                        Text("library_folder_reorder_footer")
+                            .font(.caption2)
                     }
                 }
+            }
+            Section {
                 Button {
                     newFolderName = ""
                     showNewFolderAlert = true
@@ -198,26 +323,22 @@ struct LibraryView: View {
                             .foregroundStyle(.green)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 10)
                     .padding(.horizontal, 16)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .background(Color(.secondarySystemBackground))
+                .listRowBackground(Color(.secondarySystemBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                Spacer(minLength: 24)
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                .listRowSeparator(.hidden)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemBackground))
+        .environment(\.editMode, $folderListEditMode)
         .scrollDismissesKeyboard(.immediately)
-    }
-    
-    private func sectionLabel(_ key: LocalizedStringKey) -> some View {
-        Text(key)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 4)
     }
     
     private func groupCard(
@@ -225,11 +346,14 @@ struct LibraryView: View {
         name: String,
         count: Int,
         isDefault: Bool,
+        blockNavigation: Bool = false,
+        showDisclosure: Bool = true,
         onRename: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
         onExport: (() -> Void)? = nil
     ) -> some View {
         Button {
+            guard !blockNavigation else { return }
             HapticManager.shared.impact(style: .light)
             navigationPath.append(AppDestination.folder(folderId: id))
         } label: {
@@ -248,9 +372,11 @@ struct LibraryView: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                if showDisclosure {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
             }
             .padding(.vertical, 14)
             .padding(.horizontal, 16)
@@ -261,21 +387,21 @@ struct LibraryView: View {
         .background(Color(.secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contextMenu {
-            if let onExport = onExport {
+            if !blockNavigation, let onExport = onExport {
                 Button {
                     onExport()
                 } label: {
                     Label("export_folder_as_zip", systemImage: "square.and.arrow.up")
                 }
             }
-            if let onRename = onRename {
+            if !blockNavigation, let onRename = onRename {
                 Button {
                     onRename()
                 } label: {
                     Label("rename", systemImage: "pencil")
                 }
             }
-            if let onDelete = onDelete {
+            if !blockNavigation, let onDelete = onDelete {
                 Button(role: .destructive) {
                     onDelete()
                 } label: {
@@ -502,6 +628,8 @@ struct FolderContentView: View {
     @State private var selectedDocumentIds: Set<UUID> = []
     @State private var showBatchMoveSheet = false
     @State private var showBatchDeleteConfirmation = false
+    /// 手动排序时：编辑模式下显示拖动控件
+    @State private var manualReorderEditMode: EditMode = .inactive
     
     private var folderName: String {
         viewModel.folderDisplayName(for: folderId)
@@ -517,6 +645,10 @@ struct FolderContentView: View {
         return documents.filter { doc in
             doc.source.title.localizedCaseInsensitiveContains(keyword)
         }
+    }
+    
+    private var canManualReorder: Bool {
+        viewModel.sortOrder == .manual && !isBatchMode && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var selectedDocumentsForBatch: [TranscriptDocument] {
@@ -566,8 +698,17 @@ struct FolderContentView: View {
                     }
                     
                     Section {
-                        ForEach(filteredDocuments) { doc in
-                            documentRow(doc)
+                        if canManualReorder {
+                            ForEach(filteredDocuments) { doc in
+                                documentRow(doc)
+                            }
+                            .onMove { from, to in
+                                viewModel.reorderDocumentsInFolder(folderId: folderId, from: from, to: to)
+                            }
+                        } else {
+                            ForEach(filteredDocuments) { doc in
+                                documentRow(doc)
+                            }
                         }
                         
                         // 分组底部导入按钮：跳转到导入页，导入到当前分组
@@ -589,9 +730,15 @@ struct FolderContentView: View {
                                 }
                             }
                         }
+                    } footer: {
+                        if canManualReorder {
+                            Text("library_sort_manual_footer")
+                                .font(.caption2)
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)
+                .environment(\.editMode, $manualReorderEditMode)
             }
         }
         .navigationTitle(batchNavigationTitle)
@@ -615,29 +762,30 @@ struct FolderContentView: View {
                     }
                     .disabled(filteredDocuments.isEmpty)
                 }
+            } else if manualReorderEditMode == .active {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("library_sort_reorder_done") {
+                        manualReorderEditMode = .inactive
+                    }
+                }
             } else {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        ForEach(DocumentSortOrder.allCases, id: \.self) { order in
-                            Button {
-                                viewModel.sortOrder = order
-                            } label: {
-                                HStack {
-                                    Text(order.displayName)
-                                    if viewModel.sortOrder == order { Image(systemName: "checkmark") }
-                                }
-                            }
+                    FolderContentOverflowMenu(
+                        viewModel: viewModel,
+                        manualReorderEditMode: $manualReorderEditMode,
+                        canManualReorder: canManualReorder,
+                        onStartBatch: {
+                            isBatchMode = true
+                            selectedDocumentIds = []
+                            manualReorderEditMode = .inactive
                         }
-                    } label: {
-                        Label("sort_label", systemImage: "arrow.up.arrow.down.circle")
-                    }
+                    )
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("library_batch_select") {
-                        isBatchMode = true
-                        selectedDocumentIds = []
-                    }
-                }
+            }
+        }
+        .onChange(of: viewModel.sortOrder) { _, new in
+            if new != .manual {
+                manualReorderEditMode = .inactive
             }
         }
         .onAppear {
@@ -710,7 +858,8 @@ struct FolderContentView: View {
     }
     
     private func documentRow(_ doc: TranscriptDocument) -> some View {
-        Button {
+        let blockReorderTap = manualReorderEditMode == .active && viewModel.sortOrder == .manual
+        return Button {
             if isBatchMode {
                 HapticManager.shared.impact(style: .light)
                 if selectedDocumentIds.contains(doc.id) {
@@ -720,7 +869,7 @@ struct FolderContentView: View {
                 }
                 return
             }
-            guard allowRowTap else { return }
+            guard allowRowTap, !blockReorderTap else { return }
             HapticManager.shared.impact(style: .light)
             // 分组内进入播放：播放列表仅含本分组记录（与当前列表顺序一致），便于顺序播放时停留在分组内
             let folderDocs = documents
@@ -763,7 +912,7 @@ struct FolderContentView: View {
         }
         .buttonStyle(RecordRowButtonStyle())
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !isBatchMode {
+            if !isBatchMode && !blockReorderTap {
                 Button(role: .destructive) {
                     viewModel.deleteDocument(doc)
                 } label: {

@@ -30,7 +30,7 @@ enum FolderExportService {
         var addedCount = 0
 
         for doc in documents {
-            let mediaURL = doc.source.videoPlaybackURL ?? doc.source.playbackURL
+            let mediaURL = Self.resolveMediaURLForZipExport(from: doc)
             guard let media = mediaURL, fm.fileExists(atPath: media.path) else { continue }
 
             let baseName = uniqueBaseName(from: doc.source.title, used: &usedBaseNames)
@@ -57,6 +57,53 @@ enum FolderExportService {
         }
         try fm.zipItem(at: workDir, to: zipURL)
         return zipURL
+    }
+
+    /// 与 `HomeViewModel` / ZIP 导入侧常见视频扩展保持一致
+    private static let videoExtensions: Set<String> = ["mp4", "mov", "m4v", "avi", "mkv", "webm"]
+    /// 通常为「从视频抽取出的」纯音频轨
+    private static let audioOnlyExtensions: Set<String> = ["m4a", "mp3", "wav", "aiff", "aac", "flac", "ogg", "caf"]
+
+    /// 打包 ZIP 时应优先使用「可显示画面的原视频」。
+    ///
+    /// 背景：视频识别流程里 `relativeFilePath` 往往指向提取的 m4a，而 `videoRelativeFilePath` 指向原 mp4/mov。
+    /// 若仅使用 `videoPlaybackURL ?? playbackURL`，在 `videoRelativeFilePath` 缺失或磁盘路径偶发解析失败时，
+    /// 会误把 m4a 打进 ZIP，导入后 `videoPlaybackURL` 为空，播放页不再显示视频区域。
+    private static func resolveMediaURLForZipExport(from doc: TranscriptDocument) -> URL? {
+        let fm = FileManager.default
+        if let v = doc.source.videoPlaybackURL, fm.fileExists(atPath: v.path) {
+            return v
+        }
+        guard let playback = doc.source.playbackURL, fm.fileExists(atPath: playback.path) else {
+            return nil
+        }
+        let ext = playback.pathExtension.lowercased()
+        if Self.videoExtensions.contains(ext) {
+            return playback
+        }
+        guard Self.audioOnlyExtensions.contains(ext) else {
+            return playback
+        }
+        let parent = playback.deletingLastPathComponent()
+        let stem = sanitizeFileName(doc.source.title)
+        if !stem.isEmpty {
+            for vExt in Self.videoExtensions {
+                let candidate = parent.appendingPathComponent(stem).appendingPathExtension(vExt)
+                if fm.fileExists(atPath: candidate.path) { return candidate }
+            }
+        }
+        if let rel = doc.source.videoRelativeFilePath, !rel.isEmpty {
+            let name = (rel as NSString).lastPathComponent
+            if !name.isEmpty {
+                let candidate = parent.appendingPathComponent(name)
+                if fm.fileExists(atPath: candidate.path) { return candidate }
+            }
+            if let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let abs = docs.appendingPathComponent(rel)
+                if fm.fileExists(atPath: abs.path) { return abs }
+            }
+        }
+        return playback
     }
 
     private static func sanitizeFileName(_ name: String) -> String {

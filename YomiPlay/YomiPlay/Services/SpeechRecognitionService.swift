@@ -21,6 +21,8 @@ struct RecognitionSegment {
     let confidence: Float
     /// 该句是否主要为日语（含平假名/片假名/汉字）。非日语句不生成注音。
     let isJapanese: Bool
+    /// Whisper 本段转写对应的语言标签（ISO 或模型输出；合并短句时可能丢失）
+    let whisperLanguageCode: String?
     /// 可选的逐词时间戳（仅 Whisper 提供），用于更精确的卡拉 OK 高亮
     let wordTimings: [WordTimingInfo]?
     
@@ -30,6 +32,7 @@ struct RecognitionSegment {
         endTime: TimeInterval,
         confidence: Float,
         isJapanese: Bool = true,
+        whisperLanguageCode: String? = nil,
         wordTimings: [WordTimingInfo]? = nil
     ) {
         self.text = text
@@ -37,6 +40,7 @@ struct RecognitionSegment {
         self.endTime = endTime
         self.confidence = confidence
         self.isJapanese = isJapanese
+        self.whisperLanguageCode = whisperLanguageCode
         self.wordTimings = wordTimings
     }
 }

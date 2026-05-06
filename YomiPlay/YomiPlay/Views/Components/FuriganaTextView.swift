@@ -171,11 +171,10 @@ struct TokenView: View {
         VStack(spacing: 0) {
             // 上段：振り仮名 or 英語原綴り
             if showFurigana || showEnglish {
+                let trimmedMeaning = token.englishMeaning?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 if showEnglish,
-                   token.isKatakana,
-                   let meaning = token.englishMeaning,
-                   !meaning.isEmpty {
-                    Text(meaning)
+                   !trimmedMeaning.isEmpty {
+                    Text(trimmedMeaning)
                         .font(.system(size: readingFontSize))
                         .foregroundStyle(palette.englishMeaning)
                         .lineLimit(1)

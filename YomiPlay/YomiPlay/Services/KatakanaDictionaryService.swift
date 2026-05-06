@@ -13,6 +13,8 @@ final class KatakanaDictionaryService {
     static let shared = KatakanaDictionaryService()
     
     private var dictionary: [String: String] = [:]
+    private var bundledDictionary: [String: String] = [:]
+    private static let customDictionaryDefaultsKey = "katakanaEnglishCustomDictionary"
     
     private init() {
         loadDictionary()
@@ -27,10 +29,22 @@ final class KatakanaDictionaryService {
         do {
             let data = try Data(contentsOf: url)
             let decoded = try JSONDecoder().decode([String: String].self, from: data)
+            bundledDictionary = decoded
             dictionary = decoded
-            print("KatakanaDictionaryService: loaded \(decoded.count) entries")
+            mergeCustomDictionary()
+            print("KatakanaDictionaryService: loaded \(decoded.count) bundled entries")
         } catch {
             print("KatakanaDictionaryService: failed to load dictionary - \(error)")
+        }
+    }
+
+    private func mergeCustomDictionary() {
+        let stored = UserDefaults.standard.dictionary(forKey: Self.customDictionaryDefaultsKey) as? [String: String] ?? [:]
+        for (key, value) in stored {
+            let normalizedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalizedKey.isEmpty, !normalizedValue.isEmpty else { continue }
+            dictionary[normalizedKey] = normalizedValue
         }
     }
     
@@ -38,6 +52,18 @@ final class KatakanaDictionaryService {
     func lookup(_ surface: String) -> String? {
         guard let raw = dictionary[surface] else { return nil }
         return Self.simplifiedEnglish(from: raw)
+    }
+
+    /// 更新（或新增）片假名词条映射，并持久化到用户词库
+    func upsert(surface: String, englishMeaning: String) {
+        let normalizedSurface = surface.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedMeaning = englishMeaning.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedSurface.isEmpty, !normalizedMeaning.isEmpty else { return }
+        dictionary[normalizedSurface] = normalizedMeaning
+
+        var stored = UserDefaults.standard.dictionary(forKey: Self.customDictionaryDefaultsKey) as? [String: String] ?? [:]
+        stored[normalizedSurface] = normalizedMeaning
+        UserDefaults.standard.set(stored, forKey: Self.customDictionaryDefaultsKey)
     }
     
     /// 辞書内の英語訳から、UI に表示するための短いラベルを生成する

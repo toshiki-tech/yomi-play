@@ -7,9 +7,6 @@
     " " : {
 
     },
-    "," : {
-
-    },
     "..." : {
 
     },
@@ -727,6 +724,35 @@
         }
       }
     },
+    "Edit Pronunciation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Pronunciation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読み方を編集"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑读音"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯讀音"
+          }
+        }
+      }
+    },
     "enable_url_import" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1231,6 +1257,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "SRT檔案解析失敗"
+          }
+        }
+      }
+    },
+    "file_import_pro_subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import local media and subtitle files from the Files app"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイル App から端末内のメディア・字幕をインポート"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从「文件」App 导入本地媒体与字幕"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "從「檔案」App 匯入本機媒體與字幕"
+          }
+        }
+      }
+    },
+    "file_import_supported_formats" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mp3, m4a, wav, mp4, mov"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mp3, m4a, wav, mp4, mov"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mp3, m4a, wav, mp4, mov"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mp3, m4a, wav, mp4, mov"
           }
         }
       }
@@ -1888,6 +1970,34 @@
         }
       }
     },
+    "import_community_description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open toshiki.tech and download shared .yomi subtitles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "toshiki.tech で共有された .yomi 字幕をダウンロード"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往YomiPlay社区下载分享的字幕资料。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往 toshiki.tech 下載社群分享的 .yomi 字幕"
+          }
+        }
+      }
+    },
     "import_formatted_yomi" : {
       "localizations" : {
         "en" : {
@@ -1997,6 +2107,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "從公開播客或URL連結匯入"
+          }
+        }
+      }
+    },
+    "import_from_yomiplay_community" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From YomiPlay Community"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay コミュニティから"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从YomiPlay社区下载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "從YomiPlay社群下載"
           }
         }
       }
@@ -2309,6 +2447,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "升級 Pro"
+          }
+        }
+      }
+    },
+    "import_zip_community_download_link" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Or download from YomiPlay Community"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "または YomiPlay コミュニティからダウンロード"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或从YomiPlay社区下载"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或從YomiPlay社群下載"
           }
         }
       }
@@ -3296,6 +3463,62 @@
         }
       }
     },
+    "library_folder_reorder_edit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reorder groups"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "グループ並べ替え"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑分组顺序"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯分組順序"
+          }
+        }
+      }
+    },
+    "library_folder_reorder_footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Reorder groups, then drag the handle to change order. Default group stays at the top."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「グループ並べ替え」で編集し、右のハンドルで並べ替えられます（未分類は上に固定）。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点「编辑分组顺序」后拖动右侧手柄调整顺序；「未分组」始终在上方。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點「編輯分組順序」後拖曳右側控點；「未分組」固定在最上方。"
+          }
+        }
+      }
+    },
     "library_header_subtitle" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3437,6 +3660,342 @@
         }
       }
     },
+    "library_sort_default_name" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default (name A–Z)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デフォルト（名前 A→Z）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认（按名称 A–Z）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設（依名稱 A–Z）"
+          }
+        }
+      }
+    },
+    "library_sort_manual" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom order (drag to sort)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動並べ替え（ドラッグ）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义顺序（可拖动）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自訂順序（可拖曳）"
+          }
+        }
+      }
+    },
+    "library_sort_manual_footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Edit order, then drag the handle on the right to reorder."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「順序を編集」を押してから、右のハンドルで並べ替えられます。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点「编辑顺序」后，拖动右侧手柄即可调整顺序。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點「編輯順序」後，拖曳右側控點即可調整順序。"
+          }
+        }
+      }
+    },
+    "library_sort_menu_short_date_new" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Newest"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しい順"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日期·新→旧"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日期·新→舊"
+          }
+        }
+      }
+    },
+    "library_sort_menu_short_date_old" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oldest"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "古い順"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日期·旧→新"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日期·舊→新"
+          }
+        }
+      }
+    },
+    "library_sort_menu_short_default" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デフォルト"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "預設"
+          }
+        }
+      }
+    },
+    "library_sort_menu_short_manual" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自訂"
+          }
+        }
+      }
+    },
+    "library_sort_menu_short_name_za" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name Z–A"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名前 Z→A"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名称·Z–A"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名稱·Z–A"
+          }
+        }
+      }
+    },
+    "library_sort_reorder_done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完了"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "library_sort_reorder_edit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit order"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "順序を編集"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑顺序"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯順序"
+          }
+        }
+      }
+    },
+    "library_sort_section_auto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动排序"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動排序"
+          }
+        }
+      }
+    },
+    "library_sort_section_custom" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カスタム"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自訂"
+          }
+        }
+      }
+    },
     "library_subtitle" : {
       "localizations" : {
         "en" : {
@@ -3461,6 +4020,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的學習記錄與分組"
+          }
+        }
+      }
+    },
+    "library_toolbar_more" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "その他"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多"
           }
         }
       }
@@ -3689,9 +4276,6 @@
         }
       }
     },
-    "mov" : {
-
-    },
     "move_to_folder" : {
       "localizations" : {
         "en" : {
@@ -3719,12 +4303,6 @@
           }
         }
       }
-    },
-    "mp3, m4a, wav," : {
-
-    },
-    "mp4" : {
-
     },
     "my_groups" : {
       "localizations" : {
@@ -3755,6 +4333,7 @@
       }
     },
     "name_a_z" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4348,25 +4927,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Audio import only"
+            "value" : "Podcast or URL audio import only"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声のインポートのみ対応"
+            "value" : "ポッドキャストまたはURLからの音声インポートのみ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅支持导入音频"
+            "value" : "仅支持从播客或 URL 导入音频"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "僅支援匯入音訊"
+            "value" : "僅支援從 Podcast 或 URL 匯入音訊"
           }
         }
       }
@@ -4881,25 +5460,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Video and ZIP import supported"
+            "value" : "Local & online media, ZIP batch import — build a serious library"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "動画・ZIPのインポートに対応"
+            "value" : "端末内・オンラインの音動画、ZIP一括取り込みで本格的なライブラリを構築"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持视频和 ZIP 导入"
+            "value" : "本地与在线音视频、ZIP 批量导入，搭建体系化学习素材库"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支援影片與 ZIP 匯入"
+            "value" : "本機與線上音訊/影片、ZIP 批次匯入，建立體系化學習素材庫"
           }
         }
       }
@@ -5213,6 +5792,34 @@
         }
       }
     },
+    "playback_rate_cycle_next" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next speed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次の速度"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一档速度"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一檔速度"
+          }
+        }
+      }
+    },
     "playback_repeat_accessibility_hint" : {
       "localizations" : {
         "en" : {
@@ -5274,25 +5881,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Repeat"
+            "value" : "Off"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リピート"
+            "value" : "オフ"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "循环"
+            "value" : "不循环"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "循環"
+            "value" : "不循環"
           }
         }
       }
@@ -5382,7 +5989,6 @@
       }
     },
     "playback_repeat_off" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -5636,6 +6242,146 @@
         }
       }
     },
+    "player_subtitle_long_press_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press a line to edit, split, merge, and more."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕行を長押しすると、編集・分割・結合などができます。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按某句字幕可编辑、拆分、合并等。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長按某句字幕可編輯、拆分、合併等。"
+          }
+        }
+      }
+    },
+    "player_subtitle_long_press_hint_ok" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Got it"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "了解"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "知道了"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "知道了"
+          }
+        }
+      }
+    },
+    "player_translation_failed_dismiss_a11y" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss translation failure notice"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳失敗の通知を閉じる"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭翻译失败提示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉翻譯失敗提示"
+          }
+        }
+      }
+    },
+    "player_translation_failed_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto translation didn't complete on import. You can retry now."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取り込み時の自動翻訳が完了しませんでした。今すぐ再試行できます。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导入时自动翻译未完成，可立即重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "匯入時自動翻譯未完成，可立即重試。"
+          }
+        }
+      }
+    },
+    "player_translation_failed_retry" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再試行"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重試"
+          }
+        }
+      }
+    },
     "please_go_back_and_try_another_file" : {
       "localizations" : {
         "en" : {
@@ -5688,6 +6434,90 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "貼上可直接下載的音訊/影片連結即可匯入。"
+          }
+        }
+      }
+    },
+    "podcast_download_insufficient_storage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough storage to save the downloaded audio. Free up some space and try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダウンロードした音声を保存する空き容量が足りません。ストレージを空けてから再試行してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储空间不足，无法保存下载的音频。请清理空间后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存空間不足，無法儲存下載的音訊。請清理空間後重試。"
+          }
+        }
+      }
+    },
+    "podcast_download_network_unavailable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No network connection. Connect to Wi-Fi or cellular data and try again."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ネットワーク接続がありません。Wi-Fi またはモバイルデータをオンにして再試行してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前没有网络连接。请检查 Wi-Fi 或蜂窝数据后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前沒有網路連線。請檢查 Wi-Fi 或行動數據後重試。"
+          }
+        }
+      }
+    },
+    "podcast_download_network_unreachable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not reach the podcast server (DNS, TLS, or connection failed). Your network may be restricted, or the source is unavailable from your region. Try a VPN, another source, or import a local file."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ポッドキャストのサーバーに接続できませんでした（DNS / TLS / 接続切断など）。ネットワークが制限されているか、お住まいの地域からアクセスできない可能性があります。VPN、別のソース、またはローカルファイルでの取り込みをお試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法连接到播客服务器（DNS / TLS / 连接被中断等）。可能是网络受限，或该资源在您所在地区不可访问。可尝试使用 VPN、换用其他来源，或改为本地文件导入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連接到播客伺服器（DNS / TLS / 連線中斷等）。可能是網路受限，或該資源在您所在地區無法存取。可嘗試使用 VPN、改用其他來源，或改為本機檔案匯入。"
           }
         }
       }
@@ -5832,6 +6662,34 @@
         }
       }
     },
+    "podcast_feed_invalid" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The RSS feed loaded but contains no playable audio entries (or its format is invalid). Try another feed URL or pick an episode from \"From podcast\"."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSS フィードは取得できましたが、再生可能な音声エピソードが見つかりません（またはフィード形式が無効です）。別のフィード URL を試すか、「ポッドキャストから」でエピソードを選んでください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSS 订阅源已成功获取，但其中没有可播放的音频单集（或源的格式无效）。请尝试其他订阅地址，或在「从播客导入」中挑选单集。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSS 訂閱源已成功取得，但其中沒有可播放的音訊單集（或來源格式無效）。請嘗試其他訂閱位址，或在「從播客匯入」中挑選單集。"
+          }
+        }
+      }
+    },
     "podcast_file_too_large" : {
       "localizations" : {
         "en" : {
@@ -5888,30 +6746,115 @@
         }
       }
     },
-    "podcast_link_unresolvable" : {
+    "podcast_link_apple_page_unsupported" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This link could not be resolved to a playable audio source. Try a direct audio link, an RSS feed link, or import a local file instead."
+            "value" : "Apple Podcasts web links are not supported here—they open a webpage, not a downloadable audio file. Use Import from podcast to search by keywords and choose an episode, or paste an RSS feed URL / direct audio link in Import from link."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このリンクから再生可能な音声を取得できませんでした。直接の音声リンクやRSSリンクをお試しになるか、ローカルファイルで取り込んでください。"
+            "value" : "Apple ポッドキャストのページ URL は、ここでは音声ファイルとして取得できません。「ポッドキャストからインポート」でキーワード検索してエピソードを選ぶか、「リンクから取り込み」に RSS の URL または直接の音声リンクを貼ってください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当前链接无法解析为可用音频。请尝试直接音频链接、RSS 链接，或改用文件导入。"
+            "value" : "不支持 Apple 播客网页链接：它是网页而非可直接下载的音频。请在「从播客导入」中用关键词搜索节目并选集；或在「从链接导入」中粘贴 RSS 地址或音频直链。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "目前連結無法解析為可用音訊。請嘗試直接音訊連結、RSS 連結，或改用檔案匯入。"
+            "value" : "不支援 Apple 播客網頁連結：它是網頁而非可直接下載的音訊。請在「從播客匯入」中以關鍵詞搜尋節目並選集；或在「從連結匯入」貼上 RSS 或音訊直連。"
+          }
+        }
+      }
+    },
+    "podcast_link_network_timeout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting to the podcast source timed out. Check your network and try again, or use another source."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ポッドキャストソースへの接続がタイムアウトしました。ネットワークをご確認のうえ再試行するか、別のソースをお試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接该播客资源超时。请检查网络后重试，或换用其他来源。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連接該播客資源逾時。請檢查網路後重試，或改用其他來源。"
+          }
+        }
+      }
+    },
+    "podcast_link_network_unreachable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not reach this podcast source. Your network may be restricted, or the source is unavailable from your region. Try a VPN, another source, or import a local file."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このポッドキャストソースに接続できませんでした。ネットワークが制限されているか、お住まいの地域からアクセスできない可能性があります。VPN、別のソース、またはローカルファイルでの取り込みをお試しください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法连接到该播客资源。可能是网络受限，或该资源在您所在地区不可访问。可尝试使用 VPN、换用其他来源，或改为本地文件导入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連接到該播客資源。可能是網路受限，或該資源在您所在地區無法存取。可嘗試使用 VPN、改用其他來源，或改為本機檔案匯入。"
+          }
+        }
+      }
+    },
+    "podcast_link_unresolvable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This link could not be resolved to a playable audio file. Use a direct .mp3/.m4a (etc.) link, an RSS feed URL, or import a local file. Apple Podcasts web pages, YouTube, and similar players usually cannot be used here. For podcasts, open Import from podcast, search by keyword, and pick an episode."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリンクから再生用の音声ファイルを取得できませんでした。直接の音声ファイル URL、RSS の URL、またはローカルファイルをお試しください。Apple ポッドキャストの Web ページや YouTube などの再生ページは通常ご利用いただけません。ポッドキャストは「ポッドキャストからインポート」でキーワード検索し、エピソードを選んでください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前链接无法解析为可直接下载的音频。请使用音频直链、RSS 订阅地址，或改用本地文件导入。Apple 播客网页、YouTube 等播放页通常无法在此使用；播客请用「从播客导入」里的关键词搜索选集。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前連結無法解析為可直接下載的音訊。請使用音訊直連、RSS 訂閱位址，或改用本機檔案匯入。Apple 播客網頁、YouTube 等播放頁通常無法在此使用；播客請用「從播客匯入」裡的關鍵詞搜尋選集。"
           }
         }
       }
@@ -6090,25 +7033,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter keywords to search podcasts."
+            "value" : "Search with keywords (show title, host, channel). Do not paste Apple Podcasts or other web page URLs—they are not valid search terms."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーワードでポッドキャストを検索します。"
+            "value" : "番組名・配信者名などのキーワードで検索してください。Apple ポッドキャストのページ URL は貼らないでください（検索語になりません）。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "输入关键词搜索播客。"
+            "value" : "请输入节目名、主播名等关键词搜索；请勿粘贴 Apple 播客等网页链接（无法作为搜索词）。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "輸入關鍵詞搜尋播客。"
+            "value" : "請輸入節目名、主持人名等關鍵詞搜尋；請勿貼上 Apple 播客等網頁連結（無法作為搜尋詞）。"
           }
         }
       }
@@ -6222,6 +7165,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "搜尋播客節目"
+          }
+        }
+      }
+    },
+    "podcast_search_use_keywords_not_url" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That looks like a web link. Use Import from podcast to search by keyword, or use Import from link for RSS / direct audio URLs."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web の URL のようです。「ポッドキャストからインポート」でキーワード検索するか、「リンクから取り込み」に RSS または音声直リンクを貼ってください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检测到网页链接。请改为在「从播客导入」中输入关键词搜索选集，或使用「从链接导入」粘贴 RSS 或音频直链。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偵測到網頁連結。請改為在「從播客匯入」輸入關鍵詞搜尋選集，或使用「從連結匯入」貼上 RSS 或音訊直連。"
           }
         }
       }
@@ -6375,25 +7347,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Only direct downloadable public audio/video links are supported. Pages that hide media files (for example, many YouTube pages) are usually not importable."
+            "value" : "Use a direct audio/video file URL or an RSS feed URL. Apple Podcasts web pages, YouTube players, and similar sites do not expose a file we can download. For podcasts, use Import from podcast and search by keyword to pick an episode."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "直接ダウンロード可能な公開音声/動画リンクのみ対応しています。メディア実体を隠すページ（例: 多くの YouTube ページ）は通常取り込めません。"
+            "value" : "音声・動画ファイルの直接 URL、または RSS の URL を貼ってください。Apple ポッドキャストの Web ページや YouTube の再生ページは取り込めません。ポッドキャストは「ポッドキャストからインポート」でキーワード検索してエピソードを選んでください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "仅支持可直接下载的公开音频/视频链接。像 YouTube 这类隐藏媒体真实地址的播放页，通常无法导入。"
+            "value" : "请粘贴可直接下载的音视频地址或 RSS 订阅地址。Apple 播客网页、YouTube 播放页等无法解析；播客请用「从播客导入」里的关键词搜索选集。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "僅支援可直接下載的公開音訊/影片連結。像 YouTube 這類隱藏媒體真實位址的播放頁，通常無法匯入。"
+            "value" : "請貼上可直接下載的音訊/影片位址或 RSS。Apple 播客網頁、YouTube 播放頁等無法解析；播客請用「從播客匯入」裡的關鍵詞搜尋選集。"
           }
         }
       }
@@ -6714,6 +7686,202 @@
         }
       }
     },
+    "pronunciation_editor_apply_segmentation" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apply segmentation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分かち書きを適用"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用分词"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "套用分詞"
+          }
+        }
+      }
+    },
+    "pronunciation_editor_english_meaning" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "English meaning"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英語の意味"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英文释义"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英文釋義"
+          }
+        }
+      }
+    },
+    "pronunciation_editor_english_meaning_placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter English meaning"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英語の意味を入力"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "输入英文释义"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輸入英文釋義"
+          }
+        }
+      }
+    },
+    "pronunciation_editor_open" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Pronunciation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "注音を編集"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑注音"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編輯注音"
+          }
+        }
+      }
+    },
+    "pronunciation_editor_segmentation_hint" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual segmentation (use |)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動分かち書き（| 区切り）"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动分词（使用 | 分隔）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動分詞（使用 | 分隔）"
+          }
+        }
+      }
+    },
+    "pronunciation_editor_segmentation_placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Example: 今日|は|日本語|を|勉強"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "例: 今日|は|日本語|を|勉強"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "例：今日|は|日本語|を|勉強"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "例：今日|は|日本語|を|勉強"
+          }
+        }
+      }
+    },
+    "pronunciation_editor_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Pronunciation"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "注音編集"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "注音编辑"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "注音編輯"
+          }
+        }
+      }
+    },
     "purchase_pending" : {
       "localizations" : {
         "en" : {
@@ -6825,6 +7993,9 @@
           }
         }
       }
+    },
+    "reading" : {
+
     },
     "recognition_error_podcast_hint" : {
       "localizations" : {
@@ -8261,6 +9432,7 @@
       }
     },
     "segments_most_first" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -8854,25 +10026,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI speech recognition · Shadowing · Learning resources"
+            "value" : "Richer import & export · Daily intensive listening & shadowing · Podcasts, drama & music"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI音声認識 · シャドーイング · 学習リソース共有"
+            "value" : "学習メディアの取り込み・書き出し拡張 · 毎日の精聴とシャドーイング · ポッドキャスト・ドラマ・音楽"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI语音识别 · 影子跟读 · 学习资源分享"
+            "value" : "音视频学习资料导入与导出 · 每日精听、跟读与语料整理 · 播客、剧集、音乐练听更自由"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI語音識別 · 影子跟讀 · 學習資源分享"
+            "value" : "音訊/影片學習資料匯入與匯出 · 每日精聽、跟讀與語料整理 · 播客、劇集、音樂練聽更自由"
           }
         }
       }
@@ -8966,25 +10138,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thank you for your support! You have unlimited recognition, video import, and full export."
+            "value" : "Thank you for your support! Enjoy unlimited recognition plus full import/export workflows for daily listening, shadowing, and your personal learning library."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ご利用ありがとうございます。無制限認識・動画インポート・フルエクスポートをご利用中です。"
+            "value" : "ご利用ありがとうございます。無制限認識に加え、取り込み・書き出しまで一気通貫で、毎日の精聴・シャドーイングと語料管理をサポートします。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "感谢支持！您正在享受无限时长、视频导入及完整导出权限。"
+            "value" : "感谢支持！您已享无限识别，并可全链路管理音视频学习资料的导入与导出，专注每日精听、跟读与个人素材库沉淀。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "感謝支持！您正在享受無限時長、影片導入及完整導出權限。"
+            "value" : "感謝支持！您已享無限識別，並可全鏈路管理音訊/影片學習資料的匯入與匯出，專注每日精聽、跟讀與個人素材庫沉澱。"
           }
         }
       }
@@ -9022,30 +10194,58 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "If podcast import or recognition fails, first verify the link is a direct downloadable audio source, then try a shorter episode or local file import. If it still fails, switch to a lighter recognition model in Settings."
+            "value" : "When importing from a link or remote source, audio is often hosted on overseas servers or CDNs. From some regions or networks the route may be slow, blocked, or unstable, which can cause download or import to fail—try switching networks (Wi‑Fi / cellular), a shorter file or episode, or use a local file if available.\n\nSpeech recognition runs entirely on your device. Larger models need more memory and processing power. On hardware older than iPhone 13 Pro class, runs may be slower, time out, or feel less stable—this is often related to device capability rather than a bug. Open Settings and choose a lighter or appropriately sized model (e.g. tiny / base / small).\n\nAlso confirm the link points to a directly downloadable audio source."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播客の取り込みや認識に失敗する場合は、まずリンクが直接ダウンロード可能な音声ソースか確認し、短いエピソードやローカルファイル取り込みを試してください。改善しない場合は設定でより軽量な認識モデルに切り替えてください。"
+            "value" : "リンクやリモートから取り込む場合、音声は海外のサーバーや CDN 上にあることが多く、地域や回線によっては遅延・ブロック・不安定さで取得に失敗することがあります。Wi‑Fi／モバイル通信の切り替え、より短いファイル／エピソード、または手元のファイルからの取り込みをお試しください。\n\n音声認識は端末内で処理します。大きいモデルほどメモリと演算負荷が増えます。iPhone 13 Pro より前の世代の機種では、処理が重くなったりタイムアウトしやすくなったりすることがあり、必ずしも不具合だけとは限りません。設定でより軽量・適切なサイズのモデル（tiny／base／small など）を選んでください。\n\nリンクが直接ダウンロード可能な音声かもあわせてご確認ください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果播客导入或识别失败，请先确认链接是可直接下载的音频源，再尝试更短的单集或本地文件导入；仍失败时可在设置中切换更轻量的识别模型。"
+            "value" : "通过链接或远程来源导入时，音频常托管在海外服务器或 CDN 上，受地区与网络路径影响，可能出现超时、无法连通或速度过慢，从而导致导入失败。可尝试切换网络（如 Wi‑Fi / 蜂窝）、选择更短的内容，或改用已下载到本地的文件导入。\n\n语音识别在设备本地运行，模型越大对内存与算力要求越高。在早于 iPhone 13 Pro 的机型上，可能出现识别变慢、超时或不稳定，这往往与设备性能余量有关，并非一定是软件故障。请在设置中选择更轻量、与设备相匹配的识别模型（如 tiny / base / small 等）。\n\n也请确认链接指向的是可直接下载的音频源。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "若播客匯入或識別失敗，請先確認連結是可直接下載的音訊來源，再嘗試較短單集或本機檔案匯入；仍失敗時可在設定切換較輕量的識別模型。"
+            "value" : "透過連結或遠端來源匯入時，音訊常託管在海外伺服器或 CDN 上，受地區與網路路徑影響，可能逾時、無法連通或速度過慢，導致匯入失敗。可嘗試切換網路（如 Wi‑Fi／行動網路）、選擇較短內容，或改用已下載到本機的檔案匯入。\n\n語音辨識在裝置本機執行，模型越大對記憶體與算力要求越高。在早於 iPhone 13 Pro 的機型上，可能變慢、逾時或不穩定，這往往與裝置效能餘量有關，並非一定是程式錯誤。請在設定中選擇較輕量、與裝置相符的辨識模型（如 tiny／base／small 等）。\n\n亦請確認連結指向的是可直接下載的音訊來源。"
           }
         }
       }
     },
     "settings_help_a2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subtitle translation uses Apple’s on-device Translation framework (iOS 26 or later). The actual translation runs on your device; your subtitle text is not sent to YomiPlay’s servers for translation.\n\nHowever, the first time you translate into a given target language, the system may need to download Apple’s language resources for that pair—this step requires an internet connection. After the needed resources are installed, translation can usually work offline for supported language pairs. If translation fails, check network permission, try again on Wi‑Fi, and confirm iOS language & translation settings."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕の翻訳は、Apple のオンデバイス Translation（iOS 26 以降）を利用します。翻訳処理は端末上で行われ、字幕テキストが YomiPlay のサーバーに送られて翻訳される仕組みではありません。\n\nただし、ある翻訳先言語を初めて使うときに、Apple の言語リソースを一度ダウンロードする必要がある場合があり、そのときはインターネット接続が必要です。必要なリソースが入れば、対応する言語ペアではオフラインでも翻訳できることが多いです。失敗する場合は、通信の許可・Wi‑Fi での再試行、iOS の言語・翻訳関連の設定もご確認ください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕翻译使用 Apple 系统自带的设备端翻译能力（需 iOS 26 及以上）。翻译在本地完成，字幕文本不会发送到 YomiPlay 服务器去做翻译。\n\n但首次翻译到某个目标语言时，系统可能需要下载该语言对的资源包，这一步需要联网。资源就绪后，在系统支持的范围内，多数情况下可离线翻译。若提示失败，请检查是否允许网络、在 Wi‑Fi 下重试，并查看 iOS 的语言与翻译相关设置。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕翻譯使用 Apple 系統內建的裝置端翻譯能力（需 iOS 26 及以上）。翻譯在本機完成，字幕文字不會送到 YomiPlay 的伺服器進行翻譯。\n\n但首次翻譯到某個目標語言時，系統可能需要下載該語言組的資源，這一步需要連網。資源就緒後，在系統支援的範圍內，多數情況下可離線翻譯。若失敗，請確認是否允許網路、在 Wi‑Fi 下重試，並查看 iOS 的語言與翻譯相關設定。"
+          }
+        }
+      }
+    },
+    "settings_help_a3" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -9073,30 +10273,30 @@
         }
       }
     },
-    "settings_help_a3" : {
+    "settings_help_a4" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Translation is available on iOS 26 or later. Some target languages may require a one-time language pack download on first use, so please allow network access."
+            "value" : "In the player, long-press a subtitle line to edit text and timing, split or merge with adjacent lines, delete, and more. The first time you open the player with subtitles, a one-time hint may appear above the list."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻訳機能は iOS 26 以降で利用できます。初回利用時は対象言語の言語パックが必要な場合があるため、ネットワーク接続を許可してください。"
+            "value" : "再生画面で字幕行を長押しすると、テキストや時間の編集、前後との結合・分割、削除などができます。字幕付きで再生画面を初めて開いたとき、一覧の上に一度だけ案内が表示されることがあります。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻译功能仅支持 iOS 26 及以上。首次使用部分目标语言时可能需要下载语言包，请确保允许网络访问。"
+            "value" : "在播放页长按某句字幕，可编辑文字与时间、与前后句合并或拆分、删除等。首次进入带字幕的播放页时，字幕列表上方也会出现一次性提示。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻譯功能僅支援 iOS 26 及以上。首次使用部分目標語言時可能需要下載語言包，請確認已允許網路存取。"
+            "value" : "在播放頁長按某句字幕，可編輯文字與時間、與前後句合併或拆分、刪除等。首次進入帶字幕的播放頁時，字幕列表上方也會出現一次性提示。"
           }
         }
       }
@@ -9157,6 +10357,34 @@
         }
       }
     },
+    "settings_help_about_3" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay Community is for learners to share and discover .yomi subtitles—furigana, timing, and notes included. Share tracks you subtitled for podcasts and videos, grab subtitles from others, and improve together."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YomiPlay コミュニティでは、学習者同士が .yomi 字幕（ふりがな・タイムコード・注釈）を共有・入手できます。お気に入りの配信向けに作った字幕を公開したり、みんなの作品を活用したり、一緒に上達しましょう。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「YomiPlay 社区」面向日语学习者：分享或下载 .yomi 字幕（含假名注音、时间轴与注释）。上传你为播客、影音制作的字幕，也逛逛大家的作品，一起学习、共同进步。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「YomiPlay 社群」面向日語學習者：分享或下載 .yomi 字幕（含注音、時間軸與註解）。上傳你為播客、影音製作的字幕，也逛逛大家的作品，一起學習、共同進步。"
+          }
+        }
+      }
+    },
     "settings_help_about_section" : {
       "localizations" : {
         "en" : {
@@ -9213,6 +10441,34 @@
         }
       }
     },
+    "settings_help_community_link_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open YomiPlay Community"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コミュニティを開く"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往 YomiPlay 社区"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往 YomiPlay 社群"
+          }
+        }
+      }
+    },
     "settings_help_faq_section" : {
       "localizations" : {
         "en" : {
@@ -9246,30 +10502,58 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "What should I do if podcast import or recognition fails?"
+            "value" : "What should I do if import or recognition fails?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播客の取り込みや音声認識に失敗した場合はどうすればよいですか？"
+            "value" : "取り込みや音声認識に失敗した場合はどうすればよいですか？"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果播客导入或语音识别失败该怎么办？"
+            "value" : "如果导入或语音识别失败该怎么办？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "若播客匯入或語音識別失敗該怎麼辦？"
+            "value" : "若匯入或語音識別失敗該怎麼辦？"
           }
         }
       }
     },
     "settings_help_q2" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Does translation require network access?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳機能はネットワークが必要ですか？"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译功能需要联网吗？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻譯功能需要連網嗎？"
+          }
+        }
+      }
+    },
+    "settings_help_q3" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -9297,30 +10581,30 @@
         }
       }
     },
-    "settings_help_q3" : {
+    "settings_help_q4" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Does translation require network access?"
+            "value" : "How do I edit subtitles in the player?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻訳機能はネットワークが必要ですか？"
+            "value" : "再生画面で字幕を編集するには？"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻译功能需要联网吗？"
+            "value" : "播放页如何编辑字幕？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻譯功能需要連網嗎？"
+            "value" : "播放頁如何編輯字幕？"
           }
         }
       }
@@ -10172,6 +11456,7 @@
       }
     },
     "sort_label" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -10354,6 +11639,230 @@
     },
     "SRT" : {
 
+    },
+    "stage_failure_download_remote" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダウンロードに失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載失敗"
+          }
+        }
+      }
+    },
+    "stage_failure_furigana" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to generate phonetic subtitles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ふりがなの生成に失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "注音生成失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "注音生成失敗"
+          }
+        }
+      }
+    },
+    "stage_failure_load_audio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to load audio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声の読み込みに失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频加载失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音訊載入失敗"
+          }
+        }
+      }
+    },
+    "stage_failure_parse_srt" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to parse subtitles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕の解析に失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕解析失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "字幕解析失敗"
+          }
+        }
+      }
+    },
+    "stage_failure_permission" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission required"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "権限が必要です"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要权限"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要權限"
+          }
+        }
+      }
+    },
+    "stage_failure_recognize" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speech recognition failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声認識に失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语音识别失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "語音辨識失敗"
+          }
+        }
+      }
+    },
+    "stage_failure_resolve_remote" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to resolve link"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リンクの解析に失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "链接解析失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連結解析失敗"
+          }
+        }
+      }
+    },
+    "stage_failure_translate" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Translation failed"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳に失敗しました"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译失败"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻譯失敗"
+          }
+        }
+      }
     },
     "Start" : {
       "localizations" : {
@@ -10725,25 +12234,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "On-device translation needs the chosen language to be available on this iPhone (language data is usually installed under Settings → General → Language & Region, or when you first use translation). If the target language isn’t installed, the system may refuse to translate—that’s expected. Add the language or pick a target you already use."
+            "value" : "Translation failed.\n\nPlease check:\n1) The target language is installed on this iPhone.\n2) The language pair is supported by Apple's on-device translation.\n\nYou can install languages in Settings → General → Language & Region (or the first time you use Translate), then try again."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "デバイス上の翻訳は、選択した言語のデータが iPhone に入っている必要があります（設定 → 一般 → 言語と地域、または初回の翻訳利用時にダウンロードされることがあります）。未インストールの場合、システム側で翻訳できない旨が出るのは正常な動作です。言語を追加するか、すでに利用している翻訳先言語を選んでください。"
+            "value" : "翻訳に失敗しました。\n\n次をご確認ください：\n1) 翻訳先言語が iPhone にインストールされている\n2) 言語ペアが Apple のデバイス上翻訳でサポートされている\n\n言語は「設定 → 一般 → 言語と地域」（または翻訳初回利用時）で追加できます。追加後に再試行してください。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "系统自带翻译需要本机已具备所选语言的相关数据（一般在「设置 → 通用 → 语言与地区」中安装/添加，或在首次使用翻译时下载）。若手机未添加韩语等目标语言，就可能无法翻译，并出现「无法翻译」之类提示，这种情况是正常现象。请先在系统中添加/下载对应语言，或把翻译目标改为你已安装的语言。"
+            "value" : "翻译失败。\n\n请检查：\n1）目标语言是否已在 iPhone 上安装\n2）该语言对是否受苹果设备端翻译支持\n\n可在「设置 → 通用 → 语言与地区」（或首次使用翻译时）下载语言后重试。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "系統內建翻譯須仰賴本機已安裝的語言資料（多在「設定 → 一般 → 語言與地區」，或首次使用翻譯時下載）。若尚未加入韓文等目標語言，就可能無法翻譯並顯示「無法翻譯」等訊息，屬正常情況。請先到系統新增/下載對應語言，或改選已安裝的翻譯目標語言。"
+            "value" : "翻譯失敗。\n\n請檢查：\n1）目標語言是否已在 iPhone 上安裝\n2）該語言配對是否受 Apple 裝置端翻譯支援\n\n可在「設定 → 一般 → 語言與地區」（或首次使用翻譯時）下載語言後再試。"
           }
         }
       }
@@ -10752,26 +12261,26 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Translation may need to download language packs. Please allow YomiPlay to use cellular data and Wi‑Fi in Settings → Cellular if the download does not start."
+            "state" : "translated",
+            "value" : "For best translation results:\n1) Update iPhone to iOS 26+ or the latest iOS.\n2) In system Translation settings, set Apple's Translate as the default app.\n3) In Manage Languages, download Chinese/Japanese/English in advance.\n\nThis improves reliability in offline mode and on-device translation mode."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "翻訳は言語パックのダウンロードが必要な場合があります。ダウンロードが始まらない場合は、設定 → モバイルデータ で YomiPlay のネットワーク利用を許可してください。"
+            "state" : "translated",
+            "value" : "翻訳を安定して使うには：\n1) iPhone を iOS 26 以降または最新 iOS に更新\n2) システムの翻訳設定で、デフォルト App を Apple 純正「翻訳」に設定\n3) 「言語を管理」で中国語・日本語・英語を事前にダウンロード\n\nオフライン時やデバイス上翻訳モードでも動作しやすくなります。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻译可能需要下载语言包。请在 设置 → 蜂窝网络 中允许 YomiPlay 使用网络与蜂窝数据。"
+            "value" : "为保证翻译稳定，建议先完成以下设置：\n1）将 iPhone 升级到 iOS 26+ 或最新版 iOS\n2）在系统翻译设置中，将默认翻译 App 设为苹果自带“翻译”\n3）在“管理语言”中提前下载中/日/英语言包\n\n这样在离线或开启设备端翻译模式时更稳定。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "翻譯可能需要下載語言包。請在 設定 → 行動數據 中允許 YomiPlay 使用網路與行動數據。"
+            "value" : "為確保翻譯穩定，建議先完成以下設定：\n1）將 iPhone 升級到 iOS 26+ 或最新版本 iOS\n2）在系統翻譯設定中，將預設翻譯 App 設為 Apple 內建「翻譯」\n3）在「管理語言」先下載中／日／英語言包\n\n這樣在離線或開啟裝置端翻譯模式時會更穩定。"
           }
         }
       }
@@ -10865,25 +12374,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The default follows your device's preferred languages. You can override the translation target below. On-device translation must support the language pair; unsupported pairs may fail until language packs are installed."
+            "value" : "Default target follows your device language. You can change it below. Some language pairs require installed language packs."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "初期値は端末の優先言語に合わせます。下の一覧で翻訳先を変更できます。デバイス上の翻訳で未対応の組み合わせの場合は、言語パックのダウンロードなどが必要になることがあります。"
+            "value" : "初期値は端末の優先言語に従います。下で翻訳先を変更できます。言語ペアによっては言語パックのインストールが必要です。"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "默认跟随系统首选语言；可在下方选择翻译目标语言。部分语言对需系统已安装对应语言包，否则翻译可能失败。"
+            "value" : "默认跟随系统首选语言，可修改翻译目标语言，请先安装对应的语言包。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "預設跟隨系統首選語言；可在下方選擇翻譯目標。部分語言須已安裝系統語言包，否則翻譯可能失敗。"
+            "value" : "預設跟隨系統首選語言，可在下方修改翻譯目標語言，部分語言配對需要先安裝語言包。"
           }
         }
       }

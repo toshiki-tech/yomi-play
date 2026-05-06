@@ -26,23 +26,38 @@ struct ResolvedRemoteMedia: Sendable {
     let sourceKind: RemoteSourceKind
     let title: String?
     let mimeType: String?
+    /// 解析失败的具体原因。`nil` 表示成功；非 nil 时配合 `isSupported == false` 用于上层显示精准提示。
+    let failureReason: RemoteSourceError?
     /// 是否需要先下载再使用
     var requiresDownload: Bool { resolvedAudioURL != nil && sourceKind != .unsupported }
     var isSupported: Bool { sourceKind != .unsupported && resolvedAudioURL != nil }
 }
 
-enum RemoteSourceError: LocalizedError, Sendable {
+enum RemoteSourceError: LocalizedError, Sendable, Equatable {
     case unsupportedURL
     case cannotResolveAudio
     case invalidFeed
     case blockedSource
+    /// 网络不可达（DNS 解析失败 / 连不上主机 / TLS 握手失败 / 链路被切断 / 离线等）
+    /// `code` 用于日志与诊断；面向用户文案统一为「链接无法访问」。
+    case networkUnreachable(URLError.Code)
+    /// 拉取链接超时
+    case networkTimeout
+    /// RSS feed 拉取失败（HTTP 异常 / 网络异常）
+    case feedFetchFailed(URLError.Code)
+    /// RSS feed 拉取成功但解析后没有任何可用 audio enclosure
+    case feedEmpty
 
     var errorDescription: String? {
         switch self {
         case .unsupportedURL: return String(localized: "podcast_link_unresolvable")
         case .cannotResolveAudio: return String(localized: "podcast_link_unresolvable")
-        case .invalidFeed: return String(localized: "podcast_link_unresolvable")
+        case .invalidFeed: return String(localized: "podcast_feed_invalid")
+        case .feedEmpty: return String(localized: "podcast_feed_invalid")
         case .blockedSource: return String(localized: "podcast_link_unresolvable")
+        case .networkUnreachable: return String(localized: "podcast_link_network_unreachable")
+        case .networkTimeout: return String(localized: "podcast_link_network_timeout")
+        case .feedFetchFailed: return String(localized: "podcast_link_network_unreachable")
         }
     }
 }
@@ -59,78 +74,193 @@ enum RemoteMediaResolver {
 
     /// 解析远程链接，得到可下载的音频 URL 及来源类型。
     /// - Parameter url: 用户输入的链接（可能是直接音频、RSS、节目页等）
-    /// - Returns: 解析结果，若无法得到音频地址则 isSupported == false
+    /// - Returns: 解析结果。若 `isSupported == false`，可通过 `failureReason` 拿到精确原因（网络不可达 / 链接不支持 / feed 解析失败等）。
     static func resolve(originalURL: URL) async -> ResolvedRemoteMedia {
         let trimmed = originalURL.absoluteString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), url.scheme == "https" || url.scheme == "http" else {
-            return ResolvedRemoteMedia(originalURL: originalURL, resolvedAudioURL: nil, sourceKind: .unsupported, title: nil, mimeType: nil)
+            return unsupported(originalURL, kind: .unsupported, reason: .unsupportedURL)
         }
 
         let ext = url.pathExtension.lowercased()
         if streamingExtensions.contains(ext) {
-            return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: nil, sourceKind: .unsupported, title: nil, mimeType: "application/vnd.apple.mpegurl")
+            return ResolvedRemoteMedia(
+                originalURL: url,
+                resolvedAudioURL: nil,
+                sourceKind: .unsupported,
+                title: nil,
+                mimeType: "application/vnd.apple.mpegurl",
+                failureReason: .unsupportedURL
+            )
         }
         if audioPathExtensions.contains(ext) {
-            return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: url, sourceKind: .directAudio, title: url.deletingPathExtension().lastPathComponent, mimeType: nil)
+            return ResolvedRemoteMedia(
+                originalURL: url,
+                resolvedAudioURL: url,
+                sourceKind: .directAudio,
+                title: url.deletingPathExtension().lastPathComponent,
+                mimeType: nil,
+                failureReason: nil
+            )
         }
 
         // RSS / XML feed：拉取并解析第一个 enclosure
         if ext == "xml" || ext == "rss" || url.absoluteString.lowercased().contains("feed") || url.absoluteString.lowercased().contains("rss") {
-            if let enclosure = await firstAudioEnclosure(fromFeed: url) {
-                return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: enclosure.url, sourceKind: .rssFeed, title: enclosure.title, mimeType: nil)
+            do {
+                if let enclosure = try await firstAudioEnclosure(fromFeed: url) {
+                    return ResolvedRemoteMedia(
+                        originalURL: url,
+                        resolvedAudioURL: enclosure.url,
+                        sourceKind: .rssFeed,
+                        title: enclosure.title,
+                        mimeType: nil,
+                        failureReason: nil
+                    )
+                }
+                return unsupported(url, kind: .rssFeed, reason: .feedEmpty)
+            } catch let err as RemoteSourceError {
+                return unsupported(url, kind: .rssFeed, reason: err)
+            } catch {
+                return unsupported(url, kind: .rssFeed, reason: .invalidFeed)
             }
-            return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: nil, sourceKind: .rssFeed, title: nil, mimeType: nil)
         }
 
         // 播客目录/节目页（如 podcasts.apple.com）：仅作分类，不解析 HTML
         if url.host?.lowercased().contains("podcasts.apple.com") == true || url.host?.lowercased().contains("itunes.apple.com") == true {
-            return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: nil, sourceKind: .applePodcastPage, title: nil, mimeType: nil)
+            return unsupported(url, kind: .applePodcastPage, reason: .unsupportedURL)
         }
 
         // 其他：尝试 HEAD 看 Content-Type
-        if let (finalURL, contentType) = await fetchContentType(for: url) {
-            if contentType.lowercased().hasPrefix("audio/") {
-                return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: finalURL, sourceKind: .directAudio, title: url.deletingPathExtension().lastPathComponent, mimeType: contentType)
+        do {
+            let (finalURL, contentType) = try await fetchContentType(for: url)
+            let lowerCT = contentType.lowercased()
+            if lowerCT.hasPrefix("audio/") {
+                return ResolvedRemoteMedia(
+                    originalURL: url,
+                    resolvedAudioURL: finalURL,
+                    sourceKind: .directAudio,
+                    title: url.deletingPathExtension().lastPathComponent,
+                    mimeType: contentType,
+                    failureReason: nil
+                )
             }
-            if contentType.lowercased().contains("rss") || contentType.lowercased().contains("xml") {
-                if let enclosure = await firstAudioEnclosure(fromFeed: finalURL) {
-                    return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: enclosure.url, sourceKind: .rssFeed, title: enclosure.title, mimeType: nil)
+            if lowerCT.contains("rss") || lowerCT.contains("xml") {
+                do {
+                    if let enclosure = try await firstAudioEnclosure(fromFeed: finalURL) {
+                        return ResolvedRemoteMedia(
+                            originalURL: url,
+                            resolvedAudioURL: enclosure.url,
+                            sourceKind: .rssFeed,
+                            title: enclosure.title,
+                            mimeType: nil,
+                            failureReason: nil
+                        )
+                    }
+                    return unsupported(url, kind: .rssFeed, reason: .feedEmpty)
+                } catch let err as RemoteSourceError {
+                    return unsupported(url, kind: .rssFeed, reason: err)
+                } catch {
+                    return unsupported(url, kind: .rssFeed, reason: .invalidFeed)
                 }
             }
-            if contentType.lowercased().contains("html") {
-                return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: nil, sourceKind: .webpage, title: nil, mimeType: contentType)
+            if lowerCT.contains("html") {
+                return ResolvedRemoteMedia(
+                    originalURL: url,
+                    resolvedAudioURL: nil,
+                    sourceKind: .webpage,
+                    title: nil,
+                    mimeType: contentType,
+                    failureReason: .unsupportedURL
+                )
             }
+            return unsupported(url, kind: .unsupported, reason: .cannotResolveAudio)
+        } catch let err as RemoteSourceError {
+            return unsupported(url, kind: .unsupported, reason: err)
+        } catch {
+            return unsupported(url, kind: .unsupported, reason: .cannotResolveAudio)
         }
-
-        return ResolvedRemoteMedia(originalURL: url, resolvedAudioURL: nil, sourceKind: .unsupported, title: nil, mimeType: nil)
     }
 
-    private static func fetchContentType(for url: URL) async -> (URL, String)? {
+    private static func unsupported(_ url: URL, kind: RemoteSourceKind, reason: RemoteSourceError) -> ResolvedRemoteMedia {
+        ResolvedRemoteMedia(
+            originalURL: url,
+            resolvedAudioURL: nil,
+            sourceKind: kind,
+            title: nil,
+            mimeType: nil,
+            failureReason: reason
+        )
+    }
+
+    /// HEAD 请求拿 Content-Type。网络异常时把 `URLError` 映射为 `RemoteSourceError` 抛出，便于上层精准归类。
+    private static func fetchContentType(for url: URL) async throws -> (URL, String) {
         var request = URLRequest(url: url)
         request.httpMethod = "HEAD"
         request.setValue(RemoteAudioFetcher.compatibilityUserAgent, forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 20
+        let response: URLResponse
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
-                  let ct = http.value(forHTTPHeaderField: "Content-Type")?.split(separator: ";").first.map(String.init) else { return nil }
-            return (url, ct)
-        } catch {
-            return nil
+            (_, response) = try await URLSession.shared.data(for: request)
+        } catch let err as URLError {
+            throw mapURLError(err)
         }
+        guard let http = response as? HTTPURLResponse else {
+            throw RemoteSourceError.cannotResolveAudio
+        }
+        guard (200...299).contains(http.statusCode) else {
+            // 4xx/5xx：链接看似可达但服务端拒绝，归到 `cannotResolveAudio`，由上层显示「无法解析」文案
+            throw RemoteSourceError.cannotResolveAudio
+        }
+        guard let ct = http.value(forHTTPHeaderField: "Content-Type")?
+            .split(separator: ";").first.map(String.init) else {
+            throw RemoteSourceError.cannotResolveAudio
+        }
+        return (url, ct)
     }
 
-    private static func firstAudioEnclosure(fromFeed feedURL: URL) async -> (url: URL, title: String?)? {
+    /// 拉取并解析 RSS feed 的第一个 audio enclosure。网络异常 → `feedFetchFailed`；解析空 → 返回 nil；解析异常 → `invalidFeed`。
+    private static func firstAudioEnclosure(fromFeed feedURL: URL) async throws -> (url: URL, title: String?)? {
         var request = URLRequest(url: feedURL)
         request.setValue(RemoteAudioFetcher.compatibilityUserAgent, forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 30
+        let data: Data
         do {
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let delegate = FirstEnclosureParser()
-            let parser = XMLParser(data: data)
-            parser.delegate = delegate
-            parser.parse()
-            return delegate.firstEnclosure
-        } catch {
-            return nil
+            (data, _) = try await URLSession.shared.data(for: request)
+        } catch let err as URLError {
+            // RSS feed 的网络问题用专门的 case，便于和"链接本身不支持"区分
+            if err.code == .timedOut {
+                throw RemoteSourceError.networkTimeout
+            }
+            throw RemoteSourceError.feedFetchFailed(err.code)
+        }
+        guard !data.isEmpty else { return nil }
+        let delegate = FirstEnclosureParser()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.parse()
+        return delegate.firstEnclosure
+    }
+
+    /// 把 URLError 归类成 `RemoteSourceError`，集中给国内常见网络故障的命名
+    private static func mapURLError(_ err: URLError) -> RemoteSourceError {
+        switch err.code {
+        case .timedOut:
+            return .networkTimeout
+        case .cannotFindHost,
+             .cannotConnectToHost,
+             .dnsLookupFailed,
+             .secureConnectionFailed,
+             .serverCertificateUntrusted,
+             .serverCertificateHasBadDate,
+             .serverCertificateNotYetValid,
+             .clientCertificateRejected,
+             .networkConnectionLost,
+             .notConnectedToInternet,
+             .cannotLoadFromNetwork,
+             .internationalRoamingOff,
+             .dataNotAllowed:
+            return .networkUnreachable(err.code)
+        default:
+            return .networkUnreachable(err.code)
         }
     }
 }

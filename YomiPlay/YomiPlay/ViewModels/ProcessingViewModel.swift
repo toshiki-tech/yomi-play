@@ -13,6 +13,13 @@ import Foundation
 /// 音声認識と振り仮名生成の処理フローを管理するViewModel
 @Observable
 final class ProcessingViewModel {
+    enum RecognitionTimeoutError: LocalizedError {
+        case timedOut
+
+        var errorDescription: String? {
+            String(localized: LocalizedStringResource("recognition_runtime_failed_hint", locale: AppLocale.current))
+        }
+    }
     
     /// 処理状態
     var state: ProcessingState = .idle
@@ -27,6 +34,9 @@ final class ProcessingViewModel {
     var recognitionEstimatedTotalSeconds: Int?
     /// 仅在低性能设备首次显示一次的轻提示文案
     var lowEndDeviceHintMessage: String?
+    /// 本次运行实际使用的"降级"识别档位。`nil` 表示按用户设置识别成功，未发生降级。
+    /// 不会修改 UserDefaults 中的用户选择，仅用于 UI 提示「本次以更小模型识别，原设置未变」。
+    var lastRunFallbackMode: WhisperSpeechRecognitionService.RecognitionMode?
     
     // MARK: - サービス
     
@@ -54,6 +64,9 @@ final class ProcessingViewModel {
     /// 音声ソースの処理を開始する
     func startProcessing(source: AudioSource) {
         processingTask?.cancel()
+        // 清掉上一次任务可能残留的临时降级状态，避免影响下一段音频
+        lastRunFallbackMode = nil
+        (speechService as? WhisperSpeechRecognitionService)?.clearTransientModelOverride()
         processingTask = Task { [weak self] in
             guard let self else { return }
             await self.process(source: source)
@@ -64,6 +77,8 @@ final class ProcessingViewModel {
         processingTask?.cancel()
         processingTask = nil
         recognitionEstimatedTotalSeconds = nil
+        lastRunFallbackMode = nil
+        (speechService as? WhisperSpeechRecognitionService)?.clearTransientModelOverride()
         state = .idle
     }
     
@@ -93,14 +108,17 @@ final class ProcessingViewModel {
         let loc = AppLocale.current
         if Task.isCancelled { return }
         guard source.type == .remote, let remoteURL = source.playbackURL else {
-            state = .error(String(localized: LocalizedStringResource("audio_url_not_found", locale: loc)))
+            state = .error(stage: .resolveRemote, message: String(localized: LocalizedStringResource("audio_url_not_found", locale: loc)))
             return
         }
         state = .resolvingRemoteSource
         let resolved = await RemoteMediaResolver.resolve(originalURL: remoteURL)
         if Task.isCancelled { return }
         guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
-            state = .error(String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: loc)))
+            // 优先使用解析层返回的精准失败原因，避免国内网络问题被笼统报为「链接不支持」
+            let message = resolved.failureReason?.errorDescription
+                ?? String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: loc))
+            state = .error(stage: .resolveRemote, message: message)
             return
         }
         state = .downloadingPodcast
@@ -109,7 +127,7 @@ final class ProcessingViewModel {
             localAudioURL = try await RemoteAudioFetcher.download(url: audioURL)
         } catch {
             if Task.isCancelled { return }
-            state = .error(Self.userFacingMessage(for: error))
+            state = .error(stage: .downloadRemote, message: Self.userFacingMessage(for: error))
             return
         }
         defer { try? FileManager.default.removeItem(at: localAudioURL) }
@@ -118,7 +136,7 @@ final class ProcessingViewModel {
         do {
             localSource = try Self.persistDownloadedMedia(from: localAudioURL, title: source.title)
         } catch {
-            state = .error(Self.userFacingMessage(for: error))
+            state = .error(stage: .loadAudio, message: Self.userFacingMessage(for: error))
             return
         }
         var sourceForSRT = localSource
@@ -136,7 +154,7 @@ final class ProcessingViewModel {
             
             let srtSegments = try SubtitleImportService.parseSRT(from: srtURL)
             guard !srtSegments.isEmpty else {
-                state = .error(String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
+                state = .error(stage: .parseSRT, message: String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
                 return
             }
             
@@ -151,7 +169,8 @@ final class ProcessingViewModel {
                     if Task.isCancelled { return }
                     let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
                         recognitionUserSetting: lang,
-                        lineLooksJapanese: false
+                        lineLooksJapanese: false,
+                        whisperDetectedLanguageCode: nil
                     )
                     transcriptSegments.append(TranscriptSegment(
                         startTime: seg.startTime,
@@ -170,7 +189,8 @@ final class ProcessingViewModel {
                     let tokens = isJapanese ? await furiganaService.generateFurigana(for: seg.text) : []
                     let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
                         recognitionUserSetting: lang,
-                        lineLooksJapanese: isJapanese
+                        lineLooksJapanese: isJapanese,
+                        whisperDetectedLanguageCode: nil
                     )
                     transcriptSegments.append(TranscriptSegment(
                         startTime: seg.startTime,
@@ -185,12 +205,19 @@ final class ProcessingViewModel {
             }
 
             state = .translating
-            let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
+            let inferredDocNonJa = SubtitleRecognitionLanguage.inferNonJapaneseDocumentFlag(
+                recognitionSetting: lang,
+                segments: transcriptSegments,
+                forcedNonJapanese: forceNonJa
+            )
+            let docNonJaResolved: Bool? = forceNonJa ? true : inferredDocNonJa
+            let outcome = await runTranslationIfNeeded(transcriptSegments, documentNonJapanese: docNonJaResolved)
             let doc = TranscriptDocument(
                 source: source,
-                segments: segmentsToSave,
+                segments: outcome.segments,
                 folderId: source.folderId,
-                isNonJapaneseRecognitionSource: forceNonJa ? true : nil
+                isNonJapaneseRecognitionSource: docNonJaResolved,
+                translationStatus: outcome.status
             )
             document = doc
             state = .completed
@@ -207,7 +234,7 @@ final class ProcessingViewModel {
         } catch {
             if Task.isCancelled { return }
             print("ProcessingViewModel: SRT エラー: \(error)")
-            state = .error(String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
+            state = .error(stage: .parseSRT, message: String(localized: LocalizedStringResource("failed_to_parse_srt_file", locale: AppLocale.current)))
         }
     }
     
@@ -217,12 +244,14 @@ final class ProcessingViewModel {
         if Task.isCancelled { return }
         let authorized = await speechService.requestAuthorization()
         guard authorized else {
-            state = .error(String(localized: LocalizedStringResource("speech_recognition_permission_denied_please_enable_it_in_settings", locale: AppLocale.current)))
+            state = .error(stage: .permission, message: String(localized: LocalizedStringResource("speech_recognition_permission_denied_please_enable_it_in_settings", locale: AppLocale.current)))
             return
         }
 
         guard let url = source.playbackURL else {
-            state = .error(String(localized: LocalizedStringResource("audio_url_not_found", locale: AppLocale.current)))
+            // playbackURL 缺失：远程是解析阶段，本地是加载阶段
+            let stage: ProcessingStage = (source.type == .remote) ? .resolveRemote : .loadAudio
+            state = .error(stage: stage, message: String(localized: LocalizedStringResource("audio_url_not_found", locale: AppLocale.current)))
             return
         }
 
@@ -233,7 +262,9 @@ final class ProcessingViewModel {
             let resolved = await RemoteMediaResolver.resolve(originalURL: url)
             if Task.isCancelled { return }
             guard resolved.isSupported, let audioURL = resolved.resolvedAudioURL else {
-                state = .error(String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current)))
+                let message = resolved.failureReason?.errorDescription
+                    ?? String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current))
+                state = .error(stage: .resolveRemote, message: message)
                 return
             }
 
@@ -243,7 +274,7 @@ final class ProcessingViewModel {
                 tempDownloadURL = localAudioURL
             } catch {
                 if Task.isCancelled { return }
-                state = .error(Self.userFacingMessage(for: error))
+                state = .error(stage: .downloadRemote, message: Self.userFacingMessage(for: error))
                 return
             }
             state = .loadingAudio
@@ -268,14 +299,15 @@ final class ProcessingViewModel {
         } catch {
             if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
             if Task.isCancelled { return }
-            state = .error(Self.userFacingMessage(for: error))
+            state = .error(stage: .recognize, message: Self.userFacingMessage(for: error))
             return
         }
 
         guard !recognitionSegments.isEmpty else {
             if let temp = tempDownloadURL { try? FileManager.default.removeItem(at: temp) }
-            state = .error(String(localized: LocalizedStringResource("could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech", locale: AppLocale.current))
-                + (source.type == .remote ? "\n\n" + String(localized: LocalizedStringResource("recognition_error_podcast_hint", locale: AppLocale.current)) : ""))
+            let emptyMessage = String(localized: LocalizedStringResource("could_not_recognize_speech_please_check_that_the_audio_contains_japanese_speech", locale: AppLocale.current))
+                + (source.type == .remote ? "\n\n" + String(localized: LocalizedStringResource("recognition_error_podcast_hint", locale: AppLocale.current)) : "")
+            state = .error(stage: .recognize, message: emptyMessage)
             return
         }
 
@@ -314,7 +346,8 @@ final class ProcessingViewModel {
                 }
                 let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
                     recognitionUserSetting: recLang,
-                    lineLooksJapanese: segment.isJapanese
+                    lineLooksJapanese: segment.isJapanese,
+                    whisperDetectedLanguageCode: segment.whisperLanguageCode
                 )
                 transcriptSegments.append(TranscriptSegment(
                     startTime: segment.startTime,
@@ -361,7 +394,8 @@ final class ProcessingViewModel {
                 
                 let lineLang = WhisperSpeechRecognitionService.storedOriginalTextLanguageCode(
                     recognitionUserSetting: recLang,
-                    lineLooksJapanese: segment.isJapanese
+                    lineLooksJapanese: segment.isJapanese,
+                    whisperDetectedLanguageCode: segment.whisperLanguageCode
                 )
                 transcriptSegments.append(TranscriptSegment(
                     startTime: segment.startTime,
@@ -381,7 +415,7 @@ final class ProcessingViewModel {
                 finalSource = try Self.persistDownloadedMedia(from: temp, title: source.title)
             } catch {
                 try? FileManager.default.removeItem(at: temp)
-                state = .error(Self.userFacingMessage(for: error))
+                state = .error(stage: .loadAudio, message: Self.userFacingMessage(for: error))
                 return
             }
             finalSource.folderId = source.folderId
@@ -390,12 +424,19 @@ final class ProcessingViewModel {
         }
 
         state = .translating
-        let segmentsToSave = await runTranslationIfNeeded(transcriptSegments)
+        let inferredDocNonJa = SubtitleRecognitionLanguage.inferNonJapaneseDocumentFlag(
+            recognitionSetting: recLang,
+            segments: transcriptSegments,
+            forcedNonJapanese: forceNonJa
+        )
+        let docNonJaResolved: Bool? = forceNonJa ? true : inferredDocNonJa
+        let outcome = await runTranslationIfNeeded(transcriptSegments, documentNonJapanese: docNonJaResolved)
         let doc = TranscriptDocument(
             source: finalSource,
-            segments: segmentsToSave,
+            segments: outcome.segments,
             folderId: finalSource.folderId,
-            isNonJapaneseRecognitionSource: forceNonJa ? true : nil
+            isNonJapaneseRecognitionSource: docNonJaResolved,
+            translationStatus: outcome.status
         )
         document = doc
         state = .completed
@@ -437,13 +478,30 @@ final class ProcessingViewModel {
     }
 
     private func recognizeWithFallback(audioURL: URL) async throws -> [RecognitionSegment] {
-        var mode = currentRecognitionMode()
+        let originalMode = currentRecognitionMode()
+        var mode = originalMode
         var lastError: Error?
         var attempts = 0
+        // 仅在确实降级到了比用户设置更小的档位时，最终保留为 transient override；
+        // 完成后 cleanup 时根据"是否真的降过级"决定是否清除 override 并对外提示。
+        let whisperService = speechService as? WhisperSpeechRecognitionService
+        defer {
+            // 如果本次没有有效的"成功降级"，把 transient override 清掉，避免影响后续别的识别任务
+            if mode == originalMode {
+                whisperService?.clearTransientModelOverride()
+                lastRunFallbackMode = nil
+            }
+        }
 
         while attempts < 3 {
             do {
-                return try await speechService.recognize(audioURL: audioURL)
+                let timeoutSeconds = recognitionTimeoutSeconds(for: mode)
+                let segments = try await withTimeout(seconds: timeoutSeconds) { [speechService] in
+                    try await speechService.recognize(audioURL: audioURL)
+                }
+                // 成功；如果用了降级档位，更新对外可见的 lastRunFallbackMode 但不写 UserDefaults
+                lastRunFallbackMode = (mode == originalMode) ? nil : mode
+                return segments
             } catch {
                 lastError = error
                 guard shouldDowngradeAndRetry(for: error),
@@ -451,7 +509,9 @@ final class ProcessingViewModel {
                     throw error
                 }
                 mode = lower
-                UserDefaults.standard.set(mode.rawValue, forKey: WhisperSpeechRecognitionService.modelVariantDefaultsKey)
+                // 关键：仅设置本次运行的 transient override，不再修改 UserDefaults，
+                // 避免悄悄改写用户在设置页选择的档位。
+                whisperService?.setTransientModelOverride(mode)
                 attempts += 1
             }
         }
@@ -460,6 +520,35 @@ final class ProcessingViewModel {
             code: -1,
             userInfo: [NSLocalizedDescriptionKey: String(localized: LocalizedStringResource("unknown_error", locale: AppLocale.current))]
         )
+    }
+
+    private func recognitionTimeoutSeconds(for mode: WhisperSpeechRecognitionService.RecognitionMode) -> TimeInterval {
+        // iPad 等设备在模型初始化或推理异常时，可能出现长时间无返回；设置超时避免无限等待。
+        switch mode {
+        case .tiny: return 120
+        case .base: return 180
+        case .small: return 300
+        case .medium: return 420
+        case .large: return 600
+        }
+    }
+
+    private func withTimeout<T>(
+        seconds: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw RecognitionTimeoutError.timedOut
+            }
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
     }
 
     private func alignRecognitionModeForCurrentDevice() {
@@ -538,25 +627,37 @@ final class ProcessingViewModel {
         )
     }
 
-    /// 使用设置中的目标语言对字幕做一次翻译，失败则返回原 segments（不阻塞导入）
-    /// 仅当用户已在设置中开启「翻译」时执行
-    private func runTranslationIfNeeded(_ segments: [TranscriptSegment]) async -> [TranscriptSegment] {
-        guard !segments.isEmpty else { return segments }
+    /// 翻译执行结果与字幕的合并产物。
+    /// `status` 用于 UI 在播放页提示「翻译失败」「未启用翻译」等；`segments` 是最终入库的字幕。
+    private struct TranslationOutcome {
+        let segments: [TranscriptSegment]
+        let status: TranslationStatus
+    }
+
+    /// 使用设置中的目标语言对字幕做一次翻译，失败则返回原 segments（不阻塞导入），并回传执行结果。
+    /// 仅当用户已在设置中开启「翻译」时执行；未开启则返回 `.skipped`。
+    private func runTranslationIfNeeded(
+        _ segments: [TranscriptSegment],
+        documentNonJapanese: Bool? = nil
+    ) async -> TranslationOutcome {
+        guard !segments.isEmpty else {
+            return TranslationOutcome(segments: segments, status: .skipped)
+        }
         guard UserDefaults.standard.bool(forKey: "translationEnabled") else {
-            return segments
+            return TranslationOutcome(segments: segments, status: .skipped)
         }
         let targetLang = TranslationTargetLanguageOptions.resolvedStoredOrDefault()
         do {
             let result = try await translationService.translateSegments(
                 segments,
-                sourceLanguageCode: "ja",
-                targetLanguageCode: targetLang
+                targetLanguageCode: targetLang,
+                documentNonJapaneseRecognitionSource: documentNonJapanese
             )
             print("ProcessingViewModel: 自动翻译完成 target=\(targetLang)")
-            return result
+            return TranslationOutcome(segments: result, status: .success)
         } catch {
             print("ProcessingViewModel: 自动翻译跳过 \(error)")
-            return segments
+            return TranslationOutcome(segments: segments, status: .failed)
         }
     }
 
@@ -564,8 +665,9 @@ final class ProcessingViewModel {
         if let downloadErr = error as? DownloadError {
             return downloadErr.errorDescription ?? String(localized: LocalizedStringResource("failed_to_download_audio", locale: AppLocale.current))
         }
-        if error is RemoteSourceError {
-            return String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current))
+        if let remoteErr = error as? RemoteSourceError {
+            // 走具体 case 的本地化文案，而不是统一的「链接不支持」
+            return remoteErr.errorDescription ?? String(localized: LocalizedStringResource("podcast_link_unresolvable", locale: AppLocale.current))
         }
         let raw = error.localizedDescription
         let lowerRaw = raw.lowercased()
@@ -587,6 +689,9 @@ final class ProcessingViewModel {
 
     private func shouldDowngradeAndRetry(for error: Error) -> Bool {
         let lowerRaw = error.localizedDescription.lowercased()
+        if error is RecognitionTimeoutError {
+            return true
+        }
         return lowerRaw.contains("unable to compute the asynchronous prediction")
             || lowerRaw.contains("ml program")
             || lowerRaw.contains("broken/unsupported model")

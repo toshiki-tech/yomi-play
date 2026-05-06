@@ -23,6 +23,9 @@ enum DownloadError: LocalizedError, Sendable {
     case fileTooLarge
     case insufficientStorage
     case networkUnavailable
+    /// DNS 解析失败 / 连不上主机 / 链路被切断 / TLS 握手失败 等。
+    /// 国内访问海外播客最常见的失败类型，专门和"通用网络不可用"区分开。
+    case networkUnreachable(URLError.Code)
     case downloadFailed(reason: String?)
 
     var errorDescription: String? {
@@ -37,8 +40,9 @@ enum DownloadError: LocalizedError, Sendable {
         case .unsupportedFormat: return String(localized: "podcast_streaming_not_supported")
         case .streamingOnlySource: return String(localized: "podcast_streaming_not_supported")
         case .fileTooLarge: return String(localized: "podcast_file_too_large")
-        case .insufficientStorage: return String(localized: "failed_to_download_audio")
-        case .networkUnavailable: return String(localized: "failed_to_download_audio")
+        case .insufficientStorage: return String(localized: "podcast_download_insufficient_storage")
+        case .networkUnavailable: return String(localized: "podcast_download_network_unavailable")
+        case .networkUnreachable: return String(localized: "podcast_download_network_unreachable")
         case .downloadFailed(let reason): return reason ?? String(localized: "failed_to_download_audio")
         }
     }
@@ -58,6 +62,16 @@ enum RemoteAudioFetcher {
     /// 兼容部分公开播客源的请求头（仅作兼容手段，不对外宣传）
     static let compatibilityUserAgent = "YomiPlay/1.0 (iOS; language learning)"
 
+    /// 共享 URLSession 配置：请求间隔超时 60s（应对慢速首包），资源总超时 10 分钟（应对国内慢速下载）。
+    /// `data(for:)` 只看 `timeoutIntervalForRequest`，因此用一个独立的 session 而不是 `URLSession.shared`。
+    private static let downloadSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 600
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
     /// 将已解析的远程音频 URL 下载到本地临时文件。
     /// - Parameter url: 解析得到的可直接请求的音频地址
     /// - Returns: 本地临时文件 URL，调用方负责在识别后清理
@@ -71,11 +85,9 @@ enum RemoteAudioFetcher {
 
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch let err as URLError where err.code == .timedOut {
-            throw DownloadError.timeout
-        } catch let err as URLError where err.code == .notConnectedToInternet || err.code == .networkConnectionLost {
-            throw DownloadError.networkUnavailable
+            (data, response) = try await downloadSession.data(for: request)
+        } catch let err as URLError {
+            throw mapURLError(err)
         } catch {
             throw DownloadError.downloadFailed(reason: error.localizedDescription)
         }
@@ -126,4 +138,29 @@ enum RemoteAudioFetcher {
     }
 
     private static let audioPathExtensions: Set<String> = ["mp3", "m4a", "aac", "wav", "ogg", "flac", "opus", "weba"]
+
+    /// 把 `URLError` 归类成下载层的精确错误，便于 UI 展示和国内网络问题的诊断
+    private static func mapURLError(_ err: URLError) -> DownloadError {
+        switch err.code {
+        case .timedOut:
+            return .timeout
+        case .notConnectedToInternet,
+             .dataNotAllowed,
+             .internationalRoamingOff:
+            return .networkUnavailable
+        case .cannotFindHost,
+             .cannotConnectToHost,
+             .dnsLookupFailed,
+             .secureConnectionFailed,
+             .serverCertificateUntrusted,
+             .serverCertificateHasBadDate,
+             .serverCertificateNotYetValid,
+             .clientCertificateRejected,
+             .networkConnectionLost,
+             .cannotLoadFromNetwork:
+            return .networkUnreachable(err.code)
+        default:
+            return .downloadFailed(reason: err.localizedDescription)
+        }
+    }
 }

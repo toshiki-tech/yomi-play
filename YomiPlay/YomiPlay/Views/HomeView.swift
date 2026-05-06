@@ -65,12 +65,14 @@ struct HomeView: View {
             if case .success(let urls) = result, let url = urls.first {
                 switch viewModel.fileImportMode {
                 case .audioVideo:
+                    guard viewModel.ensureProForFileImport() else { return }
                     viewModel.handleFileSelected(result: .success(url))
                 case .srt:
                     viewModel.attachSRT(url: url)
                 case .yomi:
                     viewModel.attachYomi(url: url)
                 case .zip:
+                    guard viewModel.ensureProForFileImport() else { return }
                     // 必须在回调内立即获取安全作用域，否则选择器关闭后 URL 可能失效导致崩溃
                     guard url.startAccessingSecurityScopedResource() else {
                         viewModel.showErrorMessage(String(localized: "no_permission_to_access_the_file"))

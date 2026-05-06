@@ -292,7 +292,12 @@ struct SettingsView: View {
                     Label("settings_feedback_email", systemImage: "envelope")
                         .font(.subheadline)
                 }
-                infoRow(title: "version", value: "1.1.0", icon: "info.circle", color: .secondary)
+                infoRow(
+                    title: "version",
+                    value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—",
+                    icon: "info.circle",
+                    color: .secondary
+                )
                 infoRow(title: "engine", value: "Whisper (On-Device)", icon: "cpu", color: .secondary)
             } header: {
                 Text("settings_support_section")
@@ -404,13 +409,13 @@ struct SettingsView: View {
         guard TranslationService.isAvailableOnCurrentSystem else { return }
         let code = targetLang ?? TranslationTargetLanguageOptions.resolvedStoredOrDefault()
         guard !isTranslationPackReady(code) else { return }
-        let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: "こんにちは")
+        let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: "こんにちは", userTokenOverrides: nil)
         Task {
             do {
                 _ = try await TranslationService.shared.translateSegments(
                     [segment],
-                    sourceLanguageCode: "ja",
-                    targetLanguageCode: code
+                    targetLanguageCode: code,
+                    documentNonJapaneseRecognitionSource: nil
                 )
                 markTranslationPackReady(code)
             } catch {
@@ -567,6 +572,12 @@ private struct HelpCenterView: View {
                         .foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 6) {
+                    Text("settings_help_q4").font(.subheadline).fontWeight(.semibold)
+                    Text("settings_help_a4")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 6) {
                     Text("settings_help_q3").font(.subheadline).fontWeight(.semibold)
                     Text("settings_help_a3")
                         .font(.caption)
@@ -580,6 +591,15 @@ private struct HelpCenterView: View {
                 Text("settings_help_about_2")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text("settings_help_about_3")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let communityURL = URL(string: "https://www.toshiki.tech/y") {
+                    Link(destination: communityURL) {
+                        Label("settings_help_community_link_title", systemImage: "link")
+                            .font(.caption)
+                    }
+                }
             }
         }
         .navigationTitle("settings_help_title")

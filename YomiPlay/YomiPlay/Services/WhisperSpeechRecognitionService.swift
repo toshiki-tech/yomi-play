@@ -20,6 +20,9 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     private var whisperKit: WhisperKit?
     /// 現在キャッシュ中のモデル名。設定が変わったら破棄して再ロードする
     private var loadedModelFolder: String?
+    /// 本次运行的临时模型档位 override。不写入 UserDefaults，仅影响该 instance 后续的 recognize 调用。
+    /// 用途：识别失败时临时降级到更小的模型，避免悄悄改写用户在设置里选择的档位。
+    private var transientModelOverride: RecognitionMode?
     
     /// UserDefaults に保存するモデル選択キー（値: "tiny" | "base" | "small" | "medium" | "large"）
     static let modelVariantDefaultsKey = "whisperModelVariant"
@@ -80,10 +83,14 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
 
     /// 当前设置对应的同梱モデルフォルダ名
     private static var bundledModelFolder: String {
+        currentRecognitionMode().folderName
+    }
+
+    /// 当前 UserDefaults 中保存的识别模型档位（含初始化与回退）
+    static func currentRecognitionMode() -> RecognitionMode {
         Self.ensureModelVariantInitialized()
         let raw = UserDefaults.standard.string(forKey: Self.modelVariantDefaultsKey) ?? Self.recommendedModeForDevice.rawValue
-        let mode = RecognitionMode(rawValue: raw) ?? .small
-        return mode.folderName
+        return RecognitionMode(rawValue: raw) ?? .small
     }
     
     /// 設定画面でモデルを変更したときに呼び出す
@@ -93,6 +100,30 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         loadedModelFolder = nil
         print("WhisperRecognition: モデルキャッシュを破棄しました（次回再ロード）")
     }
+
+    /// 设置本次运行的临时模型档位 override。传 nil 表示恢复使用 UserDefaults 中保存的用户选择。
+    /// - Note: 此方法不会修改 UserDefaults，调用方负责在合适时机调用 `clearTransientModelOverride()` 清除。
+    func setTransientModelOverride(_ mode: RecognitionMode?) {
+        let previous = transientModelOverride
+        transientModelOverride = mode
+        if previous != mode {
+            // 档位变化时清掉缓存的 WhisperKit 实例，下次 recognize 会按新档位重新加载
+            whisperKit = nil
+            loadedModelFolder = nil
+        }
+    }
+
+    func clearTransientModelOverride() {
+        setTransientModelOverride(nil)
+    }
+
+    /// 本 instance 当前实际生效的识别档位（transient override 优先，其次读 UserDefaults）
+    func effectiveRecognitionMode() -> RecognitionMode {
+        transientModelOverride ?? Self.currentRecognitionMode()
+    }
+
+    private var effectiveModelFolder: String { effectiveRecognitionMode().folderName }
+    private func effectiveModelPath() -> String? { Self.modelPath(for: effectiveRecognitionMode()) }
 
     init() {}
 
@@ -126,16 +157,35 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         if lang != "auto" {
             options.language = lang
         }
-        options.noSpeechThreshold = 0.8
-        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=\(lang) モデル=\(Self.bundledModelFolder)...")
+
+        // 准确度/性能调优：
+        // - VAD 切窗：长音频跳过静音段，整体更快且避免 30s 硬切导致的边界错。
+        // - noSpeechThreshold 回到默认 0.6：减少静音段的幻觉文本。
+        // - wordTimestamps 仅在 small/medium/large 启用：tiny/base 用户为速度而来，不再多付 ~15% 时间。
+        // - temperatureFallbackCount 5→3：VAD 后难解码窗口减少，少回退两次省时。
+        let mode = effectiveRecognitionMode()
+        let preferAccuracy = (mode == .small || mode == .medium || mode == .large)
+        options.chunkingStrategy = .vad
+        options.noSpeechThreshold = 0.6
+        options.wordTimestamps = preferAccuracy
+        options.temperatureFallbackCount = 3
+        print("WhisperRecognition: 推論実行中 (\(localURL.lastPathComponent)) 言語=\(lang) モデル=\(effectiveModelFolder) VAD=on wordTS=\(preferAccuracy)...")
         let results = try await whisper.transcribe(audioPath: localURL.path, decodeOptions: options)
 
         var allSegments: [RecognitionSegment] = []
         for result in results {
+            let whisperLangRaw = result.language.trimmingCharacters(in: .whitespacesAndNewlines)
+            let whisperLang = whisperLangRaw.isEmpty ? nil : whisperLangRaw
             for segment in result.segments {
                 let cleanedText = Self.cleanWhisperText(segment.text)
                 if !cleanedText.isEmpty {
-                    let isJapanese = forceNonJapaneseSegments ? false : Self.isLikelyJapanese(cleanedText)
+                    let isJapanese = forceNonJapaneseSegments
+                        ? false
+                        : SubtitleRecognitionLanguage.segmentAppearsJapaneseForFurigana(
+                            userRecognitionLanguage: lang,
+                            text: cleanedText,
+                            whisperLanguageCode: whisperLang
+                        )
                     let words = segment.words?.map {
                         WordTimingInfo(
                             word: $0.word,
@@ -149,6 +199,7 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
                         endTime: Double(segment.end),
                         confidence: 1.0,
                         isJapanese: isJapanese,
+                        whisperLanguageCode: whisperLang,
                         wordTimings: words
                     ))
                 }
@@ -159,54 +210,53 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
         return processedSegments
     }
     
-    /// 识别语言为日语或自动时，按文本判定是否日语；为英/中等固定语言时整段视为非日语（注音流程会跳过）
+    /// 识别语言为日语或自动时，按文本与 Whisper 语言标签判定；为英/中等固定语言时整段视为非日语（注音流程会跳过）
     static func forcesNonJapaneseSegments(lang: String) -> Bool {
-        if lang == "ja" || lang == "auto" { return false }
-        return true
+        SubtitleRecognitionLanguage.forcesNonJapaneseSegments(lang: lang)
     }
 
-    /// 写入字幕句的原文语言码（与识别设置、分句文本一致）。`nil` 表示未知，跟读时回退全局设置。
-    static func storedOriginalTextLanguageCode(recognitionUserSetting: String, lineLooksJapanese: Bool) -> String? {
-        let lang = recognitionUserSetting
-        if forcesNonJapaneseSegments(lang: lang) {
-            return lang == "auto" ? nil : lang
-        }
-        switch lang {
-        case "auto": return lineLooksJapanese ? "ja" : "en"
-        case "ja": return lineLooksJapanese ? "ja" : "en"
-        case "en", "zh": return lang
-        default: return lang == "auto" ? nil : lang
-        }
+    /// 写入字幕句的原文语言码（与识别设置、Whisper 检测结果、分句文本一致）。`nil` 表示未知，跟读时回退全局设置。
+    static func storedOriginalTextLanguageCode(
+        recognitionUserSetting: String,
+        lineLooksJapanese: Bool,
+        whisperDetectedLanguageCode: String? = nil
+    ) -> String? {
+        SubtitleRecognitionLanguage.storedOriginalTextLanguageCode(
+            recognitionUserSetting: recognitionUserSetting,
+            lineLooksJapanese: lineLooksJapanese,
+            whisperDetectedLanguageCode: whisperDetectedLanguageCode
+        )
     }
     
     private func getOrInitWhisperKit() async throws -> WhisperKit {
+        let targetFolder = effectiveModelFolder
         // 設定が変わっていたらキャッシュを破棄して再ロード
-        if let whisper = whisperKit, loadedModelFolder == Self.bundledModelFolder {
+        if let whisper = whisperKit, loadedModelFolder == targetFolder {
             return whisper
         }
         whisperKit = nil
-        
-        // App Bundle 内のモデルパスを取得
-        let modelPath = Self.bundledModelPath()
-        
+
+        // App Bundle 内のモデルパスを取得（实际生效档位 = transient override 或 UserDefaults）
+        let modelPath = effectiveModelPath()
+
         if let modelPath = modelPath {
             print("WhisperRecognition: バンドル同梱モデルを使用: \(modelPath)")
             let config = WhisperKitConfig(
-                model: Self.bundledModelFolder,
+                model: targetFolder,
                 modelFolder: modelPath,
                 download: false  // バンドル済みモデルのみ使用する
             )
             let whisper = try await WhisperKit(config)
             self.whisperKit = whisper
-            self.loadedModelFolder = Self.bundledModelFolder
-            print("WhisperRecognition: モデル初期化完了（ローカル \(Self.bundledModelFolder)）✅")
+            self.loadedModelFolder = targetFolder
+            print("WhisperRecognition: モデル初期化完了（ローカル \(targetFolder)）✅")
             return whisper
         } else {
             // バンドルにモデルがない場合はオンラインダウンロードにフォールバック
             print("WhisperRecognition: バンドルにモデルが見つかりません、ダウンロードを試みます...")
             let whisper = try await WhisperKit()
             self.whisperKit = whisper
-            self.loadedModelFolder = Self.bundledModelFolder
+            self.loadedModelFolder = targetFolder
             print("WhisperRecognition: モデル初期化完了（ダウンロード）✅")
             return whisper
         }
@@ -244,25 +294,12 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
     
     /// App Bundle 内のモデルフォルダパスを取得する（現在選択中のモード用）
     private static func bundledModelPath() -> String? {
-        Self.ensureModelVariantInitialized()
-        let raw = UserDefaults.standard.string(forKey: modelVariantDefaultsKey) ?? Self.recommendedModeForDevice.rawValue
-        let mode = RecognitionMode(rawValue: raw) ?? .small
-        return modelPath(for: mode)
+        modelPath(for: currentRecognitionMode())
     }
     
-    /// 判断该句是否主要为日语（含平假名/片假名/汉字）。用于标记非日语句以便跳过注音。
+    /// 判断该句是否主要为日语（含平假名/片假名/汉字）。用于 SRT 等无 Whisper 标签的路径。
     static func isLikelyJapanese(_ text: String) -> Bool {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if t.isEmpty { return true }
-        for ch in t.unicodeScalars {
-            switch ch.value {
-            case 0x3040..<0x30A0: return true   // 平假名
-            case 0x30A0..<0x3100: return true   // 片假名
-            case 0x4E00..<0xA000: return true   // CJK 统一汉字
-            default: break
-            }
-        }
-        return false
+        SubtitleRecognitionLanguage.isLikelyJapaneseByScript(text)
     }
 
     // MARK: - Whisper テキストクリーニング
@@ -308,12 +345,20 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol, @
             let lastChar = buffer.text.trimmingCharacters(in: .whitespacesAndNewlines).last
             
             if duration < minDuration, let last = lastChar, !endPunctuations.contains(last) {
+                let mergedWhisper: String?
+                if buffer.whisperLanguageCode == seg.whisperLanguageCode {
+                    mergedWhisper = buffer.whisperLanguageCode
+                } else {
+                    mergedWhisper = nil
+                }
                 buffer = RecognitionSegment(
                     text: buffer.text + seg.text,
                     startTime: buffer.startTime,
                     endTime: seg.endTime,
                     confidence: min(buffer.confidence, seg.confidence),
-                    isJapanese: buffer.isJapanese || seg.isJapanese
+                    isJapanese: buffer.isJapanese || seg.isJapanese,
+                    whisperLanguageCode: mergedWhisper,
+                    wordTimings: nil
                 )
             } else {
                 flushBuffer()
@@ -333,35 +378,23 @@ final class WhisperSpeechRecognitionService: SpeechRecognitionServiceProtocol {
 
     /// 判断该句是否主要为日语（与 canImport(WhisperKit) 分支逻辑一致，供 SRT 等路径使用）
     static func isLikelyJapanese(_ text: String) -> Bool {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if t.isEmpty { return true }
-        for ch in t.unicodeScalars {
-            switch ch.value {
-            case 0x3040..<0x30A0: return true
-            case 0x30A0..<0x3100: return true
-            case 0x4E00..<0xA000: return true
-            default: break
-            }
-        }
-        return false
+        SubtitleRecognitionLanguage.isLikelyJapaneseByScript(text)
     }
 
     static func forcesNonJapaneseSegments(lang: String) -> Bool {
-        if lang == "ja" || lang == "auto" { return false }
-        return true
+        SubtitleRecognitionLanguage.forcesNonJapaneseSegments(lang: lang)
     }
 
-    static func storedOriginalTextLanguageCode(recognitionUserSetting: String, lineLooksJapanese: Bool) -> String? {
-        let lang = recognitionUserSetting
-        if forcesNonJapaneseSegments(lang: lang) {
-            return lang == "auto" ? nil : lang
-        }
-        switch lang {
-        case "auto": return lineLooksJapanese ? "ja" : "en"
-        case "ja": return lineLooksJapanese ? "ja" : "en"
-        case "en", "zh": return lang
-        default: return lang == "auto" ? nil : lang
-        }
+    static func storedOriginalTextLanguageCode(
+        recognitionUserSetting: String,
+        lineLooksJapanese: Bool,
+        whisperDetectedLanguageCode: String? = nil
+    ) -> String? {
+        SubtitleRecognitionLanguage.storedOriginalTextLanguageCode(
+            recognitionUserSetting: recognitionUserSetting,
+            lineLooksJapanese: lineLooksJapanese,
+            whisperDetectedLanguageCode: whisperDetectedLanguageCode
+        )
     }
 
     private let fallback = AppleSpeechRecognitionService()

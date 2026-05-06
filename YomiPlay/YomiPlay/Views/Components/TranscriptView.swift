@@ -21,6 +21,8 @@ struct TranscriptView: View {
     let editingSegmentID: UUID?
     @Binding var editingText: String
     @Binding var editingTranslatedText: String?
+    @Binding var editingTokenReadings: [EditableTokenReading]
+    @Binding var editingTokenSegmentationText: String
     @Binding var editingSkipFurigana: Bool
     @Binding var editingStartTime: TimeInterval
     @Binding var editingEndTime: TimeInterval
@@ -34,6 +36,7 @@ struct TranscriptView: View {
     let onDeleteSegment: () -> Void
     let onSplitSegment: () -> Void
     let onMergeWithPrevious: () -> Void
+    let onApplyManualSegmentation: () -> Void
     let onTranslateThisSegment: () async -> Void
     let onShadowReadingTapped: (TranscriptSegment) -> Void
 
@@ -56,6 +59,8 @@ struct TranscriptView: View {
                             fontSize: fontSize,
                             editingText: $editingText,
                             editingTranslatedText: $editingTranslatedText,
+                            editingTokenReadings: $editingTokenReadings,
+                            editingTokenSegmentationText: $editingTokenSegmentationText,
                             editingSkipFurigana: $editingSkipFurigana,
                             editingStartTime: $editingStartTime,
                             editingEndTime: $editingEndTime,
@@ -68,6 +73,7 @@ struct TranscriptView: View {
                             onDeleteSegment: onDeleteSegment,
                             onSplitSegment: onSplitSegment,
                             onMergeWithPrevious: onMergeWithPrevious,
+                            onApplyManualSegmentation: onApplyManualSegmentation,
                             onTranslateThisSegment: onTranslateThisSegment,
                             onShadowReadingTapped: { onShadowReadingTapped(segment) },
                             showShadowReadingMic: showShadowReadingMic,
@@ -123,6 +129,8 @@ struct SegmentRowView: View {
     let fontSize: CGFloat
     @Binding var editingText: String
     @Binding var editingTranslatedText: String?
+    @Binding var editingTokenReadings: [EditableTokenReading]
+    @Binding var editingTokenSegmentationText: String
     @Binding var editingSkipFurigana: Bool
     @Binding var editingStartTime: TimeInterval
     @Binding var editingEndTime: TimeInterval
@@ -135,12 +143,26 @@ struct SegmentRowView: View {
     let onDeleteSegment: () -> Void
     let onSplitSegment: () -> Void
     let onMergeWithPrevious: () -> Void
+    let onApplyManualSegmentation: () -> Void
     let onTranslateThisSegment: () async -> Void
     let onShadowReadingTapped: () -> Void
     let showShadowReadingMic: Bool
     let canMergeWithPrevious: Bool
     
     @State private var isLongPressing = false
+    @State private var showFuriganaEditor = false
+
+    /// 非日语句子不提供注音编辑入口，避免无效操作与认知负担。
+    private var shouldShowFuriganaEditorButton: Bool {
+        if let code = segment.originalTextLanguageCode?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !code.isEmpty {
+            return code == "ja" || code.hasPrefix("ja-")
+        }
+        if segment.skipFurigana {
+            return WhisperSpeechRecognitionService.isLikelyJapanese(segment.originalText)
+        }
+        return true
+    }
     
     var body: some View {
         Group {
@@ -155,14 +177,16 @@ struct SegmentRowView: View {
     // MARK: - 表示モード
     
     private var displayBody: some View {
-        HStack(alignment: .top, spacing: 10) {
+        let explicitTokens = segment.userTokenOverrides ?? segment.tokens
+        let displayTokens = resolvedDisplayTokens(from: explicitTokens)
+        return HStack(alignment: .top, spacing: 10) {
         VStack(alignment: .leading, spacing: 6) {
             // 上段：原文 + 卡拉 OK 高亮
-            if !segment.tokens.isEmpty {
+            if !displayTokens.isEmpty {
                 if segment.skipFurigana {
                     // 非日语或关闭假名时：使用简化版卡拉 OK 文本（按 word 时间高亮）
                     PlainKaraokeTextView(
-                        tokens: segment.tokens,
+                        tokens: displayTokens,
                         fontSize: fontSize,
                         currentTime: isActive ? currentTime : nil,
                         segmentStart: segment.startTime,
@@ -172,7 +196,7 @@ struct SegmentRowView: View {
                 } else {
                     // 日语：带振假名/罗马字/词性着色的高级视图
                     FuriganaTextView(
-                        tokens: segment.tokens,
+                        tokens: displayTokens,
                         showFurigana: showFurigana,
                         showRomaji: showRomaji,
                         showEnglish: showEnglish,
@@ -237,6 +261,36 @@ struct SegmentRowView: View {
         )
         .scaleEffect(isLongPressing ? 0.97 : 1.0)
         .animation(.easeInOut(duration: 0.15), value: isLongPressing)
+    }
+
+    /// 非日语句子在部分历史数据/导入路径下可能没有 token，兜底按文本切分，保证卡拉OK高亮始终可用。
+    private func resolvedDisplayTokens(from explicitTokens: [FuriganaToken]) -> [FuriganaToken] {
+        if !explicitTokens.isEmpty {
+            return explicitTokens
+        }
+        guard segment.skipFurigana else {
+            return []
+        }
+        return fallbackPlainTokens(for: segment.originalText)
+    }
+
+    /// 优先按空白分词（英文等），若无空白则按字符切分（中文等），并忽略纯空白 token。
+    private func fallbackPlainTokens(for text: String) -> [FuriganaToken] {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        if trimmed.contains(where: \.isWhitespace) {
+            return trimmed
+                .split(whereSeparator: \.isWhitespace)
+                .map { part in
+                    FuriganaToken(surface: String(part))
+                }
+        }
+
+        return trimmed.compactMap { ch in
+            let token = String(ch)
+            return token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : FuriganaToken(surface: token)
+        }
     }
     
     // MARK: - 編集モード
@@ -314,6 +368,19 @@ struct SegmentRowView: View {
             .toggleStyle(.switch)
             .tint(.orange)
 
+            if shouldShowFuriganaEditorButton {
+                Button {
+                    showFuriganaEditor = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "character.book.closed")
+                        Text("pronunciation_editor_open")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(palette.accent)
+                }
+            }
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("translation_editable_label")
                     .font(.caption2)
@@ -387,5 +454,118 @@ struct SegmentRowView: View {
             // 背景タップでも確実にフォーカスを当てる（キーボード表示用）
             focusedSegmentID.wrappedValue = segment.id
         }
+        .sheet(isPresented: $showFuriganaEditor) {
+            FuriganaEditorSheet(
+                editingTokenReadings: $editingTokenReadings,
+                editingTokenSegmentationText: $editingTokenSegmentationText,
+                onApplySegmentation: onApplyManualSegmentation
+            )
+        }
+    }
+}
+
+private struct FuriganaEditorSheet: View {
+    @Binding var editingTokenReadings: [EditableTokenReading]
+    @Binding var editingTokenSegmentationText: String
+    let onApplySegmentation: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("pronunciation_editor_segmentation_hint")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField(
+                        "pronunciation_editor_segmentation_placeholder",
+                        text: $editingTokenSegmentationText,
+                        axis: .vertical
+                    )
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...4)
+                    Button("pronunciation_editor_apply_segmentation") {
+                        onApplySegmentation()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    if !editingTokenReadings.isEmpty {
+                        ForEach(editingTokenReadings) { item in
+                            if let itemBinding = bindingForItem(id: item.id) {
+                                EditableTokenReadingRow(item: itemBinding)
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("pronunciation_editor_title")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func bindingForItem(id: UUID) -> Binding<EditableTokenReading>? {
+        guard let current = editingTokenReadings.first(where: { $0.id == id }) else { return nil }
+        return Binding(
+            get: {
+                editingTokenReadings.first(where: { $0.id == id }) ?? current
+            },
+            set: { updated in
+                guard let idx = editingTokenReadings.firstIndex(where: { $0.id == id }) else { return }
+                editingTokenReadings[idx] = updated
+            }
+        )
+    }
+}
+
+private struct EditableTokenReadingRow: View {
+    @Binding var item: EditableTokenReading
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.surface)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextField("reading", text: $item.reading)
+                .textFieldStyle(.roundedBorder)
+
+            TextField("romaji", text: $item.romaji)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+
+            Toggle(isOn: Binding(
+                get: { item.englishMeaningEnabled },
+                set: { enabled in
+                    item.englishMeaningEnabled = enabled
+                    if !enabled {
+                        item.englishMeaning = nil
+                    }
+                }
+            )) {
+                Text("pronunciation_editor_english_meaning")
+                    .font(.caption)
+            }
+            .toggleStyle(.switch)
+            .tint(.blue)
+
+            if item.englishMeaningEnabled {
+                TextField("pronunciation_editor_english_meaning_placeholder", text: Binding(
+                    get: { item.englishMeaning ?? "" },
+                    set: { newValue in
+                        let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                        item.englishMeaning = trimmed.isEmpty ? nil : trimmed
+                    }
+                ))
+                .textFieldStyle(.roundedBorder)
+            }
+        }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(.tertiarySystemBackground)))
     }
 }

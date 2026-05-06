@@ -47,6 +47,10 @@ struct PlayerView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
     @AppStorage(PlayerTheme.playerThemeStorageKey) private var playerTheme: String = "system"
+    /// 首次进入播放页时提示「长按字幕可编辑」；点「知道了」后不再显示
+    @AppStorage("playerSubtitleLongPressHintSeen") private var hasSeenLongPressSubtitleHint: Bool = false
+    /// 用户在该文档上手动忽略的"翻译失败"提示集合（按 doc id）。重试成功会自动从集合移除。
+    @AppStorage("playerTranslationFailedDismissedDocIds") private var dismissedTranslationFailedDocIdsRaw: String = ""
     
     /// 实际用于播放器界面的主题（用户选择或跟随系统）
     private var effectiveThemeScheme: ColorScheme {
@@ -88,8 +92,16 @@ struct PlayerView: View {
                 .padding(.bottom, 12)
             }
             
-            // 字幕エリア
-            transcriptSection
+            // 字幕エリア（首次进入且有条目时展示一次性长按提示；自动翻译失败也单独提示）
+            Group {
+                if !hasSeenLongPressSubtitleHint, !viewModel.document.segments.isEmpty {
+                    longPressSubtitleHintBanner
+                }
+                if shouldShowTranslationFailedBanner {
+                    translationFailedBanner
+                }
+                transcriptSection
+            }
             
             Divider()
                 .overlay(Color(.systemGray4))
@@ -154,16 +166,121 @@ struct PlayerView: View {
         .onAppear {
             // 再生完了時に次の記録へ進む
             viewModel.playerService.onPlaybackEnded = {
-                if viewModel.repeatMode == .wholeTrack {
+                switch viewModel.repeatMode {
+                case .wholeTrack:
                     viewModel.playerService.seek(to: 0)
                     viewModel.playerService.play()
-                } else if viewModel.repeatMode == .playlist {
+                case .playlist:
                     playNextIfAvailable(loopToStart: true)
-                } else {
+                case .off:
+                    break
+                case .currentSubtitle:
                     playNextIfAvailable()
                 }
             }
         }
+    }
+    
+    /// 是否需要在播放页顶部显示「自动翻译失败」提示横条
+    private var shouldShowTranslationFailedBanner: Bool {
+        guard viewModel.document.translationStatus == .failed else { return false }
+        guard !viewModel.document.segments.isEmpty else { return false }
+        let dismissed = Set(dismissedTranslationFailedDocIdsRaw.split(separator: ",").map(String.init))
+        return !dismissed.contains(viewModel.document.id.uuidString)
+    }
+
+    private func dismissTranslationFailedBanner() {
+        var set = Set(dismissedTranslationFailedDocIdsRaw.split(separator: ",").map(String.init))
+        set.insert(viewModel.document.id.uuidString)
+        dismissedTranslationFailedDocIdsRaw = set.sorted().joined(separator: ",")
+    }
+
+    /// 自动翻译失败的轻量提示横条：解释原因 + 提供「重试」按钮
+    private var translationFailedBanner: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "exclamationmark.bubble")
+                .font(.body)
+                .foregroundStyle(Color.orange)
+                .accessibilityHidden(true)
+            Text("player_translation_failed_hint")
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button {
+                Task { await viewModel.translateAllSegments() }
+            } label: {
+                if viewModel.isTranslating {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("player_translation_failed_retry")
+                        .font(.subheadline.weight(.semibold))
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(viewModel.isTranslating)
+
+            Button {
+                dismissTranslationFailedBanner()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(6)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("player_translation_failed_dismiss_a11y"))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.orange.opacity(0.12))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.orange.opacity(0.35), lineWidth: 1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var longPressSubtitleHintBanner: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "hand.tap.fill")
+                .font(.body)
+                .foregroundStyle(PlayerTheme.palette(for: effectiveThemeScheme).accent.opacity(0.9))
+                .accessibilityHidden(true)
+            Text("player_subtitle_long_press_hint")
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button {
+                hasSeenLongPressSubtitleHint = true
+            } label: {
+                Text("player_subtitle_long_press_hint_ok")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .combine)
     }
     
     // MARK: - 字幕セクション
@@ -174,7 +291,7 @@ struct PlayerView: View {
         return TranscriptView(
             segments: viewModel.document.segments,
             currentSegmentID: viewModel.playerService.currentSegmentID,
-            currentTime: viewModel.playerService.currentTime,
+            currentTime: viewModel.playerService.subtitleClockTime,
             showFurigana: viewModel.showFurigana,
             showRomaji: viewModel.showRomaji,
             showEnglish: viewModel.showEnglish,
@@ -183,6 +300,8 @@ struct PlayerView: View {
             editingSegmentID: viewModel.editingSegmentID,
             editingText: $viewModel.editingText,
             editingTranslatedText: Binding(get: { viewModel.editingTranslatedText }, set: { viewModel.editingTranslatedText = $0 }),
+            editingTokenReadings: $viewModel.editingTokenReadings,
+            editingTokenSegmentationText: $viewModel.editingTokenSegmentationText,
             editingSkipFurigana: $viewModel.editingSkipFurigana,
             editingStartTime: $viewModel.editingStartTime,
             editingEndTime: $viewModel.editingEndTime,
@@ -209,6 +328,9 @@ struct PlayerView: View {
             },
             onMergeWithPrevious: {
                 viewModel.mergeCurrentWithPrevious()
+            },
+            onApplyManualSegmentation: {
+                viewModel.applyManualSegmentationFromEditingText()
             },
             onTranslateThisSegment: {
                 await viewModel.translateCurrentSegment()
@@ -278,12 +400,15 @@ struct PlayerView: View {
         shouldAutoPlayOnReady = true
         // onPlaybackEnded ハンドラを新しいプレイヤーに再設定
         viewModel.playerService.onPlaybackEnded = {
-            if viewModel.repeatMode == .wholeTrack {
+            switch viewModel.repeatMode {
+            case .wholeTrack:
                 viewModel.playerService.seek(to: 0)
                 viewModel.playerService.play()
-            } else if viewModel.repeatMode == .playlist {
+            case .playlist:
                 playNextIfAvailable(loopToStart: true)
-            } else {
+            case .off:
+                break
+            case .currentSubtitle:
                 playNextIfAvailable()
             }
         }
@@ -315,7 +440,6 @@ private struct ExportShareItem: Identifiable {
 
 struct SettingsSheetView: View {
     @Environment(\.locale) private var locale
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Bindable var viewModel: PlayerViewModel
     @AppStorage(PlayerTheme.playerThemeStorageKey) private var playerTheme: String = "system"
     @State private var selectedTab = 0
@@ -324,7 +448,6 @@ struct SettingsSheetView: View {
     @State private var hasExportedSRT: Bool = false
     @State private var hasExportedYomi: Bool = false
     @State private var hasExportedAudio: Bool = false
-    @State private var showPaywall: Bool = false
 
     enum ImportMode { case srt, yomi }
     @State private var importMode: ImportMode = .srt
@@ -403,16 +526,6 @@ struct SettingsSheetView: View {
         .sheet(item: $exportShareItem) { item in
             exportShareSheet(item: item)
         }
-        .sheet(isPresented: $showPaywall) {
-            PaywallView(onDismiss: { showPaywall = false })
-                .presentationDetents(paywallSheetDetents)
-                .presentationDragIndicator(.visible)
-        }
-    }
-
-    private var paywallSheetDetents: Set<PresentationDetent> {
-        // iPad 上该 paywall 需要直接停在 large，否则会“看起来很局促”
-        horizontalSizeClass == .regular ? Set([.large]) : Set([.medium])
     }
     
     /// 统一导出分享弹窗：根据导出类型显示对应标题、图标与「分享」按钮文案

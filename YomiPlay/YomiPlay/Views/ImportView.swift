@@ -10,10 +10,12 @@ import PhotosUI
 
 struct ImportView: View {
     @Environment(\.locale) private var locale
+    @Environment(\.openURL) private var openURL
     @Bindable var viewModel: HomeViewModel
     @State private var selectedVideoItem: PhotosPickerItem?
     @State private var showPodcastSearchImport: Bool = false
     @State private var showURLImport: Bool = false
+    @State private var isCommunityDownloadEnabled: Bool = false
     private var subscription: SubscriptionManager { SubscriptionManager.shared }
 
     var body: some View {
@@ -32,6 +34,9 @@ struct ImportView: View {
             }
         }
         .animation(.spring(duration: 0.3), value: viewModel.showSRTOption)
+        .task {
+            await refreshCommunityFeatureFlag()
+        }
     }
     
     // MARK: - Subviews
@@ -47,6 +52,9 @@ struct ImportView: View {
                     fileImportSection
                     photoLibrarySection
                     zipImportSection
+                    if isCommunityDownloadEnabled {
+                        communityImportSection
+                    }
                 }
                 Spacer()
             }
@@ -272,8 +280,12 @@ struct ImportView: View {
     
     private var fileImportSection: some View {
         Button {
-            viewModel.fileImportMode = .audioVideo
-            viewModel.isFileImporterPresented = true
+            if subscription.isProUser {
+                viewModel.fileImportMode = .audioVideo
+                viewModel.isFileImporterPresented = true
+            } else {
+                viewModel.showPaywall = true
+            }
         } label: {
             HStack(spacing: 16) {
                 ZStack {
@@ -285,31 +297,25 @@ struct ImportView: View {
                 }
                 .frame(width: 50, height: 50)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("select_from_files").font(.headline)
-                    HStack(spacing: 4) {
-                        Text("mp3, m4a, wav,")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        HStack(spacing: 2) {
-                            Text("mp4")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Image(systemName: "crown.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.yellow)
-                        }
-                        Text(",")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        HStack(spacing: 2) {
-                            Text("mov")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Image(systemName: "crown.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.yellow)
+                    HStack(spacing: 6) {
+                        Text("select_from_files").font(.headline)
+                        Image(systemName: "crown.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                        if !subscription.isProUser {
+                            Text("Pro").font(.caption2).fontWeight(.semibold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.orange))
                         }
                     }
+                    Text("file_import_pro_subtitle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("file_import_supported_formats")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
@@ -356,6 +362,38 @@ struct ImportView: View {
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var communityImportSection: some View {
+        Button {
+            guard let communityURL = URL(string: "https://www.toshiki.tech/y") else { return }
+            openURL(communityURL)
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.teal.opacity(0.1))
+                    Image(systemName: "person.3.fill")
+                        .font(.title2)
+                        .foregroundStyle(.teal)
+                }
+                .frame(width: 50, height: 50)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("import_from_yomiplay_community")
+                        .font(.headline)
+                    Text("import_community_description")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .padding(16)
             .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
@@ -442,6 +480,19 @@ struct ImportView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    @MainActor
+    private func refreshCommunityFeatureFlag() async {
+        guard let url = URL(string: "https://www.toshiki.tech/api/yomiplay/feature-flags") else { return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let flags = try JSONDecoder().decode(YomiPlayFeatureFlags.self, from: data)
+            isCommunityDownloadEnabled = flags.communityDownloadEnabled
+        } catch {
+            // 网络或解析失败时默认隐藏，避免展示未开放入口
+            isCommunityDownloadEnabled = false
         }
     }
     
@@ -1034,5 +1085,15 @@ struct ImportView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 12)
+    }
+}
+
+private struct YomiPlayFeatureFlags: Decodable {
+    let pointsFeatureEnabled: Bool?
+    let communityDownloadEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case pointsFeatureEnabled = "points_feature_enabled"
+        case communityDownloadEnabled = "community_download_enabled"
     }
 }

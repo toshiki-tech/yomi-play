@@ -142,7 +142,8 @@ struct ProcessingView: View {
     
     private var statusSection: some View {
         VStack(spacing: 16) {
-            Text(viewModel.state.displayText(locale: locale))
+            // 顶部主标题：错误时显示「<阶段>失败」，其他状态显示当前步骤名
+            Text(headlineText)
                 .font(.title3)
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.center)
@@ -156,8 +157,8 @@ struct ProcessingView: View {
                 .lineLimit(2)
                 .truncationMode(.middle)
             
-            // 処理ステップのインジケーター
-            if viewModel.state.isProcessing || viewModel.state == .completed {
+            // 処理ステップのインジケーター（错误时也要显示，以红色标记失败的那一步）
+            if viewModel.state.isProcessing || viewModel.state == .completed || viewModel.state.errorStage != nil {
                 stepsIndicator
             }
             
@@ -178,11 +179,19 @@ struct ProcessingView: View {
             }
             
             // エラー時の説明とボタン
-            if case .error = viewModel.state {
+            if let errorMessage = viewModel.state.errorMessage {
                 VStack(spacing: 12) {
-                    Text("please_go_back_and_try_another_file")
+                    // 详细错误原因（来自下游服务）
+                    Text(errorMessage)
                         .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+
+                    Text("please_go_back_and_try_another_file")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                     
                     Button {
                         if !navigationPath.isEmpty {
@@ -202,6 +211,14 @@ struct ProcessingView: View {
                 }
             }
         }
+    }
+
+    /// 顶部标题：错误状态显示「<阶段>失败」；其它状态显示该阶段的进行时文案
+    private var headlineText: String {
+        if let stage = viewModel.state.errorStage {
+            return stage.failureTitle(locale: locale)
+        }
+        return viewModel.state.displayText(locale: locale)
     }
     
     // MARK: - ステップインジケーター
@@ -284,11 +301,7 @@ struct ProcessingView: View {
             : (isJa
                ? [.loadingAudio, .recognizing, .generatingFurigana, .translating, .completed]
                : [.loadingAudio, .recognizing, .translating, .completed])
-        let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
-        let stepIndex = order.firstIndex(of: step) ?? 0
-        if currentIndex > stepIndex { return .completed }
-        if currentIndex == stepIndex { return .active }
-        return .pending
+        return resolveStepState(for: step, in: order)
     }
     
     /// SRT フロー：解析→(必要なら生成注音)→翻译 各ステップの状態を計算する
@@ -297,16 +310,28 @@ struct ProcessingView: View {
         let order: [ProcessingState] = isJa
             ? [.parsingSRT, .generatingFurigana, .translating, .completed]
             : [.parsingSRT, .translating, .completed]
-        let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
-        let stepIndex = order.firstIndex(of: step) ?? 0
-        
-        if currentIndex > stepIndex {
-            return .completed
-        } else if currentIndex == stepIndex {
-            return .active
-        } else {
+        return resolveStepState(for: step, in: order)
+    }
+
+    /// 通用计算：根据 viewModel.state 判断 step 是 completed / active / failed / pending
+    /// - 错误时优先用 errorStage 对应的 ProcessingState 作为"失败的那一步"
+    private func resolveStepState(for step: ProcessingState, in order: [ProcessingState]) -> StepState {
+        // 错误状态：失败步骤标红，之前的步骤标完成，之后的步骤标 pending
+        if let stage = viewModel.state.errorStage {
+            // stage 没有对应到流水线节点（如 .permission / .unknown）时，给个通用兜底：把第一个步标红
+            let failedState = stage.matchingState ?? order.first ?? step
+            let failedIndex = order.firstIndex(of: failedState) ?? 0
+            let stepIndex = order.firstIndex(of: step) ?? 0
+            if stepIndex < failedIndex { return .completed }
+            if stepIndex == failedIndex { return .failed }
             return .pending
         }
+        // 正常进行中 / 已完成
+        let currentIndex = order.firstIndex(of: viewModel.state) ?? 0
+        let stepIndex = order.firstIndex(of: step) ?? 0
+        if currentIndex > stepIndex { return .completed }
+        if currentIndex == stepIndex { return .active }
+        return .pending
     }
 }
 
@@ -316,6 +341,7 @@ enum StepState {
     case pending
     case active
     case completed
+    case failed
 }
 
 // MARK: - ステップ行ビュー
@@ -346,6 +372,10 @@ struct StepRow: View {
                     case .pending:
                         Image(systemName: icon)
                             .foregroundStyle(.secondary)
+                    case .failed:
+                        Image(systemName: "exclamationmark")
+                            .foregroundStyle(.red)
+                            .fontWeight(.bold)
                     }
                 }
                 .font(.caption)
@@ -353,8 +383,8 @@ struct StepRow: View {
             
             Text(title)
                 .font(.subheadline)
-                .foregroundStyle(state == .pending ? .secondary : .primary)
-                .fontWeight(state == .active ? .semibold : .regular)
+                .foregroundStyle(textColor)
+                .fontWeight(state == .active || state == .failed ? .semibold : .regular)
             
             Spacer()
         }
@@ -365,6 +395,15 @@ struct StepRow: View {
         case .completed: return .green
         case .active: return .accentColor
         case .pending: return .gray
+        case .failed: return .red
+        }
+    }
+
+    private var textColor: Color {
+        switch state {
+        case .pending: return .secondary
+        case .failed: return .red
+        case .completed, .active: return .primary
         }
     }
 }

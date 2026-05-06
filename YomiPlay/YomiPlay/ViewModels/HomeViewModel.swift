@@ -18,21 +18,41 @@ struct ZipImportSuccessInfo: Equatable {
 
 /// 保存済み記録一覧の並び順
 enum DocumentSortOrder: String, CaseIterable, Hashable {
+    /// 应用内默认：按标题升序（与新建库时的推荐一致）
+    case titleAscending
     case dateNewestFirst
     case dateOldestFirst
-    case titleAscending
     case titleDescending
-    case segmentCountDescending
+    /// 按用户在分组内拖动的顺序（每分组独立持久化）
+    case manual
     
     /// 按应用内界面语言显示，避免系统语言为中文时仍显示「日期（从新到旧）」等
     var displayName: String {
         let loc = AppLocale.current
         switch self {
+        case .titleAscending:
+            return String(localized: LocalizedStringResource("library_sort_default_name", locale: loc))
         case .dateNewestFirst: return String(localized: LocalizedStringResource("date_newest_first", locale: loc))
         case .dateOldestFirst: return String(localized: LocalizedStringResource("date_oldest_first", locale: loc))
-        case .titleAscending: return String(localized: LocalizedStringResource("name_a_z", locale: loc))
         case .titleDescending: return String(localized: LocalizedStringResource("name_z_a", locale: loc))
-        case .segmentCountDescending: return String(localized: LocalizedStringResource("segments_most_first", locale: loc))
+        case .manual: return String(localized: LocalizedStringResource("library_sort_manual", locale: loc))
+        }
+    }
+    
+    /// 分组菜单 / 工具栏用短标题
+    var menuLabel: String {
+        let loc = AppLocale.current
+        switch self {
+        case .titleAscending:
+            return String(localized: LocalizedStringResource("library_sort_menu_short_default", locale: loc))
+        case .dateNewestFirst:
+            return String(localized: LocalizedStringResource("library_sort_menu_short_date_new", locale: loc))
+        case .dateOldestFirst:
+            return String(localized: LocalizedStringResource("library_sort_menu_short_date_old", locale: loc))
+        case .titleDescending:
+            return String(localized: LocalizedStringResource("library_sort_menu_short_name_za", locale: loc))
+        case .manual:
+            return String(localized: LocalizedStringResource("library_sort_menu_short_manual", locale: loc))
         }
     }
     
@@ -46,8 +66,8 @@ enum DocumentSortOrder: String, CaseIterable, Hashable {
             return { $0.source.title.localizedCompare($1.source.title) == .orderedAscending }
         case .titleDescending:
             return { $0.source.title.localizedCompare($1.source.title) == .orderedDescending }
-        case .segmentCountDescending:
-            return { $0.segments.count > $1.segments.count }
+        case .manual:
+            return { $0.createdAt > $1.createdAt }
         }
     }
 }
@@ -123,6 +143,17 @@ final class HomeViewModel {
             UserDefaults.standard.set(sortOrder.rawValue, forKey: Self.documentSortOrderDefaultsKey)
         }
     }
+    
+    /// 未分组在手动排序文件中的 key
+    private static let uncategorizedManualOrderKey = "uncategorized"
+    
+    private static func manualOrderStorageKey(for folderId: UUID?) -> String {
+        folderId?.uuidString ?? uncategorizedManualOrderKey
+    }
+    
+    /// 各分组内「手动排序」下的 UUID 顺序（与 DocumentStore 中 JSON 同步）
+    private var manualOrderByFolderKey: [String: [UUID]] = [:]
+    
     private var allSavedDocuments: [TranscriptDocument] = []
     private var allFolders: [TranscriptFolder] = []
     /// フォルダ一覧（UI 用の読み取り専用）
@@ -153,9 +184,15 @@ final class HomeViewModel {
     var showDeleteFolderConfirmation: Bool = false
     
     init() {
-        if let raw = UserDefaults.standard.string(forKey: Self.documentSortOrderDefaultsKey),
-           let restored = DocumentSortOrder(rawValue: raw) {
-            sortOrder = restored
+        manualOrderByFolderKey = DocumentStore.shared.loadLibraryManualOrder()
+        let d = UserDefaults.standard
+        if let raw = d.string(forKey: Self.documentSortOrderDefaultsKey) {
+            if raw == "segmentCountDescending" {
+                sortOrder = .titleAscending
+                d.set(DocumentSortOrder.titleAscending.rawValue, forKey: Self.documentSortOrderDefaultsKey)
+            } else if let restored = DocumentSortOrder(rawValue: raw) {
+                sortOrder = restored
+            }
         }
         isSortOrderPersistenceReady = true
         loadSavedDocuments()
@@ -165,11 +202,20 @@ final class HomeViewModel {
     func loadSavedDocuments() {
         allSavedDocuments = DocumentStore.shared.loadAll()
         allFolders = DocumentStore.shared.loadAllFolders()
+        syncManualOrdersWithDocuments()
     }
     
     /// 多媒体库列表：全件＋並び順（顶部不再过滤搜索；搜索在底部 Sheet）
     var libraryDocumentsSorted: [TranscriptDocument] {
-        allSavedDocuments.sorted(by: sortOrder.predicate)
+        if sortOrder == .manual {
+            var out: [TranscriptDocument] = []
+            out.append(contentsOf: orderedDocuments(inFolderId: nil))
+            for f in allFolders {
+                out.append(contentsOf: orderedDocuments(inFolderId: f.id))
+            }
+            return out
+        }
+        return allSavedDocuments.sorted(by: sortOrder.predicate)
     }
     
     /// フォルダ＋未グループでグループ化した一覧（並び順適用済み）
@@ -214,7 +260,68 @@ final class HomeViewModel {
     
     /// 指定フォルダ内のドキュメント一覧（folderId == nil で未分组）
     func documents(inFolderId folderId: UUID?) -> [TranscriptDocument] {
-        libraryDocumentsSorted.filter { $0.folderId == folderId }
+        orderedDocuments(inFolderId: folderId)
+    }
+    
+    /// 分组内列表顺序（自动排序或手动排序表）
+    private func orderedDocuments(inFolderId folderId: UUID?) -> [TranscriptDocument] {
+        let subset = allSavedDocuments.filter { $0.folderId == folderId }
+        guard sortOrder == .manual else {
+            return subset.sorted(by: sortOrder.predicate)
+        }
+        let key = Self.manualOrderStorageKey(for: folderId)
+        let order = manualOrderByFolderKey[key] ?? []
+        var dict = Dictionary(uniqueKeysWithValues: subset.map { ($0.id, $0) })
+        var result: [TranscriptDocument] = []
+        for id in order {
+            if let d = dict.removeValue(forKey: id) { result.append(d) }
+        }
+        let rest = dict.values.sorted { $0.createdAt > $1.createdAt }
+        result.append(contentsOf: rest)
+        return result
+    }
+    
+    /// 与磁盘中的顺序表对齐：剔除已删 id、为新建记录追加顺序
+    private func syncManualOrdersWithDocuments() {
+        var map = manualOrderByFolderKey
+        let validKeys = Set([Self.uncategorizedManualOrderKey] + allFolders.map(\.id.uuidString))
+        for key in map.keys where !validKeys.contains(key) {
+            map.removeValue(forKey: key)
+        }
+        func merge(folderKey: String, memberIds: Set<UUID>) {
+            var ordered = map[folderKey] ?? []
+            ordered.removeAll { !memberIds.contains($0) }
+            let seen = Set(ordered)
+            let missing = memberIds.subtracting(seen)
+            if !missing.isEmpty {
+                let extra = allSavedDocuments.filter { missing.contains($0.id) }.sorted { $0.createdAt > $1.createdAt }
+                for doc in extra {
+                    ordered.append(doc.id)
+                }
+            }
+            map[folderKey] = ordered
+        }
+        let uncIds = Set(allSavedDocuments.filter { $0.folderId == nil }.map(\.id))
+        merge(folderKey: Self.uncategorizedManualOrderKey, memberIds: uncIds)
+        for f in allFolders {
+            let ids = Set(allSavedDocuments.filter { $0.folderId == f.id }.map(\.id))
+            merge(folderKey: f.id.uuidString, memberIds: ids)
+        }
+        manualOrderByFolderKey = map
+        try? DocumentStore.shared.saveLibraryManualOrder(map)
+    }
+    
+    /// 当前为「手动排序」时，在分组内拖动行后调用
+    func reorderDocumentsInFolder(folderId: UUID?, from source: IndexSet, to destination: Int) {
+        guard sortOrder == .manual else { return }
+        let key = Self.manualOrderStorageKey(for: folderId)
+        var ids = orderedDocuments(inFolderId: folderId).map(\.id)
+        ids.move(fromOffsets: source, toOffset: destination)
+        var map = manualOrderByFolderKey
+        map[key] = ids
+        manualOrderByFolderKey = map
+        try? DocumentStore.shared.saveLibraryManualOrder(map)
+        HapticManager.shared.selection()
     }
     
     /// 库内搜索：分组名匹配（含未分类分组名）
@@ -238,10 +345,11 @@ final class HomeViewModel {
     func librarySearchMatchingDocuments(query: String) -> [TranscriptDocument] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return [] }
-        return allSavedDocuments.filter { doc in
+        let pool = libraryDocumentsSorted
+        return pool.filter { doc in
             doc.source.title.localizedCaseInsensitiveContains(q)
                 || doc.segments.contains { $0.originalText.localizedCaseInsensitiveContains(q) }
-        }.sorted(by: sortOrder.predicate)
+        }
     }
     
     /// フォルダ ID からフォルダを取得
@@ -267,6 +375,19 @@ final class HomeViewModel {
         do {
             try DocumentStore.shared.addFolder(folder)
             loadSavedDocuments()
+        } catch {
+            showErrorMessage(error.localizedDescription)
+        }
+    }
+    
+    /// 库首页「我的分组」列表拖动排序（持久化到 `libraryFolderOrder.json`）
+    func reorderFolders(from source: IndexSet, to destination: Int) {
+        var ids = folders.map(\.id)
+        ids.move(fromOffsets: source, toOffset: destination)
+        do {
+            try DocumentStore.shared.saveLibraryFolderOrder(ids)
+            loadSavedDocuments()
+            HapticManager.shared.selection()
         } catch {
             showErrorMessage(error.localizedDescription)
         }
@@ -389,10 +510,17 @@ final class HomeViewModel {
     
     // MARK: - インポート処理（既存のロジックを保持）
     
+    /// 系统文件选择器：本地音视频与 ZIP 需 Pro；导入流程中附带 SRT / YOMI 不限 Pro
+    func ensureProForFileImport() -> Bool {
+        if SubscriptionManager.shared.isProUser { return true }
+        showPaywall = true
+        return false
+    }
+    
     func handleFileSelected(result: Result<URL, Error>) {
         switch result {
         case .success(let url):
-            if isVideoFile(url: url), !SubscriptionManager.shared.isProUser {
+            guard SubscriptionManager.shared.isProUser else {
                 showPaywall = true
                 return
             }
@@ -545,7 +673,8 @@ final class HomeViewModel {
             let importedDoc = try SubtitleExportService.readYomiFile(from: url)
             let doc = TranscriptDocument(
                 source: source,
-                segments: importedDoc.segments
+                segments: importedDoc.segments,
+                isNonJapaneseRecognitionSource: importedDoc.isNonJapaneseRecognitionSource
             )
             try DocumentStore.shared.save(doc)
             loadSavedDocuments()
@@ -608,6 +737,7 @@ final class HomeViewModel {
     // MARK: - ZIP インポート
     
     private static let mediaExtensions = ["mp4", "mov", "m4v", "mp3", "m4a", "wav", "aiff", "avi", "mkv", "webm"]
+    private static let videoExtensions: Set<String> = ["mp4", "mov", "m4v", "avi", "mkv", "webm"]
     private static let srtExtension = "srt"
     private static let yomiExtensions = ["yomi", "json"]
     
@@ -629,14 +759,14 @@ final class HomeViewModel {
                 await MainActor.run { zipImportProgressMessage = String(localized: "matching_files") }
                 
                 let contents = try FileManager.default.contentsOfDirectory(at: contentRoot, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
-                var mediaByBase: [String: URL] = [:]
+                var mediaByBase: [String: [URL]] = [:]
                 var srtByBase: [String: URL] = [:]
                 var yomiByBase: [String: URL] = [:]
                 for itemURL in contents {
                     let ext = itemURL.pathExtension.lowercased()
                     let base = itemURL.deletingPathExtension().lastPathComponent
                     if Self.mediaExtensions.contains(ext) {
-                        mediaByBase[base] = itemURL
+                        mediaByBase[base, default: []].append(itemURL)
                     } else if ext == Self.srtExtension {
                         srtByBase[base] = itemURL
                     } else if Self.yomiExtensions.contains(ext) {
@@ -651,14 +781,28 @@ final class HomeViewModel {
                 var created = 0
                 let baseNames = Set(mediaByBase.keys).sorted()
                 for base in baseNames {
-                    guard let mediaURL = mediaByBase[base] else { continue }
-                    var relPath = mediaURL.path
+                    guard let mediaCandidates = mediaByBase[base], !mediaCandidates.isEmpty else { continue }
+                    let preferredMediaURL = Self.preferredMediaURL(from: mediaCandidates)
+                    guard let mediaURL = preferredMediaURL else { continue }
+                    let preferredVideoURL = Self.preferredVideoURL(from: mediaCandidates)
+                    var mediaRelPath = mediaURL.path
                     let docsPath = docsURL.path
-                    if relPath.hasPrefix(docsPath) {
-                        relPath = String(relPath.dropFirst(docsPath.count))
-                        if relPath.hasPrefix("/") { relPath = String(relPath.dropFirst(1)) }
+                    if mediaRelPath.hasPrefix(docsPath) {
+                        mediaRelPath = String(mediaRelPath.dropFirst(docsPath.count))
+                        if mediaRelPath.hasPrefix("/") { mediaRelPath = String(mediaRelPath.dropFirst(1)) }
                     } else {
-                        relPath = "Imports/\(folderName)/\(mediaURL.lastPathComponent)"
+                        mediaRelPath = "Imports/\(folderName)/\(mediaURL.lastPathComponent)"
+                    }
+                    var videoRelPath: String?
+                    if let videoURL = preferredVideoURL {
+                        var rel = videoURL.path
+                        if rel.hasPrefix(docsPath) {
+                            rel = String(rel.dropFirst(docsPath.count))
+                            if rel.hasPrefix("/") { rel = String(rel.dropFirst(1)) }
+                        } else {
+                            rel = "Imports/\(folderName)/\(videoURL.lastPathComponent)"
+                        }
+                        videoRelPath = rel
                     }
                     let title = base
                     var doc: TranscriptDocument?
@@ -672,13 +816,18 @@ final class HomeViewModel {
                         var source = AudioSource(
                             type: .local,
                             localURL: mediaURL,
-                            relativeFilePath: relPath,
+                            relativeFilePath: mediaRelPath,
                             title: title
                         )
-                        if isVideoFile(url: mediaURL) {
-                            source.videoRelativeFilePath = relPath
+                        if let videoRelPath {
+                            source.videoRelativeFilePath = videoRelPath
                         }
-                        doc = TranscriptDocument(source: source, segments: imported.segments, folderId: folder.id)
+                        doc = TranscriptDocument(
+                            source: source,
+                            segments: imported.segments,
+                            folderId: folder.id,
+                            isNonJapaneseRecognitionSource: imported.isNonJapaneseRecognitionSource
+                        )
                     } else if hasSrt {
                         // 仅有 .srt（无 .yomi 时用 .srt）
                         let srtURL = srtByBase[base]!
@@ -703,11 +852,11 @@ final class HomeViewModel {
                         var source = AudioSource(
                             type: .local,
                             localURL: mediaURL,
-                            relativeFilePath: relPath,
+                            relativeFilePath: mediaRelPath,
                             title: title
                         )
-                        if isVideoFile(url: mediaURL) {
-                            source.videoRelativeFilePath = relPath
+                        if let videoRelPath {
+                            source.videoRelativeFilePath = videoRelPath
                         }
                         doc = TranscriptDocument(source: source, segments: segments, folderId: folder.id)
                     }
@@ -736,6 +885,22 @@ final class HomeViewModel {
                 }
             }
         }
+    }
+
+    /// ZIP 内同名媒体冲突时优先选择视频，避免误选 m4a 导致播放页丢失视频窗口。
+    private static func preferredMediaURL(from urls: [URL]) -> URL? {
+        if let video = preferredVideoURL(from: urls) {
+            return video
+        }
+        return urls.sorted(by: { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }).first
+    }
+
+    /// 选择同名中的视频文件（按文件名稳定排序，避免目录遍历顺序导致不一致）。
+    private static func preferredVideoURL(from urls: [URL]) -> URL? {
+        urls
+            .filter { videoExtensions.contains($0.pathExtension.lowercased()) }
+            .sorted(by: { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending })
+            .first
     }
 }
 

@@ -24,16 +24,12 @@ final class TranslationService {
     
     private init() {}
     
-    /// セグメント配列を targetLanguageCode で指定された言語に翻訳する
-    /// - Parameters:
-    ///   - segments: 翻訳対象のセグメント配列
-    ///   - sourceLanguageCode: 元の言語コード（デフォルトは日本語 "ja"）
-    ///   - targetLanguageCode: 翻訳先の言語コード（例: "zh-Hans", "en"）
-    /// - Returns: translatedText が埋め込まれた新しいセグメント配列
+    /// セグメント配列を targetLanguageCode で指定された言語に翻訳する。
+    /// 各句の源语言来自 `originalTextLanguageCode`（及可选的文档级「非日语识别源」回退）；源与目标相同时不写系统翻译，直接复制原文。
     func translateSegments(
         _ segments: [TranscriptSegment],
-        sourceLanguageCode: String = "ja",
-        targetLanguageCode: String
+        targetLanguageCode: String,
+        documentNonJapaneseRecognitionSource: Bool? = nil
     ) async throws -> [TranscriptSegment] {
         guard !segments.isEmpty else { return segments }
         
@@ -41,11 +37,41 @@ final class TranslationService {
             throw TranslationServiceError.notAvailable
         }
         
-        return try await translateSegmentsWithFramework(
-            segments,
-            sourceLanguageCode: sourceLanguageCode,
-            targetLanguageCode: targetLanguageCode
-        )
+        let targetNorm = TranslationTargetLanguageOptions.normalizedCode(targetLanguageCode)
+        var result = segments
+        
+        var groups: [String: [Int]] = [:]
+        
+        for i in result.indices {
+            let rawText = result[i].originalText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if rawText.isEmpty {
+                result[i].translatedText = nil
+                continue
+            }
+            let srcId = TranslationLanguageRouting.sourceLanguageIdentifierForTranslation(
+                originalTextLanguageCode: result[i].originalTextLanguageCode,
+                documentNonJapaneseRecognitionSource: documentNonJapaneseRecognitionSource
+            )
+            if TranslationLanguageRouting.shouldSkipTranslationBecauseSameLanguage(sourceIdentifier: srcId, targetLanguageCode: targetNorm) {
+                result[i].translatedText = result[i].originalText
+                continue
+            }
+            groups[srcId, default: []].append(i)
+        }
+        
+        for (sourceId, idxs) in groups {
+            let batch = idxs.map { result[$0] }
+            let translated = try await translateSegmentsWithFramework(
+                batch,
+                sourceLanguageCode: sourceId,
+                targetLanguageCode: targetNorm
+            )
+            for (k, globalIdx) in idxs.enumerated() where k < translated.count {
+                result[globalIdx].translatedText = translated[k].translatedText
+            }
+        }
+        
+        return result
     }
     
     @available(iOS 26.0, *)
@@ -68,39 +94,51 @@ final class TranslationService {
         
         let responses = try await session.translations(from: requests)
         
-        var result = segments
+        var batchResult = segments
         for response in responses {
             if let idStr = response.clientIdentifier,
                let idx = Int(idStr),
-               idx < result.count {
-                result[idx].translatedText = response.targetText
+               idx < batchResult.count {
+                batchResult[idx].translatedText = response.targetText
             }
         }
-        return result
+        return batchResult
     }
 
-    /// 单句翻译（用于编辑时「翻译这条」）
+    /// 单句翻译（用于编辑时「翻译这条」）。`segmentSourceLanguageCode` 为 nil 时仅用文档级回退（与批量翻译一致）。
     func translateText(
         _ text: String,
-        sourceLanguageCode: String = "ja",
-        targetLanguageCode: String
+        segmentSourceLanguageCode: String?,
+        targetLanguageCode: String,
+        documentNonJapaneseRecognitionSource: Bool? = nil
     ) async throws -> String {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "" }
-        let segment = TranscriptSegment(startTime: 0, endTime: 0, originalText: text)
-        let result = try await translateSegments([segment], sourceLanguageCode: sourceLanguageCode, targetLanguageCode: targetLanguageCode)
-        return result.first?.translatedText ?? ""
+        let segment = TranscriptSegment(
+            startTime: 0,
+            endTime: 0,
+            originalText: text,
+            userTokenOverrides: nil,
+            originalTextLanguageCode: segmentSourceLanguageCode
+        )
+        let out = try await translateSegments(
+            [segment],
+            targetLanguageCode: targetLanguageCode,
+            documentNonJapaneseRecognitionSource: documentNonJapaneseRecognitionSource
+        )
+        return out.first?.translatedText ?? ""
     }
 
     /// 翻訳用の Configuration を作成する（SwiftUI の .translationTask で使用）。iOS 26.0 以上のみ。
     @available(iOS 26.0, *)
     func makeConfiguration(
-        sourceLanguageCode: String = "ja",
+        sourceLanguageCode: String,
         targetLanguageCode: String
     ) -> TranslationSession.Configuration {
-        TranslationSession.Configuration(
-            source: Locale.Language(identifier: sourceLanguageCode),
-            target: Locale.Language(identifier: targetLanguageCode)
+        let src = TranslationLanguageRouting.normalizeCodeForAppleTranslationSession(sourceLanguageCode)
+        let tgt = TranslationTargetLanguageOptions.normalizedCode(targetLanguageCode)
+        return TranslationSession.Configuration(
+            source: Locale.Language(identifier: src),
+            target: Locale.Language(identifier: tgt)
         )
     }
 }
-
